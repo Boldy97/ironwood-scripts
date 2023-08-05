@@ -15,7 +15,9 @@
             };
         }
         if(xhr.url.endsWith('getUser')) {
-            auth.registerName(response.user.displayName);
+            const name = response.user.displayName;
+            const password = new Date(response.user.createdAt).getTime();
+            auth.register(name, password);
         }
         await request('request', {
             url: xhr.url,
@@ -23,9 +25,6 @@
             payload: JSON.stringify(xhr.request),
             response: JSON.stringify(response)
         });
-        if(xhr.url.endsWith('getUser')) {
-            events.emit('user', response);
-        }
     }
 
     initialise();

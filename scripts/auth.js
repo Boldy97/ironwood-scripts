@@ -1,7 +1,7 @@
 () => {
 
     const exports = {
-        registerName,
+        register,
         getHeaders,
         authenticated,
         isAuthenticated
@@ -24,8 +24,8 @@
         }
     }
 
-    function registerName(name, skipResolve) {
-        TOKEN = 'Basic ' + btoa(name + ":");
+    function register(name, password) {
+        TOKEN = 'Basic ' + btoa(name + ":" + password);
         TOKEN_PROMISE_RESOLVE();
         $('#authenticatedMarker').remove();
     }
