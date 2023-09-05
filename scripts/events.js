@@ -2,7 +2,8 @@
 
     const exports = {
         register,
-        emit
+        emit,
+        getLast
     };
 
     const handlers = {};
@@ -37,6 +38,10 @@
         } catch(e) {
             console.error('Something went wrong', e);
         }
+    }
+
+    function getLast(name) {
+        return lastCache[name];
     }
 
     return exports;

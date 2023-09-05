@@ -1,11 +1,13 @@
 (auth) => {
 
+    const authenticated = auth.ready;
+
     const exports = makeRequest;
 
     let CURRENT_REQUEST = null;
 
     async function makeRequest(url, body) {
-        await auth.authenticated();
+        await authenticated;
         await throttle();
         const headers = auth.getHeaders();
         const method = body ? 'POST' : 'GET';

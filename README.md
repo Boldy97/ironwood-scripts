@@ -49,3 +49,19 @@ window.moduleRegistry.build();
 Some scripts depend on calls to my backend, which is not open source.
 The only available endpoints are the ones that are used in scripts.
 If you feel like you need a new functionality, open an issue or find me on Discord (@pancake.lord)
+
+## Future plans
+
+* automation estimations
+* improved config component
+* inventory saved filters
+* virtual levels over 100
+* add graphs for exp / level progression
+* display estimated market values for items
+* add account value visualizer
+* chat
+* action/fight simulator with chosen equipments
+
+## Current issues
+
+* events are not taking into account

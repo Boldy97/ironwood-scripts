@@ -1,5 +1,7 @@
 (auth, request) => {
 
+    const authenticated = auth.ready;
+
     const exports = {
         registerToggle,
         registerInput,
@@ -15,14 +17,12 @@
     };
 
     const itemByName = {};
-    let authenticatedState = false;
 
     async function initialise() {
         setup();
         refresh();
         document.addEventListener('click', handleOutsideClick);
-        await auth.authenticated();
-        authenticatedState = true;
+        await authenticated;
         loadState();
     }
 
@@ -87,7 +87,7 @@
     }
 
     async function saveState(item) {
-        if(!authenticatedState) {
+        if(!auth.isReady) {
             return;
         }
         let key = item.name;

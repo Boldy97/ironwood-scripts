@@ -1,20 +1,16 @@
-() => {
+(Promise) => {
+
+    const authenticated = new Promise.Deferred();
+    let TOKEN = null;
 
     const exports = {
+        ready: authenticated.promise,
+        isReady: false,
         register,
-        getHeaders,
-        authenticated,
-        isAuthenticated
+        getHeaders
     };
 
-    let TOKEN = null;
-    let TOKEN_PROMISE = null;
-    let TOKEN_PROMISE_RESOLVE = null;
-
     function initialise() {
-        TOKEN_PROMISE = new Promise(r => {
-            TOKEN_PROMISE_RESOLVE = r;
-        });
         window.setTimeout(addAuthenticatedMarker, 3000);
     }
 
@@ -26,7 +22,8 @@
 
     function register(name, password) {
         TOKEN = 'Basic ' + btoa(name + ":" + password);
-        TOKEN_PROMISE_RESOLVE();
+        authenticated.resolve();
+        exports.isReady = true;
         $('#authenticatedMarker').remove();
     }
 
@@ -35,14 +32,6 @@
             'Content-Type': 'application/json',
             'Authorization': TOKEN
         };
-    }
-
-    function isAuthenticated() {
-        return !!TOKEN;
-    }
-
-    async function authenticated() {
-        return TOKEN_PROMISE;
     }
 
     initialise();

@@ -97,15 +97,7 @@
     function createRow_Item(itemBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
         if(itemBlueprint.image) {
-            parentRow
-                .append(
-                    $('<div/>')
-                        .addClass('myItemImage image')
-                        .append(
-                            $('<img/>')
-                                .attr('src', `${itemBlueprint.image}`)
-                        )
-                )
+            parentRow.append(createImage(itemBlueprint));
         }
         if(itemBlueprint?.name) {
             parentRow
@@ -203,15 +195,7 @@
             $('<div/>')
                 .addClass('myHeader lineTop')
         if(headerBlueprint.image) {
-            parentRow
-                .append(
-                    $('<div/>')
-                        .addClass('myItemImage image')
-                        .append(
-                            $('<img/>')
-                                .attr('src', `${headerBlueprint.image}`)
-                        )
-                )
+            parentRow.append(createImage(headerBlueprint));
         }
         parentRow.append(
             $('<div/>')
@@ -266,6 +250,17 @@
             return;
         }
         return segmentBlueprint.rows.flatMap(createRow);
+    }
+
+    function createImage(blueprint) {
+        return $('<div/>')
+            .addClass('myItemImage image')
+            .append(
+                $('<img/>')
+                    .attr('src', `${blueprint.image}`)
+                    .css('filter', `${blueprint.imageFilter}`)
+                    .css('image-rendering', blueprint.imagePixelated ? 'pixelated' : 'auto')
+            )
     }
 
     function changeTab(blueprint, index) {
@@ -388,7 +383,6 @@
             max-height: 100%;
             width: 100%;
             height: 100%;
-            image-rendering: pixelated;
         }
         .myItemValue {
             display: flex;

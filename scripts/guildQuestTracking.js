@@ -103,18 +103,21 @@
             type: 'item',
             name: registration.name,
             value: registration.amount,
-            image: '/assets/misc/quests.png'
+            image: '/assets/misc/quests.png',
+            imagePixelated: true
         }));
         components.search(componentBlueprint, 'performingRowsSegment').rows = questData.performers.map(performer => ({
             type: 'item',
             name: performer.name,
-            image: `/assets/${questData.image}`
+            image: `/assets/${questData.image}`,
+            imagePixelated: true
         }));
         components.search(componentBlueprint, 'contributionsRowsSegment').rows = questData.contributions.map(contribution => ({
             type: 'item',
             name: contribution.name,
             value: `${contribution.amount} (${new Date(contribution.time).toLocaleTimeString()})`,
-            image: `/assets/${contribution.image}`
+            image: `/assets/${contribution.image}`,
+            imagePixelated: true
         }));
         const registered = !!questData.registrations.find(a => a.name === questData.requester);
         const registerButton = components.search(componentBlueprint, 'registerButton');
@@ -165,7 +168,8 @@
                     id: 'registeredHeader',
                     title: 'Registered',
                     centered: true,
-                    image: ''
+                    image: '',
+                    imagePixelated: true
                 }, {
                     type: 'segment',
                     id: 'registeredRowsSegment',
@@ -180,7 +184,8 @@
                     id: 'performingHeader',
                     title: 'Currently performing',
                     centered: true,
-                    image: ''
+                    image: '',
+                    imagePixelated: true
                 }, {
                     type: 'segment',
                     id: 'performingRowsSegment',
@@ -194,7 +199,8 @@
                     id: 'contributionsHeader',
                     title: 'Contributions',
                     centered: true,
-                    image: ''
+                    image: '',
+                    imagePixelated: true
                 }, {
                     type: 'segment',
                     id: 'contributionsRowsSegment',

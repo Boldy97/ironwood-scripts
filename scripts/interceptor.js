@@ -2,8 +2,8 @@
 
     function initialise() {
         registerInterceptorXhr();
-        registerInterceptorPageChange();
-        events.emit('page', window.location.href);
+        registerInterceptorUrlChange();
+        events.emit('url', window.location.href);
     }
 
     function registerInterceptorXhr() {
@@ -61,11 +61,11 @@
         return xhr.response;
     }
 
-    function registerInterceptorPageChange() {
+    function registerInterceptorUrlChange() {
         const pushState = history.pushState;
         history.pushState = function() {
             pushState.apply(history, arguments);
-            events.emit('page', arguments[2]);
+            events.emit('url', arguments[2]);
         };
     }
 

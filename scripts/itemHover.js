@@ -1,9 +1,7 @@
-(auth, request, configuration) => {
+(auth, configuration, itemCache) => {
 
     let enabled = false;
     let entered = false;
-    let itemCacheByImage;
-    let itemCacheByName;
     let element;
     const rows = [
         ['SELL_PRICE', 'Sell Price', '/assets/misc/coin.png'],
@@ -52,51 +50,29 @@
 
     function handleConfigStateChange(state) {
         enabled = state;
-        setupItemCache();
-    }
-
-    async function setupItemCache() {
-        if(!enabled || itemCacheByName) {
-            return;
-        }
-        itemCacheByName = {};
-        itemCacheByImage = {};
-        await auth.authenticated();
-        const items = await request('list/item');
-        for(const enrichedItem of items) {
-            const item = Object.assign(enrichedItem.item, enrichedItem);
-            delete item.enrichedItem;
-            if(!itemCacheByName[item.name]) {
-                itemCacheByName[item.name] = item;
-            }
-            const lastPart = item.image.split('/').at(-1);
-            if(!itemCacheByImage[lastPart]) {
-                itemCacheByImage[lastPart] = item;
-            }
-        }
     }
 
     function handleMouseEnter(event) {
-        if(!enabled || entered || !itemCacheByName) {
+        if(!enabled || entered || !itemCache.byId) {
             return;
         }
         entered = true;
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = itemCacheByName[name];
+        const nameMatch = itemCache.byName[name];
         if(nameMatch) {
             return show(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = itemCacheByImage[lastPart];
+        const imageMatch = itemCache.byImage[lastPart];
         if(imageMatch) {
             return show(imageMatch);
         }
     }
 
     function handleMouseLeave(event) {
-        if(!enabled || !itemCacheByName) {
+        if(!enabled || !itemCache.byId) {
             return;
         }
         entered = false;
