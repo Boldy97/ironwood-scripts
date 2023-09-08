@@ -1,4 +1,4 @@
-(events, request, configuration, itemCache, userCache, calc) => {
+(events, request, configuration, itemCache, userCache, util) => {
 
     const registerCategory = configuration.registerCategory;
     const registerToggle = configuration.registerToggle;
@@ -161,8 +161,8 @@
             );
         }
         const currentExp = userCache.exp[estimation.skill];
-        estimation.secondsToNextlevel = calc.expToNextLevel(currentExp) / estimation.exp * 3600;
-        estimation.secondsToNextTier = calc.expToNextTier(currentExp) / estimation.exp * 3600;
+        estimation.secondsToNextlevel = util.expToNextLevel(currentExp) / estimation.exp * 3600;
+        estimation.secondsToNextTier = util.expToNextTier(currentExp) / estimation.exp * 3600;
     }
 
     initialise();

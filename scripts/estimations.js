@@ -1,4 +1,4 @@
-(events, components) => {
+(events, components, util) => {
 
     const registerEstimationHandler = events.register.bind(null, 'estimation');
     const addComponent = components.addComponent;
@@ -24,41 +24,41 @@
         }
 
         searchComponent(componentBlueprint, 'overviewSpeed').value
-            = formatNumber(estimation.speed) + ' s';
+            = util.formatNumber(estimation.speed) + ' s';
         searchComponent(componentBlueprint, 'overviewExp').hidden
             = estimation.exp === 0;
         searchComponent(componentBlueprint, 'overviewExp').value
-            = formatNumber(estimation.exp);
+            = util.formatNumber(estimation.exp);
         searchComponent(componentBlueprint, 'overviewSurvivalChance').hidden
             = estimation.type === 'ACTIVITY' || estimation.type === 'AUTOMATION';
         searchComponent(componentBlueprint, 'overviewSurvivalChance').value
-            = formatNumber(estimation.survivalChance * 100) + ' %';
+            = util.formatNumber(estimation.survivalChance * 100) + ' %';
         searchComponent(componentBlueprint, 'overviewFinishedTime').value
-            = secondsToDuration(estimation.secondsLeft);
+            = util.secondsToDuration(estimation.secondsLeft);
         searchComponent(componentBlueprint, 'overviewLevelTime').hidden
             = estimation.exp === 0;
         searchComponent(componentBlueprint, 'overviewLevelTime').value
-            = secondsToDuration(estimation.secondsToNextlevel);
+            = util.secondsToDuration(estimation.secondsToNextlevel);
         searchComponent(componentBlueprint, 'overviewTierTime').hidden
             = estimation.exp === 0;
         searchComponent(componentBlueprint, 'overviewTierTime').value
-            = secondsToDuration(estimation.secondsToNextTier);
+            = util.secondsToDuration(estimation.secondsToNextTier);
         searchComponent(componentBlueprint, 'overviewGoldLoot').hidden
             = estimation.goldLoot === 0;
         searchComponent(componentBlueprint, 'overviewGoldLoot').value
-            = formatNumber(estimation.goldLoot);
+            = util.formatNumber(estimation.goldLoot);
         searchComponent(componentBlueprint, 'overviewGoldMaterials').hidden
             = estimation.goldMaterials === 0;
         searchComponent(componentBlueprint, 'overviewGoldMaterials').value
-            = formatNumber(estimation.goldMaterials);
+            = util.formatNumber(estimation.goldMaterials);
         searchComponent(componentBlueprint, 'overviewGoldEquipments').hidden
             = estimation.goldEquipments === 0;
         searchComponent(componentBlueprint, 'overviewGoldEquipments').value
-            = formatNumber(estimation.goldEquipments);
+            = util.formatNumber(estimation.goldEquipments);
         searchComponent(componentBlueprint, 'overviewGoldTotal').hidden
             = estimation.goldTotal === 0;
         searchComponent(componentBlueprint, 'overviewGoldTotal').value
-            = formatNumber(estimation.goldTotal);
+            = util.formatNumber(estimation.goldTotal);
         searchComponent(componentBlueprint, 'tabTime').hidden
             = (estimation.materials.length + estimation.equipments.length) === 0;
 
@@ -74,7 +74,7 @@
                 image: `/assets/${drop.item?.image}`,
                 imagePixelated: true,
                 name: drop.item?.name,
-                value: formatNumber(drop.amount) + ' / hour'
+                value: util.formatNumber(drop.amount) + ' / hour'
             });
         }
         for(const material of estimation.materials) {
@@ -83,14 +83,14 @@
                 image: `/assets/${material.item?.image}`,
                 imagePixelated: true,
                 name: material.item?.name,
-                value: formatNumber(material.amount) + ' / hour'
+                value: util.formatNumber(material.amount) + ' / hour'
             });
             timeRows.rows.push({
                 type: 'item',
                 image: `/assets/${material.item?.image}`,
                 imagePixelated: true,
-                name: `${material.item?.name} [${formatNumber(material.stored)}]`,
-                value: secondsToDuration(material.secondsLeft)
+                name: `${material.item?.name} [${util.formatNumber(material.stored)}]`,
+                value: util.secondsToDuration(material.secondsLeft)
             });
         }
         for(const equipment of estimation.equipments) {
@@ -99,54 +99,18 @@
                 image: `/assets/${equipment.item?.image}`,
                 imagePixelated: true,
                 name: equipment.item?.name,
-                value: formatNumber(equipment.amount) + ' / hour'
+                value: util.formatNumber(equipment.amount) + ' / hour'
             });
             timeRows.rows.push({
                 type: 'item',
                 image: `/assets/${equipment.item?.image}`,
                 imagePixelated: true,
-                name: `${equipment.item?.name} [${formatNumber(equipment.stored)}]`,
-                value: secondsToDuration(equipment.secondsLeft)
+                name: `${equipment.item?.name} [${util.formatNumber(equipment.stored)}]`,
+                value: util.secondsToDuration(equipment.secondsLeft)
             });
         }
 
         addComponent(componentBlueprint);
-    }
-
-    function formatNumber(number) {
-        return number.toLocaleString(undefined, {maximumFractionDigits:2});
-    }
-
-    function secondsToDuration(duration) {
-        if(duration > 60 * 60 * 24 * 100) {
-            // > 100 days,
-            return 'A very long time';
-        }
-        var seconds = Math.floor(duration % 60),
-            minutes = Math.floor((duration / 60) % 60),
-            hours = Math.floor((duration / (60 * 60)) % 24),
-            days = Math.floor(duration / (60 * 60 * 24));
-
-        days = (days < 10) ? '0' + days : days;
-        hours = (hours < 10) ? '0' + hours : hours;
-        minutes = (minutes < 10) ? '0' + minutes : minutes;
-        seconds = (seconds < 10) ? '0' + seconds : seconds;
-
-        let result = '';
-        if(days > 0) {
-            result += days + 'd ';
-        }
-        if(days > 0 || hours > 0) {
-            result += hours + 'h ';
-        }
-        if(days > 0 || hours > 0 || minutes > 0) {
-            result += minutes + 'm ';
-        }
-        if(days > 0 || hours > 0 || minutes > 0 || seconds > 0) {
-            result += seconds + 's ';
-        }
-
-        return result.trim();
     }
 
     const componentBlueprint = {
