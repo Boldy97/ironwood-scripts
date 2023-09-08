@@ -6,7 +6,8 @@
         expToNextLevel,
         expToNextTier,
         formatNumber,
-        secondsToDuration
+        secondsToDuration,
+        divmod
     };
 
     function levelToExp(level) {
@@ -41,36 +42,41 @@
         return number.toLocaleString(undefined, {maximumFractionDigits:2});
     }
 
-    function secondsToDuration(duration) {
-        if(duration > 60 * 60 * 24 * 100) {
-            // > 100 days,
+    function secondsToDuration(seconds) {
+        seconds = Math.floor(seconds);
+        if(seconds > 60 * 60 * 24 * 100) {
+            // > 100 days
             return 'A very long time';
         }
-        var seconds = Math.floor(duration % 60),
-            minutes = Math.floor((duration / 60) % 60),
-            hours = Math.floor((duration / (60 * 60)) % 24),
-            days = Math.floor(duration / (60 * 60 * 24));
 
-        days = (days < 10) ? '0' + days : days;
-        hours = (hours < 10) ? '0' + hours : hours;
-        minutes = (minutes < 10) ? '0' + minutes : minutes;
-        seconds = (seconds < 10) ? '0' + seconds : seconds;
+        var [minutes, seconds] = divmod(seconds, 60);
+        var [hours, minutes] = divmod(minutes, 60);
+        var [days, hours] = divmod(hours, 24);
+
+        seconds = `${seconds}`.padStart(2, '0');
+        minutes = `${minutes}`.padStart(2, '0');
+        hours = `${hours}`.padStart(2, '0');
+        days = `${days}`.padStart(2, '0');
 
         let result = '';
-        if(days > 0) {
-            result += days + 'd ';
+        if(result || +days) {
+            result += `${days}d `;
         }
-        if(days > 0 || hours > 0) {
-            result += hours + 'h ';
+        if(result || +hours) {
+            result += `${hours}h `;
         }
-        if(days > 0 || hours > 0 || minutes > 0) {
-            result += minutes + 'm ';
+        if(result || +minutes) {
+            result += `${minutes}m `;
         }
-        if(days > 0 || hours > 0 || minutes > 0 || seconds > 0) {
-            result += seconds + 's ';
+        if(result || +seconds) {
+            result += `${seconds}s`;
         }
 
-        return result.trim();
+        return result;
+    }
+
+    function divmod(x, y) {
+        return [Math.floor(x / y), x % y];
     }
 
     return exports;
