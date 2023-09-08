@@ -6,6 +6,7 @@
         expToNextLevel,
         expToNextTier,
         formatNumber,
+        parseNumber,
         secondsToDuration,
         divmod
     };
@@ -77,6 +78,24 @@
 
     function divmod(x, y) {
         return [Math.floor(x / y), x % y];
+    }
+
+    function parseNumber(text) {
+        if(!text) {
+            return 0;
+        }
+        text = text.replaceAll(/,/g, '');
+        let multiplier = 1;
+        if(text.endsWith('%')) {
+            multiplier = 1 / 100;
+        }
+        if(text.endsWith('K')) {
+            multiplier = 1_000;
+        }
+        if(text.endsWith('M')) {
+            multiplier = 1_000_000;
+        }
+        return (parseFloat(text) || 0) * multiplier;
     }
 
     return exports;

@@ -1,4 +1,4 @@
-(events, itemCache, Promise) => {
+(events, itemCache, Promise, util) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const registerXhrHandler = events.register.bind(null, 'xhr');
@@ -149,7 +149,7 @@
                     const text = $(row).find('.name').text();
                     if(text.startsWith('Total ') && text.endsWith(' XP')) {
                         let expValue = $(row).find('.value').text().split(' ')[0];
-                        expValue = parseFloat(expValue.replaceAll(/,/g, '')) || 0;
+                        expValue = util.parseNumber(expValue);
                         updated |= exp[currentPage.skill] !== expValue; // bitwise OR because of lazy evaluation
                         exp[currentPage.skill] = expValue;
                     }
@@ -159,8 +159,8 @@
                 let newActionAmountValue = null;
                 let newActionMaxAmountValue = null;
                 if(amount) {
-                    newActionAmountValue = parseFloat(amount.split(' / ')[0].replaceAll(/,/g, ''));
-                    newActionMaxAmountValue = parseFloat(amount.split(' / ')[1].replaceAll(/,/g, ''));
+                    newActionAmountValue = util.parseNumber(amount.split(' / ')[0]);
+                    newActionMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
                 }
                 updated |= action.amount !== newActionAmountValue; // bitwise OR because of lazy evaluation
                 updated |= action.maxAmount !== newActionMaxAmountValue; // bitwise OR because of lazy evaluation
@@ -188,8 +188,8 @@
                 let newAutomationAmountValue = null;
                 let newAutomationMaxAmountValue = null;
                 if(amount) {
-                    newAutomationAmountValue = parseFloat(amount.split(' / ')[0].replaceAll(/,/g, ''));
-                    newAutomationMaxAmountValue = parseFloat(amount.split(' / ')[1].replaceAll(/,/g, ''));
+                    newAutomationAmountValue = util.parseNumber(amount.split(' / ')[0]);
+                    newAutomationMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
                 }
                 updated |= automations[currentPage.action]?.amount !== newAutomationAmountValue; // bitwise OR because of lazy evaluation
                 updated |= automations[currentPage.action]?.maxAmount !== newAutomationMaxAmountValue; // bitwise OR because of lazy evaluation
@@ -220,10 +220,10 @@
         if(amount.includes(' / ')) {
             amount = amount.split(' / ')[0];
         }
-        amount = parseFloat(amount.replaceAll(/,/g, '')) || 0;
+        amount = util.parseNumber(amount);
         let uses = element.find('.uses, .use').text();
-        if(uses && uses.endsWith('%')) {
-            amount += (parseFloat(uses.replaceAll(/%/g, '')) || 0) / 100;
+        if(uses) {
+            amount += util.parseNumber(uses);
         }
         const updated = target[item.id] !== amount;
         target[item.id] = amount;
