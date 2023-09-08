@@ -183,7 +183,6 @@
 
     async function clearFilter() {
         await applyFilter({
-            listingType: 'SELL',
             type: 'None',
             amount: 0
         });
