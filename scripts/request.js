@@ -52,6 +52,11 @@
         }
     }
 
+    makeRequest.getLevelsAndXp = makeRequest.bind(null, 'stats/skills');
+    makeRequest.getGuildMembers = makeRequest.bind(null, 'guild/members');
+    makeRequest.getLeaderboardGuildRanks = makeRequest.bind(null, 'leaderboard/ranks/guild');
+    makeRequest.getListSkills = makeRequest.bind(null, 'list/skills');
+
     return exports;
 
 }

@@ -1,4 +1,4 @@
-(events, elementWatcher, easyRequests, util) => {
+(events, elementWatcher, request, util) => {
     events.register('url', handlePage);
 
     let guild = undefined;
@@ -72,7 +72,7 @@
     `;
 
     async function getGuild() {
-        guild = await easyRequests.getGuildMembers();
+        guild = await request.getGuildMembers();
     }
 
     function getGuildieNames() {
