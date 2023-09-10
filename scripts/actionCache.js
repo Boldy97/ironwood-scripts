@@ -5,6 +5,7 @@
 
     const exports = {
         ready: isReady.promise,
+        list: [],
         byId: null,
         byName: null
     };
@@ -15,6 +16,7 @@
         exports.byId = {};
         exports.byName = {};
         for(const action of actions) {
+            exports.list.push(action);
             exports.byId[action.id] = action;
             exports.byName[action.name] = action;
         }
