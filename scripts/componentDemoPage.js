@@ -1,18 +1,20 @@
 (pages, components, elementWatcher) => {
 
     function initialise() {
-        pages.registerPage(pageBlueprint, handlePage);
-    }
-
-    async function handlePage() {
-        await update();
+        pages.register({
+            category: 'Custom header',
+            name: 'Custom page demo',
+            image: 'https://cdn-icons-png.flaticon.com/128/5110/5110617.png',
+            columns: '2',
+            render: renderPage
+        });
     }
 
     function clear() {
         components.removeComponent(componentBlueprint);
     }
 
-    async function update() {
+    async function renderPage() {
         clear();
 
         const foundComponent = components.search(componentBlueprint, 'headerHeader');
@@ -43,14 +45,6 @@
             //     }
             // }
         });
-    }
-
-    const pageBlueprint = {
-        category: 'Custom header',
-        pageName: 'Custom page demo',
-        pageImage: 'https://cdn-icons-png.flaticon.com/128/5110/5110617.png',
-        columns: '2',
-        onVisit: () => { }
     }
 
     const componentBlueprint = {

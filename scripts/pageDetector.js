@@ -11,23 +11,27 @@
 
     function handleUrl(url) {
         let result = null;
+        const parts = url.split('/');
         if(url.includes('/skill/') && url.includes('/action/')) {
-            const parts = url.split('/');
             result = {
                 type: 'action',
                 skill: +parts[parts.length-3],
                 action: +parts[parts.length-1]
             };
         } else if(url.includes('house/produce')) {
-            const parts = url.split('/');
             result = {
                 type: 'automation',
                 building: +parts[parts.length-2],
                 action: +parts[parts.length-1]
             };
-        } else if(url.endsWith('/equipment')) {
+        } else if(url.includes('house/build')) {
             result = {
-                type: 'equipment'
+                type: 'structure',
+                building: +parts[parts.length-1]
+            };
+        } else {
+            result = {
+                type: parts.pop()
             };
         }
         emitEvent(result);

@@ -49,7 +49,7 @@
         component.append(theTabs);
 
         // PAGE
-        const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] ?? blueprint.tabs[0];
+        const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] || blueprint.tabs[0];
         selectedTabBlueprint.rows.forEach((rowBlueprint, index) => {
             component.append(createRow(rowBlueprint));
         });
@@ -113,7 +113,7 @@
             .append(
                 $('<div/>')
                     .addClass('myItemValue')
-                    .text(itemBlueprint?.extra ?? '')
+                    .text(itemBlueprint?.extra || '')
             );
         if(itemBlueprint?.value) {
             parentRow
@@ -239,7 +239,7 @@
             .append(
                 $('<div/>')
                     .addClass('customCheckBoxText')
-                    .text(checkboxBlueprint?.text ?? '')
+                    .text(checkboxBlueprint?.text || '')
             )
             .append(
                 $('<div/>')
