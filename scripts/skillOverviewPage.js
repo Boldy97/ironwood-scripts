@@ -62,10 +62,10 @@
             column === 0 ? column = 1 : column = 0;
 
             const skillNameImageFix = {
-                'OneHanded': 'one-handed',
-                'TwoHanded': 'two-handed',
-                'TotalExp': 'rank-one',
-                'TotalLevel': 'rank-one',
+                OneHanded: 'one-handed',
+                TwoHanded: 'two-handed',
+                TotalExp: 'rank-one',
+                TotalLevel: 'rank-one',
             }
             let skillIcon = skillNameImageFix[skilldata.skill];
             if(!skillIcon) skillIcon = skilldata.skill.toLowerCase(); // lowercase important!
@@ -105,34 +105,34 @@
     }
 
     const pageBlueprint = {
-        'category': 'Skills',
-        'pageName': 'Overview',
-        'pageImage': 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
-        'columns': '2',
-        'onVisit': () => { }
+        category: 'Skills',
+        pageName: 'Overview',
+        pageImage: 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
+        columns: '2',
+        onVisit: () => { }
     }
 
     const componentBlueprint = {
-        'componentId': 'skillOverviewComponent',
-        'dependsOn': 'custom-page',
-        'parent': '.column0',
-        'selectedTabIndex': 0,
-        'tabs': [
+        componentId: 'skillOverviewComponent',
+        dependsOn: 'custom-page',
+        parent: '.column0',
+        selectedTabIndex: 0,
+        tabs: [
             {
-                'title': 'Skillname',
-                'rows': [
+                title: 'Skillname',
+                rows: [
                     {
-                        'id': 'skillHeader',
-                        'type': 'header',
-                        'title': 'Forging',
-                        'image': '/assets/misc/merchant.png',
-                        'textRight': `Lv. 69 <span style='color: #aaa'>/ 420</span>`
+                        id: 'skillHeader',
+                        type: 'header',
+                        title: 'Forging',
+                        image: '/assets/misc/merchant.png',
+                        textRight: `Lv. 69 <span style='color: #aaa'>/ 420</span>`
                     },
                     {
-                        'id': 'skillProgress',
-                        'type': 'progress',
-                        'progressText': '301,313 / 309,469 XP',
-                        'progressPercent': '97'
+                        id: 'skillProgress',
+                        type: 'progress',
+                        progressText: '301,313 / 309,469 XP',
+                        progressPercent: '97'
                     }
                 ]
             },
