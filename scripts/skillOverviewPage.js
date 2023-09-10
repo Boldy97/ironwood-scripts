@@ -1,36 +1,24 @@
-(pages, components, elementWatcher, request) => {
+(pages, components, elementWatcher, request, skillCache) => {
 
     let levelsAndXp = [];
-    let skills = [];
     let uncollapsedSkill = undefined;
     let lastChart = undefined;
 
     async function initialise() {
         pages.registerPage(pageBlueprint, handlePage);
+        await skillCache.ready;
         levelsAndXp = await request.getLevelsAndXp();
-        skills = await request.listSkills();
-
-        skills = skills.filter(function( obj ) {
-            return obj.name !== 'TotalExp' && obj.name !== 'TotalLevel';
-        });
-
-        //console.log(skills);
-        levelsAndXp = levelsAndXp.map(obj => ({ ...obj, maxLevel: 100, showXP: true, showLvl: true }))
-        //console.log(levelsAndXp);
+        levelsAndXp = levelsAndXp.map(obj => ({ ...obj, maxLevel: 100, showXP: true, showLvl: true }));
 
         const totalLevel = levelsAndXp.reduce(function(sum, skill) {
             return sum + skill.level;
         }, 0);
-        //console.log(totalLevel)
         const totalPossibleLevel = levelsAndXp.length * 100;
-        //console.log(totalPossibleLevel)
 
         const totalXp = levelsAndXp.reduce(function(sum, skill) {
             return sum + skill.totalExp;
         }, 0);
-        console.log(totalXp)
         const totalPossibleXp = levelsAndXp.length * 12000000;
-        console.log(totalPossibleXp)
 
         levelsAndXp.push({
             skill: 'TotalLevel',
@@ -51,8 +39,6 @@
             showXP: true,
             showLvl: false
         });
-
-        // console.log(levelsAndXp);
     }
 
     async function handlePage() {
@@ -65,6 +51,7 @@
 
     async function update() {
         clear();
+        await skillCache.ready;
         await elementWatcher.exists(componentBlueprint.dependsOn);
 
         let column = 0;
@@ -100,53 +87,10 @@
                 skillProgress.progressText = '';
             }
             skillProgress.progressPercent = Math.trunc(skilldata.exp / (skilldata.exp + skilldata.expToLevel) * 100);
-            skillProgress.color = skills.find(s => s.name === skilldata.skill)?.color || null;
-
-            // const skillGraphHeader = components.search(componentBlueprint, 'skillGraphHeader');
-            // skillGraphHeader.title = `${skilldata.skill} Progress Graph`;
-            // skillGraphHeader.action = () => { toggleCollapsedState(skilldata.skill); }
-            // if(skilldata.skill === uncollapsedSkill) {
-            //     skillGraphHeader.name = '⬆️ Hide graph';
-            // } else {
-            //     skillGraphHeader.name = '⬇️ Show graph';
-            // }
-
-            // if(skilldata.skill === uncollapsedSkill) {
-            //     componentBlueprint.tabs[0].rows.push({
-            //         'id': 'skillChart',
-            //         'type': 'chart',
-            //         'chartId': 'myChart'
-            //     })
-            // } else {
-            //     componentBlueprint.tabs[0].rows.length = 3;
-            // }
+            skillProgress.color = skillCache.byName[skilldata.skill]?.color || null;
 
             components.removeComponent(componentBlueprint);
             components.addComponent(componentBlueprint);
-
-            // await elementWatcher.exists('#myChart');
-
-            // if(lastChart) lastChart.destroy();
-            // lastChart = new Chart($('#myChart'), {
-            //     type: 'line',
-            //     data: {
-            //         labels: ['Teets', 'Nibbo', 'Brent', 'Panks', 'Eenie', 'Miny', 'Mo?'],
-            //         datasets: [{
-            //             label: 'Some line graph :)',
-            //             data: [65, 59, 80, 81, 56, 55, 40],
-            //             fill: false,
-            //             borderColor: 'rgb(75, 192, 192)',
-            //             tension: 0.1
-            //         }]
-            //     },
-            //     // options: {
-            //     //     scales: {
-            //     //         y: {
-            //     //             beginAtZero: true
-            //     //         }
-            //     //     }
-            //     // }
-            // });
 
         });
     }
@@ -189,15 +133,7 @@
                         'type': 'progress',
                         'progressText': '301,313 / 309,469 XP',
                         'progressPercent': '97'
-                    },
-                    // {
-                    //     'id': 'skillGraphHeader',
-                    //     'type': 'header',
-                    //     'title': 'Skill Progress Graph',
-                    //     'name': '⬇️ Show graph',
-                    //     'color': 'inverse',
-                    //     'action': () => { console.log('Header Action!'); }
-                    // },
+                    }
                 ]
             },
         ]
