@@ -8,7 +8,8 @@
         formatNumber,
         parseNumber,
         secondsToDuration,
-        divmod
+        divmod,
+        sleep
     };
 
     function levelToExp(level) {
@@ -96,6 +97,10 @@
             multiplier = 1_000_000;
         }
         return (parseFloat(text) || 0) * multiplier;
+    }
+
+    async function sleep(millis) {
+        await new Promise(r => setTimeout(r, millis));
     }
 
     return exports;

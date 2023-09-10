@@ -1,10 +1,10 @@
-() => {
+(util) => {
 
     const exports = {
         create
     };
 
-    function create(text, time, image) {
+    async function create(text, time, image) {
         const notificationId = `customNotification_${Date.now()}`
         const notificationDiv =
             $('<div/>')
@@ -25,11 +25,10 @@
                         .text(text)
                 );
         $('div.notifications').append(notificationDiv);
-        setTimeout(() => {
-            $(`#${notificationId}`).fadeOut('slow', () => {
-                $(`#${notificationId}`).remove();
-            });
-        }, time || 2000);
+        await util.sleep(time || 2000);
+        $(`#${notificationId}`).fadeOut('slow', () => {
+            $(`#${notificationId}`).remove();
+        });
     }
 
 
