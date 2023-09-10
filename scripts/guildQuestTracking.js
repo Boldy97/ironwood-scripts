@@ -38,7 +38,7 @@
     }
 
     async function fetchData() {
-        questsData = await request('guild/quest/stats');
+        questsData = await request.getGuildQuestStats();
         combinedData = {
             complete: true,
             image: 'items/coin-stack.png',
@@ -137,17 +137,12 @@
         if(!registrationAmount) {
             return;
         }
-        await request('guild/quest/register', {
-            itemId: questData.itemId,
-            amount: registrationAmount
-        });
+        await request.registerGuildQuest(questData.itemId, registrationAmount);
         refresh(questData.name);
     }
 
     async function unregister(questData) {
-        await request('guild/quest/unregister', {
-            itemId: questData.itemId
-        });
+        await request.unregisterGuildQuest(questData.itemId);
         refresh(questData.name);
     }
 

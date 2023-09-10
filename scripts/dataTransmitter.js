@@ -19,7 +19,7 @@
             const password = new Date(response.user.createdAt).getTime();
             auth.register(name, password);
         }
-        await request('request', {
+        await request.handleInterceptedRequest({
             url: xhr.url,
             status: xhr.status,
             payload: JSON.stringify(xhr.request),
