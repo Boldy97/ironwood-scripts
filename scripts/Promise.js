@@ -9,7 +9,9 @@
                 this.resolve = resolve;
                 this.reject = reject;
             }).catch(error => {
-                console.warn(error);
+                if(error) {
+                    console.warn(error);
+                }
                 throw error;
             });
         }

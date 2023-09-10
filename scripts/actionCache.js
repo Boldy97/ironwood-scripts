@@ -11,7 +11,7 @@
 
     async function initialise() {
         await authenticated;
-        const actions = await request('list/action');
+        const actions = await request.listActions();
         exports.byId = {};
         exports.byName = {};
         for(const action of actions) {

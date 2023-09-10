@@ -8,7 +8,7 @@
     async function initialise() {
         pages.registerPage(pageBlueprint, handlePage);
         levelsAndXp = await request.getLevelsAndXp();
-        skills = await request.getListSkills();
+        skills = await request.listSkills();
 
         skills = skills.filter(function( obj ) {
             return obj.name !== 'TotalExp' && obj.name !== 'TotalLevel';

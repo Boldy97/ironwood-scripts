@@ -98,13 +98,11 @@
         if(item.type === 'input') {
             value = JSON.stringify(item.state);
         }
-        await request('configuration', {
-            [key]: value
-        });
+        await request.saveConfiguration(key, value);
     }
 
     async function loadState() {
-        const storedSaveState = await request('configuration');
+        const storedSaveState = await request.getConfigurations();
         for(const key in storedSaveState) {
             const item = itemByName[key];
             if(item) {

@@ -73,13 +73,13 @@
     }
 
     async function getAction(skill, action) {
-        const result = await request(`estimation/action?skill=${skill}&action=${action}`);
+        const result = await request.getActionEstimation(skill, action);
         result.actionId = action;
         return convertEstimation(result);
     }
 
     async function getAutomation(action) {
-        const result = await request(`estimation/automation?id=${action}`);
+        const result = await request.getAutomationEstimation(action);
         result.actionId = action;
         return convertEstimation(result);
     }

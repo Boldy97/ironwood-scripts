@@ -12,7 +12,7 @@
 
     async function initialise() {
         await authenticated;
-        const enrichedItems = await request('list/item');
+        const enrichedItems = await request.listItems();
         exports.byId = {};
         exports.byName = {};
         exports.byImage = {};

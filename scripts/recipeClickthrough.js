@@ -22,7 +22,7 @@
         }
         recipeCacheByName = {};
         recipeCacheByImage = {};
-        const recipes = await request('list/recipe');
+        const recipes = await request.listRecipes();
         for(const recipe of recipes) {
             if(!recipeCacheByName[recipe.name]) {
                 recipeCacheByName[recipe.name] = recipe;
