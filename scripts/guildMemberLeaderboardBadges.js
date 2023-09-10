@@ -1,4 +1,4 @@
-(events, dataExtractor, elementWatcher, easyRequests) => {
+(events, dataExtractor, elementWatcher, easyRequests, util) => {
     events.register('url', handlePage);
 
     let leaderboards = undefined;
@@ -13,9 +13,9 @@
         await addSkillBadgesToGuildMembers();
     }
 
-    function setupGuildMenuButtons() {
+    async function setupGuildMenuButtons() {
         $(`button > div.name:contains('Members')`).on('click', async function() {
-            await new Promise(r => setTimeout(r, 50));
+            await util.sleep(50);
             await addSkillBadgesToGuildMembers();
         });
     }

@@ -1,4 +1,4 @@
-(events, elementWatcher, easyRequests) => {
+(events, elementWatcher, easyRequests, util) => {
     events.register('url', handlePage);
 
     let guild = undefined;
@@ -17,7 +17,7 @@
         $('button.category').each(function() {
             //$(this).off('click');
             $(this).on('click', async function() {
-                await new Promise(r => setTimeout(r, 50));
+                await util.sleep(50);
                 await addGuildBadgeToGuildMembers();
             });
         })
