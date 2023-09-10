@@ -107,7 +107,7 @@
 
     function setup() {
         const rowshtml = rows
-            .map(a => `<div class="${a[0]}-row"><img src="${a[2]}"/><span>${a[1]}</span><span class="${a[0]}"/></div>`)
+            .map(a => `<div class='${a[0]}-row'><img src='${a[2]}'/><span>${a[1]}</span><span class='${a[0]}'/></div>`)
             .join('');
         $('head').append(`
             <style>
@@ -140,10 +140,10 @@
             </style>
         `);
         element = $(`
-            <div id="custom-item-hover" style="display:none">
+            <div id='custom-item-hover' style='display:none'>
                 <div>
-                    <img class="image"/>
-                    <span class="name"/>
+                    <img class='image'/>
+                    <span class='name'/>
                 </div>
                 ${rowshtml}
             </div>

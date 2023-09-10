@@ -21,7 +21,7 @@
     }
 
     function register(name, password) {
-        TOKEN = 'Basic ' + btoa(name + ":" + password);
+        TOKEN = 'Basic ' + btoa(name + ':' + password);
         authenticated.resolve();
         exports.isReady = true;
         $('#authenticatedMarker').remove();

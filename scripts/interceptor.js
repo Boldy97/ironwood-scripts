@@ -25,7 +25,7 @@
             try {
                 requestBody = JSON.parse(arguments[0]);
             } catch(e) {}
-            this.addEventListener('load', function () {
+            this.addEventListener('load', function() {
                 const status = this.status
                 const url = this.responseURL;
                 console.debug(`intercepted ${url}`);
@@ -51,11 +51,11 @@
             return null;
         }
         let responseBody;
-        if (xhr.responseType === '' || xhr.responseType === 'text') {
+        if(xhr.responseType === '' || xhr.responseType === 'text') {
             try {
                 return JSON.parse(xhr.responseText);
             } catch (err) {
-                console.debug("Error reading or processing response.", err);
+                console.debug('Error reading or processing response.', err);
             }
         }
         return xhr.response;

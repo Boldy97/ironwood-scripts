@@ -166,12 +166,12 @@
         }
         if(item.type === 'category') {
             itemComponent
-                .append($('<span class="custom-configuration-arrow"/>').text('◄'))
+                .append($(`<span class='custom-configuration-arrow'/>`).text('◄'))
                 .append($('<span/>').text(item.text || item.name));
         }
         if(item.type === 'toggle') {
             itemComponent
-                .append($('<input type="checkbox"/>').attr('checked', item.state))
+                .append($(`<input type='checkbox'/>`).attr('checked', item.state))
                 .append($('<span/>').text(item.text || item.name));
         }
         if(item.type === 'input') {
@@ -268,7 +268,7 @@
                 .custom-configuration-arrow {
                     color: black;
                 }
-                .custom-configuration-item > input:not([type="checkbox"]) {
+                .custom-configuration-item > input:not([type='checkbox']) {
                     margin-left: auto;
                     width: 5em;
                     background-color: white;
