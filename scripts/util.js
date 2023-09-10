@@ -10,7 +10,8 @@
         parseNumber,
         secondsToDuration,
         divmod,
-        sleep
+        sleep,
+        goToPage
     };
 
     function levelToExp(level) {
@@ -103,6 +104,12 @@
             multiplier = 1_000_000;
         }
         return (parseFloat(text) || 0) * multiplier;
+    }
+
+    function goToPage(page) {
+        window.history.pushState({}, '', page);
+        window.history.pushState({}, '', page);
+        window.history.back();
     }
 
     async function sleep(millis) {
