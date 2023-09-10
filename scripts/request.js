@@ -25,7 +25,7 @@
                 return await fetchResponse.json();
             } catch(e) {
                 if(body) {
-                    return "OK";
+                    return 'OK';
                 }
             }
         } catch(e) {

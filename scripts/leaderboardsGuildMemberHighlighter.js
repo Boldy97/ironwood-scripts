@@ -4,19 +4,19 @@
     let guild = undefined;
 
     async function handlePage(page) {
-        if (!page.endsWith('leaderboards')) {
+        if(!page.endsWith('leaderboards')) {
             return;
         }
-        await elementWatcher.exists(".card > .row");
+        await elementWatcher.exists('.card > .row');
 
         setupLeaderboardButtons();
         await addGuildBadgeToGuildMembers();
     }
 
     function setupLeaderboardButtons() {
-        $("button.category").each(function () {
+        $('button.category').each(function() {
             //$(this).off('click');
-            $(this).on("click", async function () {
+            $(this).on('click', async function() {
                 await new Promise(r => setTimeout(r, 50));
                 await addGuildBadgeToGuildMembers();
             });
@@ -24,14 +24,14 @@
     }
 
     async function addGuildBadgeToGuildMembers() {
-        await elementWatcher.exists(".card > .row");
-        $(".customBadge").remove();
+        await elementWatcher.exists('.card > .row');
+        $('.customBadge').remove();
 
-        const leaderboard = $("div.column").find("div.row")
-        leaderboard.each(function (index) {
-            const leaderboardRowName = $(this).find("div.name").find("div").text();
-            if (guild.includes(leaderboardRowName)) {
-                addGuildBadge($(this).find("div.name").find(`div:contains(${leaderboardRowName})`));
+        const leaderboard = $('div.column').find('div.row')
+        leaderboard.each(function(index) {
+            const leaderboardRowName = $(this).find('div.name').find('div').text();
+            if(guild.includes(leaderboardRowName)) {
+                addGuildBadge($(this).find('div.name').find(`div:contains(${leaderboardRowName})`));
             }
         })
     }
@@ -39,10 +39,10 @@
     function addGuildBadge(node) {
         const custombadge = 
             $('<div/>')
-            .addClass("customBadge")
+            .addClass('customBadge')
             .append(
                 $('<img/>')
-                    .attr("src", "https://ironwoodrpg.com/assets/misc/guild.png")
+                    .attr('src', 'https://ironwoodrpg.com/assets/misc/guild.png')
             )
             .attr('title', 'Guild member');
         node.after(custombadge);
@@ -55,7 +55,7 @@
 
     function addStyles() {
         const head = document.getElementsByTagName('head')[0]
-        if (!head) { return; }
+        if(!head) { return; }
         const style = document.createElement('style');
         style.type = 'text/css';
         style.innerHTML = styles;
@@ -76,7 +76,7 @@
     }
 
     function getGuildieNames() {
-        if (!guild) return [];
+        if(!guild) return [];
         return guild.guild.members.map(m => m.displayName);
     }
 
