@@ -28,7 +28,7 @@
             webhook.url = state;
         }
         if(!initial) {
-            request('notification/webhook', webhook);
+            request.saveWebhook(webhook);
         }
     }
 

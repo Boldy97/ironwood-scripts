@@ -76,7 +76,7 @@
         if(!listingsContainer) {
             return;
         }
-        const conversions = await request('market/conversions');
+        const conversions = await request.getMarketConversion();
         conversionsByType = {};
         for(const conversion of conversions) {
             const typeKey = `${conversion.listingType}-${conversion.type}`;
@@ -94,7 +94,7 @@
             }
         }
 
-        savedFilters = await request('market/filters');
+        savedFilters = await request.getMarketFilters();
 
         $('market-listings-component .search').addClass('saveFilterHover');
 
@@ -197,14 +197,14 @@
                 return;
             }
         }
-        filter = await request('market/filters', filter);
+        filter = await request.saveMarketFilter(filter);
         savedFilters.push(filter);
         componentBlueprint.selectedTabIndex = 0;
         syncCustomView();
     }
 
     async function removeFilter(filter) {
-        await request(`market/filters/${filter.id}/remove`);
+        await request.removeMarketFilter(filter.id);
         savedFilters = savedFilters.filter(a => a.id !== filter.id);
         syncCustomView();
     }

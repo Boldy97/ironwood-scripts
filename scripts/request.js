@@ -52,10 +52,36 @@
         }
     }
 
-    makeRequest.getLevelsAndXp = makeRequest.bind(null, 'stats/skills');
-    makeRequest.getGuildMembers = makeRequest.bind(null, 'guild/members');
-    makeRequest.getLeaderboardGuildRanks = makeRequest.bind(null, 'leaderboard/ranks/guild');
-    makeRequest.getListSkills = makeRequest.bind(null, 'list/skills');
+    // alphabetical
+
+    makeRequest.getConfigurations = () => makeRequest('configuration');
+    makeRequest.saveConfiguration = (key, value) => makeRequest('configuration', {[key]: value});
+
+    makeRequest.getActionEstimation = (skill, action) => makeRequest(`estimation/action?skill=${skill}&action=${action}`);
+    makeRequest.getAutomationEstimation = (action) => makeRequest(`estimation/automation?id=${action}`);
+
+    makeRequest.getGuildMembers = () => makeRequest('guild/members');
+    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest('guild/quest/register', {itemId, amount});
+    makeRequest.getGuildQuestStats = () => makeRequest('guild/quest/stats');
+    makeRequest.unregisterGuildQuest = (itemId) => makeRequest('guild/quest/unregister', {itemId});
+
+    makeRequest.getLeaderboardGuildRanks = () => makeRequest('leaderboard/ranks/guild');
+
+    makeRequest.listActions = () => makeRequest('list/action');
+    makeRequest.listItems = () => makeRequest('list/item');
+    makeRequest.listRecipes = () => makeRequest('list/recipe');
+    makeRequest.listSkills = () => makeRequest('list/skills');
+
+    makeRequest.getMarketConversion = () => makeRequest('market/conversions');
+    makeRequest.getMarketFilters = () => makeRequest('market/filters');
+    makeRequest.saveMarketFilter = (filter) => makeRequest('market/filters', filter);
+    makeRequest.removeMarketFilter = (id) => makeRequest(`market/filters/${id}/remove`);
+
+    makeRequest.saveWebhook = (webhook) => makeRequest('notification/webhook', webhook);
+
+    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
+
+    makeRequest.getLevelsAndXp = () => makeRequest('stats/skills');
 
     return exports;
 
