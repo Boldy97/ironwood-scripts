@@ -81,8 +81,6 @@
 
     makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
 
-    makeRequest.getLevelsAndXp = () => makeRequest('stats/skills');
-
     return exports;
 
 }
