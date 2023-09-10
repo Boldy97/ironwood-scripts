@@ -182,7 +182,7 @@
                         'type': 'header',
                         'title': 'Forging',
                         'image': '/assets/misc/merchant.png',
-                        'textRight': 'Lv. 69 <span style='color: #aaa'>/ 420</span>'
+                        'textRight': `Lv. 69 <span style='color: #aaa'>/ 420</span>`
                     },
                     {
                         'id': 'skillProgress',

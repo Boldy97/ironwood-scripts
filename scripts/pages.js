@@ -147,7 +147,7 @@
 
     async function visitSettingsPageAndDeleteEverything() {
         // Go to settings page
-        $('nav-component > div.nav > div.scroll > button > div.name:contains('Settings')').trigger('click');
+        $(`nav-component > div.nav > div.scroll > button > div.name:contains('Settings')`).trigger('click');
         // Wait for load
         await elementWatcher.exists('settings-page');
         // Delete settings-page

@@ -15,7 +15,7 @@
 
     function setupGuildMenuButtons() {
         $(`button > div.name:contains('Members')`).on('click', async function() {
-            await new Promise(r => setTimeout(r, 50));
+            await util.sleep(50);
             await addAdditionGuildSortButtons();
         });
     }

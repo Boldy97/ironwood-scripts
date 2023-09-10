@@ -15,6 +15,18 @@
         }
     }
 
+    class Delayed extends Deferred {
+        constructor(timeout) {
+            super();
+            const timeoutReference = setTimeout(() => {
+                this.resolve();
+            }, timeout);
+            this.promise.finally(() => {
+                clearTimeout(timeoutReference)
+            });
+        }
+    }
+
     class Expiring extends Deferred {
         constructor(timeout) {
             super();
@@ -47,10 +59,11 @@
         }
     }
 
-    return class Promise {
-        static Deferred = Deferred;
-        static Expiring = Expiring;
-        static Checking = Checking;
+    return {
+        Deferred,
+        Delayed,
+        Expiring,
+        Checking
     };
 
 }

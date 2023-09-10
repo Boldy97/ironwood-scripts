@@ -1,4 +1,4 @@
-(Promise) => {
+(Promise, util) => {
 
     const authenticated = new Promise.Deferred();
     let TOKEN = null;
@@ -10,8 +10,9 @@
         getHeaders
     };
 
-    function initialise() {
-        window.setTimeout(addAuthenticatedMarker, 3000);
+    async function initialise() {
+        await util.sleep(3000);
+        addAuthenticatedMarker();
     }
 
     function addAuthenticatedMarker() {
