@@ -5,8 +5,9 @@
 
     const exports = {
         ready: isReady.promise,
+        list: [],
         byId: null,
-        byName: null
+        byName: null,
     };
 
     async function initialise() {
@@ -15,6 +16,7 @@
         exports.byId = {};
         exports.byName = {};
         for(const skill of skills) {
+            exports.list.push(skill);
             exports.byId[skill.id] = skill;
             exports.byName[skill.name] = skill;
         }

@@ -1,107 +1,120 @@
-(pages, components, elementWatcher, request, skillCache) => {
+(pages, components, elementWatcher, skillCache, userCache, events, util) => {
 
-    let levelsAndXp = [];
-    let uncollapsedSkill = undefined;
-    let lastChart = undefined;
+    const registerUserCacheHandler = events.register.bind(null, 'userCache');
+
+    const SKILL_COUNT = 13;
+    const MAX_LEVEL = 100;
+    const MAX_TOTAL_LEVEL = SKILL_COUNT * MAX_LEVEL;
+    const MAX_TOTAL_EXP = SKILL_COUNT * util.levelToExp(MAX_LEVEL);
+
+    let skillProperties = null;
+    let skillTotalLevel = null;
+    let skillTotalExp = null;
 
     async function initialise() {
-        pages.registerPage(pageBlueprint, handlePage);
+        registerUserCacheHandler(handleUserCache);
         await skillCache.ready;
-        levelsAndXp = await request.getLevelsAndXp();
-        levelsAndXp = levelsAndXp.map(obj => ({ ...obj, maxLevel: 100, showXP: true, showLvl: true }));
-
-        const totalLevel = levelsAndXp.reduce(function(sum, skill) {
-            return sum + skill.level;
-        }, 0);
-        const totalPossibleLevel = levelsAndXp.length * 100;
-
-        const totalXp = levelsAndXp.reduce(function(sum, skill) {
-            return sum + skill.totalExp;
-        }, 0);
-        const totalPossibleXp = levelsAndXp.length * 12000000;
-
-        levelsAndXp.push({
-            skill: 'TotalLevel',
-            level: totalLevel,
-            exp: totalLevel,
-            maxLevel: totalPossibleLevel,
-            expToLevel: totalPossibleLevel - totalLevel,
-            showXP: false,
-            showLvl: true
+        await userCache.ready;
+        skillProperties = [];
+        const skillIds = Object.keys(userCache.exp);
+        for(const id of skillIds) {
+            if(!skillCache.byId[id]) {
+                continue;
+            }
+            skillProperties.push({
+                id: id,
+                name: skillCache.byId[id].name,
+                image: skillCache.byId[id].image,
+                color: skillCache.byId[id].color,
+                maxLevel: MAX_LEVEL,
+                showXP: true,
+                showLvl: true
+            });
+        }
+        skillProperties.push(skillTotalLevel = {
+            id: skillCache.byName['Total-level'].id,
+            name: 'TotalLevel',
+            image: skillCache.byName['Total-level'].image,
+            color: skillCache.byName['Total-level'].color,
+            maxLevel: MAX_TOTAL_LEVEL,
+            showExp: false,
+            showLevel: true
         });
-
-        levelsAndXp.push({
-            skill: 'TotalExp',
-            level: totalXp,
-            exp: totalXp,
-            maxLevel: totalPossibleXp,
-            expToLevel: totalPossibleXp - totalXp,
-            showXP: true,
-            showLvl: false
+        skillProperties.push(skillTotalExp = {
+            id: skillCache.byName['Total-exp'].id,
+            name: 'TotalExp',
+            image: skillCache.byName['Total-exp'].image,
+            color: skillCache.byName['Total-exp'].color,
+            maxLevel: MAX_TOTAL_EXP,
+            showExp: true,
+            showLevel: false
         });
+        await handleUserCache();
+        pages.registerPage(pageBlueprint, update);
     }
 
-    async function handlePage() {
-        await update();
-    }
+    async function handleUserCache() {
+        if(!skillProperties) {
+            return;
+        }
+        await skillCache.ready;
+        await userCache.ready;
 
-    function clear() {
+        let totalExp = 0;
+        let totalLevel = 0;
+        for(const skill of skillProperties) {
+            if(skill.id <= 0) {
+                continue;
+            }
+            let exp = userCache.exp[skill.id];
+            skill.exp = util.expToCurrentExp(exp);
+            skill.level = util.expToLevel(exp);
+            skill.expToLevel = util.expToNextLevel(exp);
+            totalExp += exp;
+            totalLevel += skill.level;
+        }
 
+        skillTotalExp.exp = totalExp;
+        skillTotalExp.level = totalExp;
+        skillTotalExp.expToLevel = MAX_TOTAL_EXP - totalExp;
+        skillTotalLevel.exp = totalLevel;
+        skillTotalLevel.level = totalLevel;
+        skillTotalLevel.expToLevel = MAX_TOTAL_LEVEL - totalLevel;
+
+        update(); // TODO shouldn't happen if the page isnt visible
     }
 
     async function update() {
-        clear();
-        await skillCache.ready;
         await elementWatcher.exists(componentBlueprint.dependsOn);
 
         let column = 0;
 
-        levelsAndXp.forEach(async skilldata => {
-            componentBlueprint.componentId = 'skillOverviewComponent_' + skilldata.skill;
+        for(const skill of skillProperties) {
+            componentBlueprint.componentId = 'skillOverviewComponent_' + skill.name;
             componentBlueprint.parent = '.column' + column;
-            column === 0 ? column = 1 : column = 0;
-
-            const skillNameImageFix = {
-                OneHanded: 'one-handed',
-                TwoHanded: 'two-handed',
-                TotalExp: 'rank-one',
-                TotalLevel: 'rank-one',
-            }
-            let skillIcon = skillNameImageFix[skilldata.skill];
-            if(!skillIcon) skillIcon = skilldata.skill.toLowerCase(); // lowercase important!
+            column = 1 - column; // alternate columns
 
             const skillHeader = components.search(componentBlueprint, 'skillHeader');
-            skillHeader.title = skilldata.skill;
-            skillHeader.image = `/assets/misc/${skillIcon}.png`;
-            if(skilldata.showLvl) {
-                skillHeader.textRight = `Lv. ${skilldata.level} <span style='color: #aaa'>/ ${skilldata.maxLevel}</span>`;
+            skillHeader.title = skill.name;
+            skillHeader.image = `/assets/${skill.image}`;
+            if(skill.showLevel) {
+                skillHeader.textRight = `Lv. ${skill.level} <span style='color: #aaa'>/ ${skill.maxLevel}</span>`;
             } else {
                 skillHeader.textRight = '';
             }
 
 
             const skillProgress = components.search(componentBlueprint, 'skillProgress');
-            if(skilldata.showXP) {
-                skillProgress.progressText = `${skilldata.exp.toLocaleString('en-US')} / ${(skilldata.exp + skilldata.expToLevel).toLocaleString('en-US')} XP`;
+            if(skill.showExp) {
+                skillProgress.progressText = `${util.formatNumber(skill.exp)} / ${util.formatNumber(skill.exp + skill.expToLevel)} XP`;
             } else {
                 skillProgress.progressText = '';
             }
-            skillProgress.progressPercent = Math.trunc(skilldata.exp / (skilldata.exp + skilldata.expToLevel) * 100);
-            skillProgress.color = skillCache.byName[skilldata.skill]?.color || null;
+            skillProgress.progressPercent = Math.floor(skill.exp / (skill.exp + skill.expToLevel) * 100);
+            skillProgress.color = skill.color;
 
-            components.removeComponent(componentBlueprint);
             components.addComponent(componentBlueprint);
-
-        });
-    }
-
-    function toggleCollapsedState(skillname) {
-        if(uncollapsedSkill === skillname) {
-            uncollapsedSkill = undefined;
-        } else {
-            uncollapsedSkill = skillname;
         }
-        update();
     }
 
     const pageBlueprint = {

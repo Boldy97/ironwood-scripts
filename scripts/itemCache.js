@@ -5,6 +5,7 @@
 
     const exports = {
         ready: isReady.promise,
+        list: [],
         byId: null,
         byName: null,
         byImage: null
@@ -19,6 +20,7 @@
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
             delete item.item;
+            exports.list.push(item);
             exports.byId[item.id] = item;
             exports.byName[item.name] = item;
             const lastPart = item.image.split('/').at(-1);

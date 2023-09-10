@@ -3,6 +3,7 @@
     const exports = {
         levelToExp,
         expToLevel,
+        expToCurrentExp,
         expToNextLevel,
         expToNextTier,
         formatNumber,
@@ -24,6 +25,11 @@
         level = Math.floor(level);
         level = Math.max(1, level);
         return level;
+    }
+
+    function expToCurrentExp(exp) {
+        const level = expToLevel(exp);
+        return exp - levelToExp(level);
     }
 
     function expToNextLevel(exp) {
