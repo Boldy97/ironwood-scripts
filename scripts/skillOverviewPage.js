@@ -1,6 +1,7 @@
 (pages, components, elementWatcher, skillCache, userCache, events, util) => {
 
     const registerUserCacheHandler = events.register.bind(null, 'userCache');
+    const requestRender = pages.requestRender.bind(null, 'Overview');
 
     const SKILL_COUNT = 13;
     const MAX_LEVEL = 100;
@@ -13,6 +14,13 @@
 
     async function initialise() {
         registerUserCacheHandler(handleUserCache);
+        pages.register({
+            category: 'Skills',
+            name: 'Overview',
+            image: 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
+            columns: '2',
+            render: renderPage
+        });
         await skillCache.ready;
         await userCache.ready;
         skillProperties = [];
@@ -27,7 +35,7 @@
                 image: skillCache.byId[id].image,
                 color: skillCache.byId[id].color,
                 maxLevel: MAX_LEVEL,
-                showXP: true,
+                showExp: true,
                 showLvl: true
             });
         }
@@ -49,15 +57,13 @@
             showExp: true,
             showLevel: false
         });
-        await handleUserCache();
-        pages.registerPage(pageBlueprint, update);
+        handleUserCache();
     }
 
     async function handleUserCache() {
         if(!skillProperties) {
             return;
         }
-        await skillCache.ready;
         await userCache.ready;
 
         let totalExp = 0;
@@ -81,10 +87,13 @@
         skillTotalLevel.level = totalLevel;
         skillTotalLevel.expToLevel = MAX_TOTAL_LEVEL - totalLevel;
 
-        update(); // TODO shouldn't happen if the page isnt visible
+        requestRender();
     }
 
-    async function update() {
+    async function renderPage() {
+        if(!skillProperties) {
+            return;
+        }
         await elementWatcher.exists(componentBlueprint.dependsOn);
 
         let column = 0;
@@ -115,14 +124,6 @@
 
             components.addComponent(componentBlueprint);
         }
-    }
-
-    const pageBlueprint = {
-        category: 'Skills',
-        pageName: 'Overview',
-        pageImage: 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
-        columns: '2',
-        onVisit: () => { }
     }
 
     const componentBlueprint = {

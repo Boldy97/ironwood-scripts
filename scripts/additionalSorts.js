@@ -44,7 +44,7 @@
                         .addClass('customButtonGroupButton')
                         .addClass('customSortByLevel')
                         .text('Level')
-                        .click(() => { /*console.log('Level Sort');*/ sortByLevel(); })
+                        .click(() => { sortByLevel(); })
                 )
                 .append(
                     $('<button/>')
@@ -52,7 +52,7 @@
                         .addClass('customButtonGroupButton')
                         .addClass('customSortByIdle')
                         .text('Idle')
-                        .click(() => { /*console.log('Idle Sort');*/ sortByIdle(); })
+                        .click(() => { sortByIdle(); })
                 )
                 .append(
                     $('<button/>')
@@ -60,7 +60,7 @@
                         .addClass('customButtonGroupButton')
                         .addClass('customSortByTotalXP')
                         .text('Total XP')
-                        .click(() => { /*console.log('Xp Sort');*/ sortByXp(); })
+                        .click(() => { sortByXp(); })
                 );
 
         customButtonGroup.insertAfter(orginalButtonGroup);
@@ -115,8 +115,6 @@
 
         let sorted = false;
         let count = 0;
-        //console.log(originalList);
-        //swapNodes(originalList.first(), originalList.first().next());
         while (!sorted) {
             const originalList = $('div.sort').parent().find('button.row');
             originalList.each(function(index) {
@@ -162,8 +160,6 @@
 
         let sorted = false;
         let count = 0;
-        //console.log(originalList);
-        //swapNodes(originalList.first(), originalList.first().next());
         while (!sorted) {
             const originalList = $('div.sort').parent().find('button.row');
             originalList.each(function(index) {
