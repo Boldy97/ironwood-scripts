@@ -8,19 +8,19 @@
     }
 
     async function getLevelsAndXp() {
-        return await request("stats/skills");
+        return await request('stats/skills');
     }
 
     async function getGuildMembers() {
-        return await request("guild/members");
+        return await request('guild/members');
     }
 
     async function getLeaderboards() {
-        return await request("leaderboard/ranks");
+        return await request('leaderboard/ranks');
     }
 
     async function getSkills() {
-        return await request("list/skills");
+        return await request('list/skills');
     }
 
     return exports;

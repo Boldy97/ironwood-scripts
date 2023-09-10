@@ -8,25 +8,25 @@
         const notificationId = `customNotification_${Date.now()}`
         const notificationDiv =
             $('<div/>')
-                .addClass("customNotification")
+                .addClass('customNotification')
                 .attr('id', notificationId)
                 .append(
                     $('<div/>')
-                        .addClass("customNotificationImageDiv")
+                        .addClass('customNotificationImageDiv')
                         .append(
                             $('<img/>')
-                                .addClass("customNotificationImage")
-                                .attr("src", `${image || "https://ironwoodrpg.com/assets/misc/quests.png"}`)
+                                .addClass('customNotificationImage')
+                                .attr('src', `${image || 'https://ironwoodrpg.com/assets/misc/quests.png'}`)
                         )
                 )
                 .append(
                     $('<div/>')
-                        .addClass("customNotificationDetails")
+                        .addClass('customNotificationDetails')
                         .text(text)
                 );
-        $("div.notifications").append(notificationDiv);
+        $('div.notifications').append(notificationDiv);
         setTimeout(() => {
-            $(`#${notificationId}`).fadeOut("slow", () => {
+            $(`#${notificationId}`).fadeOut('slow', () => {
                 $(`#${notificationId}`).remove();
             });
         }, time || 2000);
@@ -39,7 +39,7 @@
 
     function addStyles() {
         const head = document.getElementsByTagName('head')[0]
-        if (!head) { return; }
+        if(!head) { return; }
         const style = document.createElement('style');
         style.type = 'text/css';
         style.innerHTML = styles;
