@@ -15,7 +15,6 @@
 
     function setupLeaderboardButtons() {
         $('button.category').each(function() {
-            //$(this).off('click');
             $(this).on('click', async function() {
                 await util.sleep(50);
                 await addGuildBadgeToGuildMembers();
