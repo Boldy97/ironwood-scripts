@@ -1,4 +1,4 @@
-(pages, components, elementWatcher, easyRequests) => {
+(pages, components, elementWatcher, request) => {
 
     let levelsAndXp = [];
     let skills = [];
@@ -7,8 +7,8 @@
 
     async function initialise() {
         pages.registerPage(pageBlueprint, handlePage);
-        levelsAndXp = await easyRequests.getLevelsAndXp();
-        skills = await easyRequests.getSkills();
+        levelsAndXp = await request.getLevelsAndXp();
+        skills = await request.getListSkills();
 
         skills = skills.filter(function( obj ) {
             return obj.name !== 'TotalExp' && obj.name !== 'TotalLevel';

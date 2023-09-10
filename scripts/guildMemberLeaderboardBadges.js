@@ -1,4 +1,4 @@
-(events, dataExtractor, elementWatcher, easyRequests, util) => {
+(events, dataExtractor, elementWatcher, request, util) => {
     events.register('url', handlePage);
 
     let leaderboards = undefined;
@@ -72,7 +72,7 @@
     }
 
     async function getLeaderboards() {
-        leaderboards = await easyRequests.getLeaderboards();
+        leaderboards = await request.getLeaderboardGuildRanks();
     }
 
     function getHighscoresForPlayer(playerName) {
