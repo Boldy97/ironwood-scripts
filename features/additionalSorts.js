@@ -6,14 +6,14 @@
             await elementWatcher.exists('.card > .row');
 
             await addAdditionGuildSortButtons();
-            await setupGuildMenuButtons();
+            setupGuildMenuButtons();
         }
         if(page.type === 'market') {
             
         }
     }
 
-    async function setupGuildMenuButtons() {
+    function setupGuildMenuButtons() {
         $(`button > div.name:contains('Members')`).parent().on('click', async function () {
             await util.sleep(50);
             await addAdditionGuildSortButtons();
