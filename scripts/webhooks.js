@@ -4,11 +4,6 @@
         register: register
     }
 
-    function initialise() {
-        register('webhook-update', 'Update', 'UPDATE');
-        register('webhook-guild', 'Guild', 'GUILD');
-    }
-
     function register(name, text, type) {
         const webhook = {
             type: type,
@@ -31,8 +26,6 @@
             request.saveWebhook(webhook);
         }
     }
-
-    initialise();
 
     return exports;
 
