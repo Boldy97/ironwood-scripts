@@ -266,9 +266,11 @@
         .customGroups {
             display: flex;
             gap: var(--gap);
+            flex-wrap: wrap;
         }
         .customGroup {
             flex: 1;
+            min-width: 360px;
         }
         .customActiveLink {
             background-color: var(--darker-color);
