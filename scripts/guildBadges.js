@@ -1,17 +1,24 @@
-(events, elementWatcher, request, util) => {
+(events, elementWatcher, request, util, configuration) => {
 
-    const registerPageHandler = events.register.bind(null, 'page');
-
-    let leaderboards = undefined;
+    let enabled = false;
+    let leaderboards = null;
 
     async function initialise() {
-        registerPageHandler(handlePage);
-        leaderboards = await request.getLeaderboardGuildRanks();
+        const category = configuration.registerCategory('ui-features', 'UI Features');
+        configuration.registerToggle('guild-badges', 'Guild Badges', true, handleConfigStateChange, category);
+        events.register('page', handlePage);
         addStyles();
     }
 
+    async function handleConfigStateChange(state, name) {
+        enabled = state;
+        if(enabled && !leaderboards) {
+            leaderboards = await request.getLeaderboardGuildRanks();
+        }
+    }
+
     async function handlePage(page) {
-        if(page.type !== 'guild') {
+        if(!enabled || !leaderboards || page.type !== 'guild') {
             return;
         }
         await elementWatcher.exists('.card > button');
