@@ -1,4 +1,4 @@
-(pages, components, elementWatcher, skillCache, userCache, events, util) => {
+(pages, components, elementWatcher, skillCache, userCache, events, util, configuration) => {
 
     const registerUserCacheHandler = events.register.bind(null, 'userCache');
     const requestRender = pages.requestRender.bind(null, 'Overview');
@@ -14,13 +14,21 @@
 
     async function initialise() {
         registerUserCacheHandler(handleUserCache);
-        pages.register({
+        await pages.register({
             category: 'Skills',
             name: 'Overview',
             image: 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
             columns: '2',
             render: renderPage
         });
+        const category = configuration.registerCategory('pages', 'Pages');
+        configuration.registerToggle('skill-overview-enabled', 'Skill Overview', false, handleConfigStateChange, category);
+
+        await setupSkillProperties();
+        await handleUserCache();
+    }
+
+    async function setupSkillProperties() {
         await skillCache.ready;
         await userCache.ready;
         skillProperties = [];
@@ -57,7 +65,14 @@
             showExp: true,
             showLevel: false
         });
-        handleUserCache();
+    }
+
+    function handleConfigStateChange(state, name) {
+        if(state) {
+            pages.show('Overview');
+        } else {
+            pages.hide('Overview');
+        }
     }
 
     async function handleUserCache() {

@@ -1,14 +1,20 @@
-(events, dataExtractor, elementWatcher, request, util) => {
-    events.register('url', handlePage);
+(events, elementWatcher, request, util) => {
+
+    const registerPageHandler = events.register.bind(null, 'page');
 
     let leaderboards = undefined;
 
+    async function initialise() {
+        registerPageHandler(handlePage);
+        leaderboards = await request.getLeaderboardGuildRanks();
+        addStyles();
+    }
+
     async function handlePage(page) {
-        if(!page.endsWith('guild')) {
+        if(page.type !== 'guild') {
             return;
         }
         await elementWatcher.exists('.card > button');
-
         setupGuildMenuButtons();
         await addSkillBadgesToGuildMembers();
     }
@@ -57,11 +63,6 @@
         node.after(customIcon);
     }
 
-    async function initialise() {
-        await getLeaderboards();
-        addStyles();
-    }
-
     function addStyles() {
         const head = document.getElementsByTagName('head')[0]
         if(!head) { return; }
@@ -69,10 +70,6 @@
         style.type = 'text/css';
         style.innerHTML = styles;
         head.appendChild(style);
-    }
-
-    async function getLeaderboards() {
-        leaderboards = await request.getLeaderboardGuildRanks();
     }
 
     function getHighscoresForPlayer(playerName) {

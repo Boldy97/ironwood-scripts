@@ -10,7 +10,9 @@
 
     const exports = {
         register,
-        requestRender
+        requestRender,
+        show,
+        hide
     }
 
     const pages = [];
@@ -36,9 +38,28 @@
             return;
         }
         page.path = page.name.toLowerCase().replaceAll(' ', '-');
+        page.class = `customMenuButton_${page.path}`;
         pages.push(page);
         console.debug('Registered pages', pages);
         await setupNavigation(page);
+    }
+
+    function show(name) {
+        const page = pages.find(p => p.name === name)
+        if(!page) {
+            console.error(`Could not find page : ${name}`);
+            return;
+        }
+        $(`.${page.class}`).show();
+    }
+
+    function hide(name) {
+        const page = pages.find(p => p.name === name)
+        if(!page) {
+            console.error(`Could not find page : ${name}`);
+            return;
+        }
+        $(`.${page.class}`).hide();
     }
 
     function requestRender(name) {
@@ -89,7 +110,8 @@
         const menuButton =
             $('<button/>')
                 .attr('type', 'button')
-                .addClass('customMenuButton')
+                .addClass(`customMenuButton ${page.class}`)
+                .css('display', 'none')
                 .click(() => visitPage(page))
                 .append(
                     $('<img/>')
