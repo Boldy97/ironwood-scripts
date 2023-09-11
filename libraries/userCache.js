@@ -183,7 +183,11 @@
         let updated = false;
         $('produce-component .card').each((i,element) => {
             const header = $(element).find('.header').text();
-            if(header.startsWith('Loot')) {
+            if(header === 'Materials') {
+                $(element).find('.row').each((j,row) => {
+                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
+                });
+            } else if(header.startsWith('Loot')) {
                 const amount = $(element).find('.header .amount').text();
                 let newAutomationAmountValue = null;
                 let newAutomationMaxAmountValue = null;
