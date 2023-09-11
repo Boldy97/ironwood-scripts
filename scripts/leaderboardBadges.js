@@ -1,10 +1,24 @@
-(events, elementWatcher, request, util) => {
-    events.register('url', handlePage);
+(events, elementWatcher, request, util, configuration) => {
 
-    let guild = undefined;
+    let enabled = false;
+    let guild = null;
+
+    async function initialise() {
+        const category = configuration.registerCategory('ui-features', 'UI Features');
+        configuration.registerToggle('leaderboard-badges', 'Leaderboard Badges', true, handleConfigStateChange, category);
+        events.register('page', handlePage);
+        addStyles();
+    }
+
+    async function handleConfigStateChange(state, name) {
+        enabled = state;
+        if(enabled && !guild) {
+            guild = await request.getGuildMembers();
+        }
+    }
 
     async function handlePage(page) {
-        if(!page.endsWith('leaderboards')) {
+        if(!enabled || !guild || page.type !== 'leaderboards') {
             return;
         }
         await elementWatcher.exists('.card > .row');
@@ -47,11 +61,6 @@
         node.after(custombadge);
     }
 
-    async function initialise() {
-        await getGuild();
-        addStyles();
-    }
-
     function addStyles() {
         const head = document.getElementsByTagName('head')[0]
         if(!head) { return; }
@@ -69,15 +78,6 @@
             margin-left: 8px;
         }
     `;
-
-    async function getGuild() {
-        guild = await request.getGuildMembers();
-    }
-
-    function getGuildieNames() {
-        if(!guild) return [];
-        return guild.guild.members.map(m => m.displayName);
-    }
 
     initialise();
     
