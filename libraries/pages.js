@@ -28,6 +28,8 @@
             $('custom-page').remove();
             $('nav-component > div.nav > div.scroll > button')
                 .removeClass('customActiveLink');
+            $('header-component div.wrapper > div.image > img')
+                .css('image-rendering', '');
             headerPageNameChangeBugFix(page);
         }
     }
@@ -39,6 +41,9 @@
         }
         page.path = page.name.toLowerCase().replaceAll(' ', '-');
         page.class = `customMenuButton_${page.path}`;
+        page.image = page.image || 'https://ironwoodrpg.com/assets/misc/settings.png';
+        page.category = page.category?.toUpperCase() || 'MISC';
+        page.columns = page.columns || 1;
         pages.push(page);
         console.debug('Registered pages', pages);
         await setupNavigation(page);
@@ -76,10 +81,9 @@
     async function setupNavigation(page) {
         await elementWatcher.exists('div.nav > div.scroll');
         // MENU HEADER / CATEGORY
-        const category = page.category?.toUpperCase() || 'MISC';
-        let menuHeader = $(`nav-component > div.nav > div.scroll > div.header:contains('${category}'), div.customMenuHeader:contains('${category}')`);
+        let menuHeader = $(`nav-component > div.nav > div.scroll > div.header:contains('${page.category}'), div.customMenuHeader:contains('${page.category}')`);
         if(!menuHeader.length) {
-            menuHeader = createMenuHeader(category);
+            menuHeader = createMenuHeader(page.category);
         }
         // MENU BUTTON / PAGE LINK
         const menuButton = createMenuButton(page)
@@ -106,7 +110,6 @@
     }
 
     function createMenuButton(page) {
-        const image = page.image || 'https://ironwoodrpg.com/assets/misc/settings.png';
         const menuButton =
             $('<button/>')
                 .attr('type', 'button')
@@ -116,7 +119,8 @@
                 .append(
                     $('<img/>')
                         .addClass('customMenuButtonImage')
-                        .attr('src', image)
+                        .attr('src', page.image)
+                        .css('image-rendering', page.imagePixelated ? 'pixelated' : 'auto')
                 )
                 .append(
                     $('<div/>')
@@ -132,7 +136,7 @@
         } else {
             await setupEmptyPage();
         }
-        createPage(page.columns || 1);
+        createPage(page.columns);
         updatePageHeader(page);
         updateActivePageInNav(page.name);
         history.pushState({}, '', page.path);
@@ -161,8 +165,9 @@
     }
 
     function updatePageHeader(page) {
-        const image = page.image || 'https://ironwoodrpg.com/assets/misc/settings.png';
-        $('header-component div.wrapper > div.image > img').attr('src', image);
+        $('header-component div.wrapper > div.image > img')
+            .attr('src', page.image)
+            .css('image-rendering', page.imagePixelated ? 'pixelated' : 'auto');
         $('header-component div.wrapper > div.title').text(page.name);
     }
 
@@ -251,7 +256,6 @@
         .customMenuButtonImage {
             max-width: 100%;
             max-height: 100%;
-            image-rendering: pixelated;
             height: 20px !important;
             width: 20px !important;
         }
