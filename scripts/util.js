@@ -3,12 +3,15 @@
     const exports = {
         levelToExp,
         expToLevel,
+        expToCurrentExp,
         expToNextLevel,
         expToNextTier,
         formatNumber,
         parseNumber,
         secondsToDuration,
-        divmod
+        divmod,
+        sleep,
+        goToPage
     };
 
     function levelToExp(level) {
@@ -23,6 +26,11 @@
         level = Math.floor(level);
         level = Math.max(1, level);
         return level;
+    }
+
+    function expToCurrentExp(exp) {
+        const level = expToLevel(exp);
+        return exp - levelToExp(level);
     }
 
     function expToNextLevel(exp) {
@@ -96,6 +104,16 @@
             multiplier = 1_000_000;
         }
         return (parseFloat(text) || 0) * multiplier;
+    }
+
+    function goToPage(page) {
+        window.history.pushState({}, '', page);
+        window.history.pushState({}, '', page);
+        window.history.back();
+    }
+
+    async function sleep(millis) {
+        await new Promise(r => setTimeout(r, millis));
     }
 
     return exports;

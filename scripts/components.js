@@ -15,7 +15,9 @@
         dropdown: createRow_Select,
         header: createRow_Header,
         checkbox: createRow_Checkbox,
-        segment: createRow_Segment
+        segment: createRow_Segment,
+        progress: createRow_Progress,
+        chart: createRow_Chart
     };
 
     function initialise() {
@@ -47,7 +49,7 @@
         component.append(theTabs);
 
         // PAGE
-        const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] ?? blueprint.tabs[0];
+        const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] || blueprint.tabs[0];
         selectedTabBlueprint.rows.forEach((rowBlueprint, index) => {
             component.append(createRow(rowBlueprint));
         });
@@ -111,7 +113,7 @@
             .append(
                 $('<div/>')
                     .addClass('myItemValue')
-                    .text(itemBlueprint?.extra ?? '')
+                    .text(itemBlueprint?.extra || '')
             );
         if(itemBlueprint?.value) {
             parentRow
@@ -129,8 +131,8 @@
         if(inputBlueprint.text) {
             parentRow
                 .append(
-                    $("<div/>")
-                        .addClass("myItemInputText")
+                    $('<div/>')
+                        .addClass('myItemInputText')
                         .addClass(inputBlueprint.class || '')
                         .text(inputBlueprint.text)
                         .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
@@ -142,11 +144,11 @@
                     .attr('id', inputBlueprint.id)
                     .addClass('myItemInput')
                     .addClass(inputBlueprint.class || '')
-                    .attr('type', inputBlueprint.data || "text")
+                    .attr('type', inputBlueprint.data || 'text')
                     .attr('placeholder', inputBlueprint.name)
                     .attr('value', inputBlueprint.value || '')
                     .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-                    .keyup(inputDelay(function (e) {
+                    .keyup(inputDelay(function(e) {
                         inputBlueprint.action(e.target.value);
                     }, inputBlueprint.delay || 0))
             )
@@ -180,7 +182,7 @@
         const select = $('<select/>')
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
-            .change(inputDelay(function (e) {
+            .change(inputDelay(function(e) {
                 selectBlueprint.action(this.value);
             }, selectBlueprint.delay || 0));
         for(const option of selectBlueprint.options) {
@@ -212,6 +214,14 @@
                         .css('background-color', colorMapper(headerBlueprint.color || 'success'))
                         .click(headerBlueprint.action)
                 )
+        } else if(headerBlueprint.textRight) {
+            parentRow.append(
+                $('<div/>')
+                    .addClass('level')
+                    .text(headerBlueprint.title)
+                    .css('margin-left', 'auto')
+                    .html(headerBlueprint.textRight)
+            )
         }
         if(headerBlueprint.centered) {
             parentRow.css('justify-content', 'center');
@@ -220,8 +230,8 @@
     }
 
     function createRow_Checkbox(checkboxBlueprint) {
-        const checked_false = "<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' fill='none' stroke-linecap='round' stroke-linejoin='round' class='customCheckBoxDisabled ng-star-inserted'><path stroke='none' d='M0 0h24v24H0z' fill='none'></path><rect x='4' y='4' width='16' height='16' rx='2'></rect></svg>"
-        const checked_true = "<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' fill='none' stroke-linecap='round' stroke-linejoin='round' class='customCheckBoxEnabled ng-star-inserted'><path stroke='none' d='M0 0h24v24H0z' fill='none'></path><rect x='4' y='4' width='16' height='16' rx='2'></rect><path d='M9 12l2 2l4 -4'></path></svg>"
+        const checked_false = `<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' fill='none' stroke-linecap='round' stroke-linejoin='round' class='customCheckBoxDisabled ng-star-inserted'><path stroke='none' d='M0 0h24v24H0z' fill='none'></path><rect x='4' y='4' width='16' height='16' rx='2'></rect></svg>`;
+        const checked_true = `<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' fill='none' stroke-linecap='round' stroke-linejoin='round' class='customCheckBoxEnabled ng-star-inserted'><path stroke='none' d='M0 0h24v24H0z' fill='none'></path><rect x='4' y='4' width='16' height='16' rx='2'></rect><path d='M9 12l2 2l4 -4'></path></svg>`;
 
         const buttonInnerHTML = checkboxBlueprint.checked ? checked_true : checked_false;
 
@@ -229,7 +239,7 @@
             .append(
                 $('<div/>')
                     .addClass('customCheckBoxText')
-                    .text(checkboxBlueprint?.text ?? '')
+                    .text(checkboxBlueprint?.text || '')
             )
             .append(
                 $('<div/>')
@@ -252,6 +262,43 @@
         return segmentBlueprint.rows.flatMap(createRow);
     }
 
+    function createRow_Progress(progressBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+        const up = progressBlueprint.numerator;
+        const down = progressBlueprint.denominator;
+        parentRow.append(
+            $('<div/>')
+                .addClass('myBar')
+                .append(
+                    $('<div/>')
+                        .css('height', '100%')
+                        .css('width', progressBlueprint.progressPercent + '%')
+                        .css('background-color', colorMapper(progressBlueprint.color || 'rgb(122, 118, 118)'))
+                )
+        );
+        parentRow.append(
+            $('<div/>')
+                .addClass('myPercent')
+                .text(progressBlueprint.progressPercent + '%')
+        )
+        parentRow.append(
+            $('<div/>')
+                .css('margin-left', 'auto')
+                .text(progressBlueprint.progressText)
+        )
+        return parentRow;
+    }
+
+    function createRow_Chart(chartBlueprint) {
+        const parentRow = $('<div/>')
+        .addClass('lineTop')
+            .append(
+                $('<canvas/>')
+                    .attr('id', chartBlueprint.chartId)
+            );
+        return parentRow;
+    }
+    
     function createImage(blueprint) {
         return $('<div/>')
             .addClass('myItemImage image')
@@ -279,10 +326,10 @@
 
     function inputDelay(callback, ms) {
         var timer = 0;
-        return function () {
+        return function() {
             var context = this, args = arguments;
             clearTimeout(timer);
-            timer = setTimeout(function () {
+            timer = setTimeout(function() {
                 callback.apply(context, args);
             }, ms || 0);
         };
@@ -523,10 +570,22 @@
         .customCheckBoxDisabled {
             color: #aaa
         }
+        .myBar {
+            height: 12px;
+            flex: 1;
+            background-color: #ffffff0a;
+            overflow: hidden;
+            max-width: 50%;
+            border-radius: 999px;
+        }
+        .myPercent {
+            margin-left: var(--margin);
+            margin-right: var(--margin);
+            color: #aaa;
+        }
     `;
 
     initialise();
 
     return exports;
-
 }

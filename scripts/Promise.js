@@ -9,8 +9,22 @@
                 this.resolve = resolve;
                 this.reject = reject;
             }).catch(error => {
-                console.warn(error);
+                if(error) {
+                    console.warn(error);
+                }
                 throw error;
+            });
+        }
+    }
+
+    class Delayed extends Deferred {
+        constructor(timeout) {
+            super();
+            const timeoutReference = setTimeout(() => {
+                this.resolve();
+            }, timeout);
+            this.promise.finally(() => {
+                clearTimeout(timeoutReference)
             });
         }
     }
@@ -47,10 +61,11 @@
         }
     }
 
-    return class Promise {
-        static Deferred = Deferred;
-        static Expiring = Expiring;
-        static Checking = Checking;
+    return {
+        Deferred,
+        Delayed,
+        Expiring,
+        Checking
     };
 
 }

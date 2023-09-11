@@ -25,7 +25,7 @@
                 return await fetchResponse.json();
             } catch(e) {
                 if(body) {
-                    return "OK";
+                    return 'OK';
                 }
             }
         } catch(e) {
@@ -51,6 +51,35 @@
             }
         }
     }
+
+    // alphabetical
+
+    makeRequest.getConfigurations = () => makeRequest('configuration');
+    makeRequest.saveConfiguration = (key, value) => makeRequest('configuration', {[key]: value});
+
+    makeRequest.getActionEstimation = (skill, action) => makeRequest(`estimation/action?skill=${skill}&action=${action}`);
+    makeRequest.getAutomationEstimation = (action) => makeRequest(`estimation/automation?id=${action}`);
+
+    makeRequest.getGuildMembers = () => makeRequest('guild/members');
+    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest('guild/quest/register', {itemId, amount});
+    makeRequest.getGuildQuestStats = () => makeRequest('guild/quest/stats');
+    makeRequest.unregisterGuildQuest = (itemId) => makeRequest('guild/quest/unregister', {itemId});
+
+    makeRequest.getLeaderboardGuildRanks = () => makeRequest('leaderboard/ranks/guild');
+
+    makeRequest.listActions = () => makeRequest('list/action');
+    makeRequest.listItems = () => makeRequest('list/item');
+    makeRequest.listRecipes = () => makeRequest('list/recipe');
+    makeRequest.listSkills = () => makeRequest('list/skills');
+
+    makeRequest.getMarketConversion = () => makeRequest('market/conversions');
+    makeRequest.getMarketFilters = () => makeRequest('market/filters');
+    makeRequest.saveMarketFilter = (filter) => makeRequest('market/filters', filter);
+    makeRequest.removeMarketFilter = (id) => makeRequest(`market/filters/${id}/remove`);
+
+    makeRequest.saveWebhook = (webhook) => makeRequest('notification/webhook', webhook);
+
+    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
 
     return exports;
 
