@@ -197,7 +197,7 @@
             $('<div/>')
                 .addClass('myHeader lineTop')
         if (headerBlueprint.image) {
-            parentRow.append(createImage(itemBlueprint));
+            parentRow.append(createImage(headerBlueprint));
         }
         parentRow.append(
             $('<div/>')
