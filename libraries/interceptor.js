@@ -67,6 +67,11 @@
             pushState.apply(history, arguments);
             events.emit('url', arguments[2]);
         };
+        const replaceState = history.replaceState;
+        history.replaceState = function() {
+            replaceState.apply(history, arguments);
+            events.emit('url', arguments[2]);
+        }
     }
 
     initialise();
