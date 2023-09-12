@@ -1,4 +1,4 @@
-(request, configuration) => {
+(request, configuration, util) => {
 
     let enabled = false;
     let recipeCacheByName;
@@ -57,9 +57,7 @@
     }
 
     function followRecipe(recipe) {
-        history.pushState({}, '', recipe.url);
-        history.pushState({}, '', recipe.url);
-        history.back();
+        util.goToPage(recipe.url);
     }
 
     initialise();
