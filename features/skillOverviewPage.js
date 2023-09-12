@@ -42,9 +42,10 @@
                 name: skillCache.byId[id].name,
                 image: skillCache.byId[id].image,
                 color: skillCache.byId[id].color,
+                defaultActionId: skillCache.byId[id].defaultActionId,
                 maxLevel: MAX_LEVEL,
                 showExp: true,
-                showLvl: true
+                showLevel: true
             });
         }
         skillProperties.push(skillTotalLevel = {
@@ -116,6 +117,11 @@
         for(const skill of skillProperties) {
             componentBlueprint.componentId = 'skillOverviewComponent_' + skill.name;
             componentBlueprint.parent = '.column' + column;
+            if(skill.defaultActionId) {
+                componentBlueprint.onClick = util.goToPage.bind(null, `/skill/${skill.id}/action/${skill.defaultActionId}`);
+            } else {
+                delete componentBlueprint.onClick;
+            }
             column = 1 - column; // alternate columns
 
             const skillHeader = components.search(componentBlueprint, 'skillHeader');

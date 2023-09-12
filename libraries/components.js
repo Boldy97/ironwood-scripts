@@ -43,6 +43,11 @@
             $('<div/>')
                 .addClass('customComponent')
                 .attr('id', blueprint.componentId);
+        if(blueprint.onClick) {
+            component
+                .click(blueprint.onClick)
+                .css('cursor', 'pointer');
+        }
 
         // TABS
         const theTabs = createTab(blueprint);
