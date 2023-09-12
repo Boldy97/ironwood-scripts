@@ -303,10 +303,6 @@
                     text: 'Compost',
                     value: 'Compost',
                     selected: false
-                }, {
-                    text: 'Pet Snacks',
-                    value: 'Pet Snacks',
-                    selected: false
                 }]
             }, {
                 type: 'input',
