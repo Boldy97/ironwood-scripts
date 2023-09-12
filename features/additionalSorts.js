@@ -1,20 +1,20 @@
 (events, elementWatcher) => {
-    events.register('url', handlePage);
+    events.register('page', handlePage);
 
     async function handlePage(page) {
-        if(page.endsWith('guild')) {
+        if(page.type === 'guild') {
             await elementWatcher.exists('.card > .row');
 
             await addAdditionGuildSortButtons();
             setupGuildMenuButtons();
         }
-        if(page.endsWith('market')) {
-
+        if(page.type === 'market') {
+            
         }
     }
 
     function setupGuildMenuButtons() {
-        $(`button > div.name:contains('Members')`).on('click', async function() {
+        $(`button > div.name:contains('Members')`).parent().on('click', async function () {
             await util.sleep(50);
             await addAdditionGuildSortButtons();
         });
