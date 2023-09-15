@@ -2,7 +2,7 @@
 
 An open-source collection of scripts to enhance Ironwood RPG.
 
-TODO : add a link to tampermonkey repository
+Available on [Greasy Fork](https://greasyfork.org/en/scripts/475356-ironwood-rpg-pancake-scripts)
 
 # How to contribute
 
