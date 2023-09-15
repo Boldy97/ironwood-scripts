@@ -9,7 +9,7 @@
 // @grant        none
 // @run-at       document-start
 // @require      https://code.jquery.com/jquery-3.6.4.min.js
-// @require      https://cdn.jsdelivr.net/npm/chart.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
