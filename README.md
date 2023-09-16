@@ -50,9 +50,8 @@ Some scripts depend on calls to my backend, which is not open source.
 The only available endpoints are the ones that are used in scripts.
 If you feel like you need a new functionality, open an issue or find me on Discord (@pancake.lord)
 
-## Future plans
+## Planned features
 
-* automation estimations
 * improved config component
 * inventory saved filters
 * virtual levels over 100
@@ -65,3 +64,9 @@ If you feel like you need a new functionality, open an issue or find me on Disco
 ## Current issues
 
 * events are not taking into account
+
+## Removed features
+
+* tab title : Implemented in the base game
+* guild badges : Planned to be implemented in the base game
+* leaderboard badges : Planned to be implemented in the base game
