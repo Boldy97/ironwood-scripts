@@ -14,7 +14,7 @@
 
     function initialise() {
         const category = registerCategory('ui-features', 'UI Features');
-        registerToggle('estimations', 'Estimations', false, handleConfigStateChange, category);
+        registerToggle('estimations', 'Estimations', true, handleConfigStateChange, category);
 
         registerPageHandler(handlePage);
         registerXhrHandler(handleXhr);

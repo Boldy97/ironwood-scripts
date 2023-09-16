@@ -22,7 +22,7 @@
             render: renderPage
         });
         const category = configuration.registerCategory('pages', 'Pages');
-        configuration.registerToggle('skill-overview-enabled', 'Skill Overview', false, handleConfigStateChange, category);
+        configuration.registerToggle('skill-overview-enabled', 'Skill Overview', true, handleConfigStateChange, category);
 
         await setupSkillProperties();
         await handleUserCache();

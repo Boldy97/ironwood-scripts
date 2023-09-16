@@ -8,7 +8,7 @@
 
     function initialise() {
         const category = configuration.registerCategory('other', 'Other');
-        configuration.registerToggle('guild-quest-tracking', 'Guild quest tracking', false, handleConfigStateChange, category);
+        configuration.registerToggle('guild-quest-tracking', 'Guild quest tracking', true, handleConfigStateChange, category);
         events.register('xhr', handleXhr);
     }
 

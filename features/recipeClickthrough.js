@@ -7,7 +7,7 @@
 
     async function initialise() {
         const category = configuration.registerCategory('ui-features', 'UI Features');
-        configuration.registerToggle('recipe-click', 'Recipe clickthrough', false, handleConfigStateChange, category);
+        configuration.registerToggle('recipe-click', 'Recipe clickthrough', true, handleConfigStateChange, category);
         $(document).on('click', 'div.image > img', handleClick);
     }
 

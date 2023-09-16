@@ -42,7 +42,7 @@
 
     async function initialise() {
         const category = configuration.registerCategory('ui-features', 'UI Features');
-        configuration.registerToggle('item-hover', 'Item hover info', false, handleConfigStateChange, category);
+        configuration.registerToggle('item-hover', 'Item hover info', true, handleConfigStateChange, category);
         setup();
         $(document).on('mouseenter', 'div.image > img', handleMouseEnter);
         $(document).on('mouseleave', 'div.image > img', handleMouseLeave);
