@@ -73,7 +73,7 @@
             console.error(`Could not find page : ${name}`);
             return;
         }
-        if(getLastPage().type === page.path) {
+        if(getLastPage()?.type === page.path) {
             page.render();
         }
     }

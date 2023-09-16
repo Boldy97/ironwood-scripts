@@ -20,11 +20,11 @@
     class Delayed extends Deferred {
         constructor(timeout) {
             super();
-            const timeoutReference = setTimeout(() => {
+            const timeoutReference = window.setTimeout(() => {
                 this.resolve();
             }, timeout);
             this.promise.finally(() => {
-                clearTimeout(timeoutReference)
+                window.clearTimeout(timeoutReference)
             });
         }
     }
@@ -32,11 +32,11 @@
     class Expiring extends Deferred {
         constructor(timeout) {
             super();
-            const timeoutReference = setTimeout(() => {
+            const timeoutReference = window.setTimeout(() => {
                 this.reject(`Timed out after ${timeout} ms`);
             }, timeout);
             this.promise.finally(() => {
-                clearTimeout(timeoutReference)
+                window.clearTimeout(timeoutReference)
             });
         }
     }
@@ -47,9 +47,9 @@
             super(timeout);
             this.#checker = checker;
             this.#check();
-            const intervalReference = setInterval(this.#check.bind(this), interval);
+            const intervalReference = window.setInterval(this.#check.bind(this), interval);
             this.promise.finally(() => {
-                clearInterval(intervalReference)
+                window.clearInterval(intervalReference)
             });
         }
         #check() {

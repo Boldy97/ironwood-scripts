@@ -5,7 +5,7 @@
 
     async function initialise() {
         await addSyncedPage();
-        setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
+        window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
         await auth.ready;
         removeSyncedPage();
     }

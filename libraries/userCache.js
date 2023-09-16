@@ -30,7 +30,7 @@
         registerPageHandler(handlePage);
         registerXhrHandler(handleXhr);
 
-        setInterval(update, 1000);
+        window.setInterval(update, 1000);
     }
 
     function handlePage(page) {

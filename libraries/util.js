@@ -132,7 +132,7 @@
     }
 
     async function sleep(millis) {
-        await new Promise(r => setTimeout(r, millis));
+        await new Promise(r => window.setTimeout(r, millis));
     }
 
     return exports;

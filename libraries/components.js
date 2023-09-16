@@ -333,8 +333,8 @@
         var timer = 0;
         return function() {
             var context = this, args = arguments;
-            clearTimeout(timer);
-            timer = setTimeout(function() {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(function() {
                 callback.apply(context, args);
             }, ms || 0);
         };
