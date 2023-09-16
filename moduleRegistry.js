@@ -14,6 +14,7 @@
 
     function add(name, initialiser) {
         modules[name] = createModule(name, initialiser);
+        buildModule(modules[name], true);
     }
 
     function get(name) {
@@ -48,9 +49,9 @@
         return module;
     }
 
-    function buildModule(module, chain) {
+    function buildModule(module, partial, chain) {
         if(module.built) {
-            return;
+            return true;
         }
 
         chain = chain || [];
@@ -62,12 +63,18 @@
 
         for(const dependency of module.dependencies) {
             if(!dependency.module) {
+                if(partial) {
+                    return false;
+                }
                 if(dependency.optional) {
-                    break;
+                    continue;
                 }
                 throw `Unresolved dependency : ${dependency.name}`;
             }
-            buildModule(dependency.module, chain);
+            const built = buildModule(dependency.module, partial, chain);
+            if(!built) {
+                return false;
+            }
         }
 
         const parameters = module.dependencies.map(a => a.module?.reference);
@@ -75,6 +82,7 @@
         module.built = true;
 
         chain.pop();
+        return true;
     }
 
     function extractParametersFromFunction(fn) {
