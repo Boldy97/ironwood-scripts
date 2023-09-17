@@ -98,7 +98,7 @@
     function createMenuHeader(text) {
         const menuHeader =
             $('<div/>')
-                .addClass('customMenuHeader')
+                .addClass('header customMenuHeader')
                 .append(
                     $('<div/>')
                         .addClass('customMenuHeaderText')

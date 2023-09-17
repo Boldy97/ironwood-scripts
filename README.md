@@ -52,7 +52,6 @@ If you feel like you need a new functionality, open an issue or find me on Disco
 
 ## Planned features
 
-* improved config component
 * inventory saved filters
 * virtual levels over 100
 * add graphs for exp / level progression

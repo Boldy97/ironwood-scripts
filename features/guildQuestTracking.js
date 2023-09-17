@@ -21,12 +21,13 @@
         enabled = state;
     }
 
-    function handleXhr(xhr) {
+    async function handleXhr(xhr) {
         if(!enabled) {
             return;
         }
         if(xhr.url.endsWith('/createGuildQuests')) {
-            refresh();
+            await refresh();
+            handleQuestOverviewButtonClick();
         }
         if(xhr.url.endsWith('/giveGuildQuestItems')) {
             refresh(selectedItem);
