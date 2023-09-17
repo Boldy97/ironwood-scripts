@@ -6,8 +6,13 @@
     let element;
 
     async function initialise() {
-        const category = configuration.registerCategory('ui-features', 'UI Features');
-        configuration.registerToggle('recipe-click', 'Recipe clickthrough', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'recipe-click',
+            name: 'Recipe clickthrough',
+            default: true,
+            handler: handleConfigStateChange
+        });
         $(document).on('click', 'div.image > img', handleClick);
     }
 

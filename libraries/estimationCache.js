@@ -1,7 +1,5 @@
 (events, request, configuration, itemCache, userCache, util) => {
 
-    const registerCategory = configuration.registerCategory;
-    const registerToggle = configuration.registerToggle;
     const registerPageHandler = events.register.bind(null, 'page');
     const registerXhrHandler = events.register.bind(null, 'xhr');
     const registerUserCacheHandler = events.register.bind(null, 'userCache');
@@ -13,15 +11,20 @@
     let cache = {};
 
     function initialise() {
-        const category = registerCategory('ui-features', 'UI Features');
-        registerToggle('estimations', 'Estimations', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'estimations',
+            name: 'Estimations',
+            default: true,
+            handler: handleConfigStateChange
+        });
 
         registerPageHandler(handlePage);
         registerXhrHandler(handleXhr);
         registerUserCacheHandler(handleUserCache);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         const previous = enabled;
         enabled = state;
         if(!enabled) {

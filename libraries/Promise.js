@@ -4,10 +4,13 @@
         promise;
         resolve;
         reject;
+        isResolved = false;
         constructor() {
             this.promise = new Promise((resolve, reject)=> {
                 this.resolve = resolve;
                 this.reject = reject;
+            }).then(() => {
+                this.isResolved = true;
             }).catch(error => {
                 if(error) {
                     console.warn(error);

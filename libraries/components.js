@@ -149,12 +149,13 @@
                     .attr('id', inputBlueprint.id)
                     .addClass('myItemInput')
                     .addClass(inputBlueprint.class || '')
-                    .attr('type', inputBlueprint.data || 'text')
+                    .attr('type', inputBlueprint.inputType || 'text')
                     .attr('placeholder', inputBlueprint.name)
                     .attr('value', inputBlueprint.value || '')
                     .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
                     .keyup(inputDelay(function(e) {
-                        inputBlueprint.action(e.target.value);
+                        inputBlueprint.value = e.target.value;
+                        inputBlueprint.action(inputBlueprint.value);
                     }, inputBlueprint.delay || 0))
             )
         return parentRow;
@@ -188,6 +189,9 @@
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
             .change(inputDelay(function(e) {
+                for(const option of selectBlueprint.options) {
+                    option.selected = this.value === option.value;
+                }
                 selectBlueprint.action(this.value);
             }, selectBlueprint.delay || 0));
         for(const option of selectBlueprint.options) {
@@ -252,7 +256,10 @@
                     .append(
                         $(`<button>${buttonInnerHTML}</button>`)
                             .html(buttonInnerHTML)
-                            .click(checkboxBlueprint.action)
+                            .click(() => {
+                                checkboxBlueprint.checked = !checkboxBlueprint.checked;
+                                checkboxBlueprint.action(checkboxBlueprint.checked);
+                            })
                     )
 
             );

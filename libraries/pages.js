@@ -1,10 +1,5 @@
 (elementWatcher, events, colorMapper, util, skillCache) => {
 
-    //TODO
-    // allow choosing where the page is added in a category
-    // now it just gets added to the top
-    // => use page.after
-
     const registerPageHandler = events.register.bind(null, 'page');
     const getLastPage = events.getLast.bind(null, 'page');
 
@@ -74,8 +69,13 @@
             return;
         }
         if(getLastPage()?.type === page.path) {
-            page.render();
+            render(page);
         }
+    }
+
+    function render(page) {
+        $('.customComponent').remove();
+        page.render();
     }
 
     async function setupNavigation(page) {
@@ -89,7 +89,7 @@
         const menuButton = createMenuButton(page)
         // POSITIONING
         if(page.after) {
-            $(page.after).parent().after(menuButton);
+            $(`nav-component button:contains('${page.after}')`).after(menuButton);
         } else {
             menuHeader.after(menuButton);
         }
@@ -216,7 +216,7 @@
             --darker-color: ${colorMapper('componentDark')};
         }
         .customMenuHeader {
-            height: 28px !important;
+            height: 56px;
             display: flex;
             align-items: center;
             padding: 0 24px;
@@ -243,7 +243,7 @@
             text-transform: inherit;
             letter-spacing: inherit;
             cursor: pointer;
-            height: 28px !important;
+            height: 56px;
             display: flex;
             align-items: center;
             padding: 0 24px;
@@ -256,8 +256,8 @@
         .customMenuButtonImage {
             max-width: 100%;
             max-height: 100%;
-            height: 20px !important;
-            width: 20px !important;
+            height: 32px;
+            width: 32px;
         }
         .customMenuButtonText {
             margin-left: var(--margin);

@@ -41,8 +41,13 @@
     ];
 
     async function initialise() {
-        const category = configuration.registerCategory('ui-features', 'UI Features');
-        configuration.registerToggle('item-hover', 'Item hover info', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'item-hover',
+            name: 'Item hover info',
+            default: true,
+            handler: handleConfigStateChange
+        });
         setup();
         $(document).on('mouseenter', 'div.image > img', handleMouseEnter);
         $(document).on('mouseleave', 'div.image > img', handleMouseLeave);

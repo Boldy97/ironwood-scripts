@@ -12,8 +12,13 @@
     let listUpdatePromiseWrapper = null;
 
     async function initialise() {
-        const category = configuration.registerCategory('ui-features', 'UI Features');
-        configuration.registerToggle('market-filter', 'Market filter', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'market-filter',
+            name: 'Market filter',
+            default: true,
+            handler: handleConfigStateChange
+        });
         events.register('xhr', handleXhr);
 
         $(document).on('mouseenter mouseleave click', '.saveFilterHoverTrigger', function(e) {
@@ -309,6 +314,7 @@
                 id: 'amountInput',
                 name: 'Amount',
                 value: '',
+                inputType: 'number',
                 action: amount => applyFilter({amount:+amount}),
                 class: 'saveFilterHover'
             }, {

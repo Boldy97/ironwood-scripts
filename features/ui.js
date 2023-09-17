@@ -20,8 +20,13 @@
     let gap
 
     function initialise() {
-        const category = configuration.registerCategory('ui-features', 'UI Features');
-        configuration.registerToggle('ui-changes', 'UI changes', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'ui-changes',
+            name: 'UI changes',
+            default: true,
+            handler: handleConfigStateChange
+        });
     }
 
     function handleConfigStateChange(state) {

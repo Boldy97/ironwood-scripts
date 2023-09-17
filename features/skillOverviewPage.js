@@ -1,8 +1,8 @@
 (pages, components, elementWatcher, skillCache, userCache, events, util, configuration) => {
 
     const registerUserCacheHandler = events.register.bind(null, 'userCache');
-    const requestRender = pages.requestRender.bind(null, 'Overview');
 
+    const PAGE_NAME = 'Skill overview';
     const SKILL_COUNT = 13;
     const MAX_LEVEL = 100;
     const MAX_TOTAL_LEVEL = SKILL_COUNT * MAX_LEVEL;
@@ -16,13 +16,18 @@
         registerUserCacheHandler(handleUserCache);
         await pages.register({
             category: 'Skills',
-            name: 'Overview',
+            name: PAGE_NAME,
             image: 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
             columns: '2',
             render: renderPage
         });
-        const category = configuration.registerCategory('pages', 'Pages');
-        configuration.registerToggle('skill-overview-enabled', 'Skill Overview', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'Pages',
+            key: 'skill-overview-enabled',
+            name: 'Skill Overview',
+            default: true,
+            handler: handleConfigStateChange
+        });
 
         await setupSkillProperties();
         await handleUserCache();
@@ -70,9 +75,9 @@
 
     function handleConfigStateChange(state, name) {
         if(state) {
-            pages.show('Overview');
+            pages.show(PAGE_NAME);
         } else {
-            pages.hide('Overview');
+            pages.hide(PAGE_NAME);
         }
     }
 
@@ -103,7 +108,7 @@
         skillTotalLevel.level = totalLevel;
         skillTotalLevel.expToLevel = MAX_TOTAL_LEVEL - totalLevel;
 
-        requestRender();
+        pages.requestRender(PAGE_NAME);
     }
 
     async function renderPage() {

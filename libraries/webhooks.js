@@ -10,10 +10,22 @@
             enabled: false,
             url: ''
         };
-        const category = configuration.registerCategory('webhook', 'Webhooks');
         const handler = handleConfigStateChange.bind(null, webhook);
-        configuration.registerToggle(`${name}-enabled`, `${text} enabled`, false, handler, category);
-        configuration.registerInput(name, 'Update', 'text', '', handler, category);
+        configuration.registerCheckbox({
+            category: 'Webhooks',
+            key: `${name}-enabled`,
+            name: `${text} webhook enabled`,
+            default: false,
+            handler: handler
+        });
+        configuration.registerInput({
+            category: 'Webhooks',
+            key: name,
+            name: `${text} webhook URL`,
+            default: '',
+            inputType: 'text',
+            handler: handler
+        });
     }
 
     function handleConfigStateChange(webhook, state, name, initial) {

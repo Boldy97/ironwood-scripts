@@ -6,8 +6,13 @@
     let started = false;
 
     function initialise() {
-        const category = configuration.registerCategory('other', 'Other');
-        configuration.registerToggle('idle-beep-enabled', 'Idle beep', false, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'Other',
+            key: 'idle-beep-enabled',
+            name: 'Idle beep',
+            default: false,
+            handler: handleConfigStateChange
+        });
         events.register('xhr', handleXhr);
     }
 

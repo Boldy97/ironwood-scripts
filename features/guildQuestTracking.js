@@ -7,8 +7,13 @@
     let combinedData;
 
     function initialise() {
-        const category = configuration.registerCategory('other', 'Other');
-        configuration.registerToggle('guild-quest-tracking', 'Guild quest tracking', true, handleConfigStateChange, category);
+        configuration.registerCheckbox({
+            category: 'Other',
+            key: 'guild-quest-tracking',
+            name: 'Guild quest tracking',
+            default: true,
+            handler: handleConfigStateChange
+        });
         events.register('xhr', handleXhr);
     }
 
