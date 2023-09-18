@@ -9,8 +9,9 @@
             this.promise = new Promise((resolve, reject)=> {
                 this.resolve = resolve;
                 this.reject = reject;
-            }).then(() => {
+            }).then(result => {
                 this.isResolved = true;
+                return result;
             }).catch(error => {
                 if(error) {
                     console.warn(error);
