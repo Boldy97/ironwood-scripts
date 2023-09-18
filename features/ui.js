@@ -49,7 +49,7 @@
                     div.item,
                     div.row
                 ) {
-                    padding: 5px 12px 5px 6px !important;
+                    padding: 2px 6px !important;
                     min-height: 0 !important;
                     min-width: 0 !important;
                 }
@@ -61,16 +61,17 @@
                     div.item div.placeholder-image,
                     div.row div.image
                 ) {
-                    height: 24px !important;
-                    width: 24px !important;
+                    height: 32px !important;
+                    width: 32px !important;
                     min-height: 0 !important;
                     min-width: 0 !important;
                 }
 
-                div.progress div.image,
-                daily-quest-page div.body div.image {
-                    height: 40px !important;
-                    width: 40px !important;
+                action-component div.body >  div.image,
+                produce-component div.body > div.image,
+                daily-quest-page div.body > div.image {
+                    height: 48px !important;
+                    width: 48px !important;
                 }
 
                 div.progress div.body {
@@ -95,8 +96,8 @@
                 }
 
                 div.scroll.custom-scrollbar img {
-                    height: 20px !important;
-                    width: 20px !important;
+                    height: 16px !important;
+                    width: 16px !important;
                 }
 
                 .scroll {
