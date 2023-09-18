@@ -69,6 +69,7 @@
 
     makeRequest.listActions = () => makeRequest('list/action');
     makeRequest.listItems = () => makeRequest('list/item');
+    makeRequest.listItemAttributes = () => makeRequest('list/itemAttributes');
     makeRequest.listRecipes = () => makeRequest('list/recipe');
     makeRequest.listSkills = () => makeRequest('list/skills');
 

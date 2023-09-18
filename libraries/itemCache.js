@@ -8,7 +8,8 @@
         list: [],
         byId: null,
         byName: null,
-        byImage: null
+        byImage: null,
+        attributes: null
     };
 
     async function initialise() {
@@ -29,12 +30,31 @@
             } else {
                 exports.byImage[lastPart] = item;
             }
+            if(!item.attributes) {
+                item.attributes = {};
+            }
+            if(item.charcoal) {
+                item.attributes.CHARCOAL = item.charcoal;
+            }
+            if(item.compost) {
+                item.attributes.COMPOST = item.compost;
+            }
         }
         for(const image of Object.keys(exports.byImage)) {
             if(exports.byImage[image].duplicate) {
                 exports.byImage[image];
             }
         }
+        exports.attributes = await request.listItemAttributes();
+        exports.attributes.push({
+            technicalName: 'CHARCOAL',
+            name: 'Charcoal',
+            image: '/assets/items/charcoal.png'
+        },{
+            technicalName: 'COMPOST',
+            name: 'Compost',
+            image: '/assets/misc/compost.png'
+        });
         isReady.resolve();
     }
 
