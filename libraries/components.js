@@ -17,7 +17,8 @@
         checkbox: createRow_Checkbox,
         segment: createRow_Segment,
         progress: createRow_Progress,
-        chart: createRow_Chart
+        chart: createRow_Chart,
+        list: createRow_List
     };
 
     function initialise() {
@@ -310,6 +311,21 @@
             );
         return parentRow;
     }
+
+    function createRow_List(listBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+        parentRow // always added because it spreads pushes name left and value right !
+            .append(
+                $('<ul/>')
+                    .addClass('myListDescription')
+                    .append(...listBlueprint.entries.map(entry =>
+                        $('<li/>')
+                            .addClass('myListLine')
+                            .text(entry)
+                    ))
+            );
+        return parentRow;
+    }
     
     function createImage(blueprint) {
         return $('<div/>')
@@ -594,6 +610,13 @@
             margin-left: var(--margin);
             margin-right: var(--margin);
             color: #aaa;
+        }
+        .myListDescription {
+            list-style: disc;
+            width: 100%;
+        }
+        .myListLine {
+            margin-left: 20px;
         }
     `;
 

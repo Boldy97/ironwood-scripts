@@ -81,6 +81,8 @@
 
     makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
 
+    makeRequest.getChangelogs = () => makeRequest('settings/changelog');
+
     return exports;
 
 }
