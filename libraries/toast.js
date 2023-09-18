@@ -1,8 +1,12 @@
-(util) => {
+(util, elementCreator) => {
 
     const exports = {
         create
     };
+
+    function initialise() {
+        elementCreator.addStyles(styles);
+    }
 
     async function create(text, time, image) {
         const notificationId = `customNotification_${Date.now()}`
@@ -29,20 +33,6 @@
         $(`#${notificationId}`).fadeOut('slow', () => {
             $(`#${notificationId}`).remove();
         });
-    }
-
-
-    function initialise() {
-        addStyles();
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0]
-        if(!head) { return; }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
     }
 
     const styles = `

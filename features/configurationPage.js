@@ -1,4 +1,4 @@
-(pages, components, elementWatcher, configuration, auth) => {
+(pages, components, elementWatcher, configuration, auth, elementCreator) => {
 
     const PAGE_NAME = 'Configuration';
     const blueprints = [];
@@ -12,18 +12,9 @@
             columns: '2',
             render: renderPage
         });
-        addStyles();
+        elementCreator.addStyles(styles);
         await generateBlueprint();
         pages.show(PAGE_NAME);
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0]
-        if (!head) { return; }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
     }
 
     async function generateBlueprint() {

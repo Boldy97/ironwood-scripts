@@ -1,4 +1,4 @@
-(elementWatcher, events, colorMapper, util, skillCache) => {
+(elementWatcher, events, colorMapper, util, skillCache, elementCreator) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const getLastPage = events.getLast.bind(null, 'page');
@@ -14,7 +14,7 @@
 
     function initialise() {
         registerPageHandler(handlePage);
-        addStyles();
+        elementCreator.addStyles(styles);
     }
 
     function handlePage(page) {
@@ -198,15 +198,6 @@
             headerName = headerName.charAt(0).toUpperCase() + headerName.slice(1);
         }
         $('header-component div.wrapper > div.title').text(headerName);
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0]
-        if(!head) { return; }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
     }
 
     const styles = `

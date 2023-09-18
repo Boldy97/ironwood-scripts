@@ -1,7 +1,7 @@
-(events, elementWatcher, util) => {
+(events, elementWatcher, util, elementCreator) => {
 
     function initialise() {
-        addStyles();
+        elementCreator.addStyles(styles);
         events.register('page', handlePage);
     }
 
@@ -142,15 +142,6 @@
         for(const item of list) {
             config.target.append(item.element);
         }
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0]
-        if(!head) { return; }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
     }
 
     const styles = `

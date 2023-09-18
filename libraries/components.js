@@ -1,4 +1,4 @@
-(elementWatcher, colorMapper) => {
+(elementWatcher, colorMapper, elementCreator) => {
 
     const exports = {
         addComponent,
@@ -22,7 +22,7 @@
     };
 
     function initialise() {
-        addStyles();
+        elementCreator.addStyles(styles);
     }
 
     function removeComponent(blueprint) {
@@ -341,15 +341,6 @@
     function changeTab(blueprint, index) {
         blueprint.selectedTabIndex = index;
         addComponent(blueprint);
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0]
-        if(!head) { return; }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
     }
 
     function inputDelay(callback, ms) {
