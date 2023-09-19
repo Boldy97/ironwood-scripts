@@ -1,0 +1,19 @@
+{
+  "name": "packager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Boldy97/ironwood-scripts.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Boldy97/ironwood-scripts/issues"
+  },
+  "homepage": "https://github.com/Boldy97/ironwood-scripts#readme"
+}

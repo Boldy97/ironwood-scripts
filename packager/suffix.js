@@ -1,0 +1,1 @@
+window.moduleRegistry.build();

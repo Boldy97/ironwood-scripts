@@ -29,11 +29,7 @@ The easiest way is to inject a new script into the webpage. Either through Tampe
 Below is an example script that creates two modules, of which one depends on the other, and prints something to the console on success.
 As you will see, the register order is irrelevant.
 
-When using TamperMonkey it's important to place it under the TamperMonkey script, and add the first line below. It waits for the initialisation of the base scripts.
-
 ```js
-await window.PANCAKE_LOADED;
-
 window.moduleRegistry.add('test2', function (test1) {
   console.log('test1 returned :', test1);
 });

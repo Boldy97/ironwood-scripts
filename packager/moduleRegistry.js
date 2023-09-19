@@ -1,4 +1,4 @@
-() => {
+(() => {
 
     if(window.moduleRegistry) {
         return;
@@ -92,4 +92,4 @@
         return result || [];
     }
 
-}
+})();
