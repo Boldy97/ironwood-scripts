@@ -24,7 +24,7 @@
             category: 'UI Features',
             key: 'ui-changes',
             name: 'UI changes',
-            default: true,
+            default: false,
             handler: handleConfigStateChange
         });
     }
