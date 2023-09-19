@@ -5,8 +5,9 @@
 
     async function initialise() {
         await addSyncedPage();
-        window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
+        const intervalReference = window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
         await auth.ready;
+        clearInterval(intervalReference);
         removeSyncedPage();
     }
 

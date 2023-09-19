@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ironwood RPG - Pancake-Scripts
 // @namespace    http://tampermonkey.net/
-// @version      2.4
+// @version      2.5
 // @description  A collection of scripts to enhance Ironwood RPG - https://github.com/Boldy97/ironwood-scripts
 // @author       Pancake
 // @match        https://ironwoodrpg.com/*
@@ -1371,14 +1371,12 @@ window.moduleRegistry.add('itemCache', (auth, request, Promise) => {
 }
 );
 // pageDetector
-window.moduleRegistry.add('pageDetector', (auth, events) => {
+window.moduleRegistry.add('pageDetector', (events) => {
 
-    const authenticated = auth.ready;
     const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
 
     async function initialise() {
-        await authenticated;
         registerUrlHandler(handleUrl);
     }
 
@@ -4060,8 +4058,9 @@ window.moduleRegistry.add('syncWarningPage', (auth, pages, components, util) => 
 
     async function initialise() {
         await addSyncedPage();
-        window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
+        const intervalReference = window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
         await auth.ready;
+        clearInterval(intervalReference);
         removeSyncedPage();
     }
 

@@ -1,11 +1,9 @@
-(auth, events) => {
+(events) => {
 
-    const authenticated = auth.ready;
     const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
 
     async function initialise() {
-        await authenticated;
         registerUrlHandler(handleUrl);
     }
 
