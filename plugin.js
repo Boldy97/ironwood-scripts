@@ -3924,7 +3924,7 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
         }
         skillProperties.push(skillTotalLevel = {
             id: skillCache.byName['Total-level'].id,
-            name: 'TotalLevel',
+            name: 'Total Level',
             image: skillCache.byName['Total-level'].image,
             color: skillCache.byName['Total-level'].color,
             maxLevel: MAX_TOTAL_LEVEL,
@@ -3933,7 +3933,7 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
         });
         skillProperties.push(skillTotalExp = {
             id: skillCache.byName['Total-exp'].id,
-            name: 'TotalExp',
+            name: 'Total Exp',
             image: skillCache.byName['Total-exp'].image,
             color: skillCache.byName['Total-exp'].color,
             maxLevel: MAX_TOTAL_EXP,
