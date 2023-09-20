@@ -60,7 +60,11 @@
             component.append(createRow(rowBlueprint));
         });
 
-        $(`${blueprint.parent}`).append(component);
+        if(blueprint.prepend) {
+            $(`${blueprint.parent}`).prepend(component);
+        } else {
+            $(`${blueprint.parent}`).append(component);
+        }
     }
 
     function createTab(blueprint) {

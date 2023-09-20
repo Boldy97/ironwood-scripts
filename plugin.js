@@ -259,7 +259,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             component.append(createRow(rowBlueprint));
         });
 
-        $(`${blueprint.parent}`).append(component);
+        if(blueprint.prepend) {
+            $(`${blueprint.parent}`).prepend(component);
+        } else {
+            $(`${blueprint.parent}`).append(component);
+        }
     }
 
     function createTab(blueprint) {
@@ -3474,7 +3478,7 @@ window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) =>
 }
 );
 // marketFilter
-window.moduleRegistry.add('marketFilter', (request, configuration, events, components, elementWatcher, Promise) => {
+window.moduleRegistry.add('marketFilter', (request, configuration, events, components, elementWatcher, Promise, util) => {
 
     let enabled = false;
     let conversionsByType = {};
@@ -3564,7 +3568,7 @@ window.moduleRegistry.add('marketFilter', (request, configuration, events, compo
             if(!conversionsByType[typeKey]) {
                 conversionsByType[typeKey] = [];
             }
-            conversion.key = `${conversion.name}-${conversion.amount}-${conversion.price}`;
+            conversion.key = `${conversion.name}-${conversion.price}`;
             conversionsByType[typeKey].push(conversion);
         }
         for(const type in conversionsByType) {
@@ -3617,13 +3621,12 @@ window.moduleRegistry.add('marketFilter', (request, configuration, events, compo
             reference = $(reference);
             return {
                 name: reference.find('.name').text(),
-                amount: parseInt(reference.find('.amount').text().replace(/[,\.]/g, '')),
-                price: parseInt(reference.find('.cost').text().replace(/[,\.]/g, '')),
+                price: util.parseNumber(reference.find('.cost').text()),
                 reference: reference
             };
         }).toArray();
         for(const element of elements) {
-            element.key = `${element.name}-${element.amount}-${element.price}`;
+            element.key = `${element.name}-${element.price}`;
         }
         if(currentFilter.search) {
             for(const element of elements) {
@@ -3734,6 +3737,7 @@ window.moduleRegistry.add('marketFilter', (request, configuration, events, compo
     }
 
     function showComponent() {
+        componentBlueprint.prepend = screen.width < 750;
         components.addComponent(componentBlueprint);
     }
 
@@ -3741,6 +3745,7 @@ window.moduleRegistry.add('marketFilter', (request, configuration, events, compo
         componentId : 'marketFilterComponent',
         dependsOn: 'market-page',
         parent : 'market-listings-component > .groups > :last-child',
+        prepend: false,
         selectedTabIndex : 0,
         tabs : [{
             id: 'savedFiltersTab',

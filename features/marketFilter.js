@@ -1,4 +1,4 @@
-(request, configuration, events, components, elementWatcher, Promise) => {
+(request, configuration, events, components, elementWatcher, Promise, util) => {
 
     let enabled = false;
     let conversionsByType = {};
@@ -88,7 +88,7 @@
             if(!conversionsByType[typeKey]) {
                 conversionsByType[typeKey] = [];
             }
-            conversion.key = `${conversion.name}-${conversion.amount}-${conversion.price}`;
+            conversion.key = `${conversion.name}-${conversion.price}`;
             conversionsByType[typeKey].push(conversion);
         }
         for(const type in conversionsByType) {
@@ -141,13 +141,12 @@
             reference = $(reference);
             return {
                 name: reference.find('.name').text(),
-                amount: parseInt(reference.find('.amount').text().replace(/[,\.]/g, '')),
-                price: parseInt(reference.find('.cost').text().replace(/[,\.]/g, '')),
+                price: util.parseNumber(reference.find('.cost').text()),
                 reference: reference
             };
         }).toArray();
         for(const element of elements) {
-            element.key = `${element.name}-${element.amount}-${element.price}`;
+            element.key = `${element.name}-${element.price}`;
         }
         if(currentFilter.search) {
             for(const element of elements) {
@@ -258,6 +257,7 @@
     }
 
     function showComponent() {
+        componentBlueprint.prepend = screen.width < 750;
         components.addComponent(componentBlueprint);
     }
 
@@ -265,6 +265,7 @@
         componentId : 'marketFilterComponent',
         dependsOn: 'market-page',
         parent : 'market-listings-component > .groups > :last-child',
+        prepend: false,
         selectedTabIndex : 0,
         tabs : [{
             id: 'savedFiltersTab',
