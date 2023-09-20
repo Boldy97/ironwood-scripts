@@ -8,7 +8,10 @@
         elementCreator.addStyles(styles);
     }
 
-    async function create(text, time, image) {
+    // text, time, image
+    async function create(config) {
+        config.time ||= 2000;
+        config.image ||= 'https://ironwoodrpg.com/assets/misc/quests.png';
         const notificationId = `customNotification_${Date.now()}`
         const notificationDiv =
             $('<div/>')
@@ -20,16 +23,16 @@
                         .append(
                             $('<img/>')
                                 .addClass('customNotificationImage')
-                                .attr('src', `${image || 'https://ironwoodrpg.com/assets/misc/quests.png'}`)
+                                .attr('src', config.image)
                         )
                 )
                 .append(
                     $('<div/>')
                         .addClass('customNotificationDetails')
-                        .text(text)
+                        .text(config.text)
                 );
         $('div.notifications').append(notificationDiv);
-        await util.sleep(time || 2000);
+        await util.sleep(config.time);
         $(`#${notificationId}`).fadeOut('slow', () => {
             $(`#${notificationId}`).remove();
         });
@@ -56,6 +59,7 @@
         }
         .customNotificationImage {
             filter: drop-shadow(0px 8px 4px rgba(0,0,0,.1));
+            image-rendering: auto;
         }
         .customNotificationDetails {
             margin-left: 8px;

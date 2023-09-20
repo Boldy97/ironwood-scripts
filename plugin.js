@@ -1902,7 +1902,10 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
         elementCreator.addStyles(styles);
     }
 
-    async function create(text, time, image) {
+    // text, time, image
+    async function create(config) {
+        config.time ||= 2000;
+        config.image ||= 'https://ironwoodrpg.com/assets/misc/quests.png';
         const notificationId = `customNotification_${Date.now()}`
         const notificationDiv =
             $('<div/>')
@@ -1914,16 +1917,16 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
                         .append(
                             $('<img/>')
                                 .addClass('customNotificationImage')
-                                .attr('src', `${image || 'https://ironwoodrpg.com/assets/misc/quests.png'}`)
+                                .attr('src', config.image)
                         )
                 )
                 .append(
                     $('<div/>')
                         .addClass('customNotificationDetails')
-                        .text(text)
+                        .text(config.text)
                 );
         $('div.notifications').append(notificationDiv);
-        await util.sleep(time || 2000);
+        await util.sleep(config.time);
         $(`#${notificationId}`).fadeOut('slow', () => {
             $(`#${notificationId}`).remove();
         });
@@ -1950,6 +1953,7 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
         }
         .customNotificationImage {
             filter: drop-shadow(0px 8px 4px rgba(0,0,0,.1));
+            image-rendering: auto;
         }
         .customNotificationDetails {
             margin-left: 8px;
@@ -2389,6 +2393,21 @@ window.moduleRegistry.add('webhooks', (request, configuration) => {
     }
 
     return exports;
+
+}
+);
+// authToast
+window.moduleRegistry.add('authToast', (auth, toast) => {
+
+    async function initialise() {
+        await auth.ready;
+        toast.create({
+            text: 'Pancake-Scripts initialised!',
+            image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png'
+        });
+    }
+
+    initialise();
 
 }
 );
