@@ -3337,6 +3337,7 @@ window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) =>
         await setup();
         $(document).on('mouseenter', 'div.image > img', handleMouseEnter);
         $(document).on('mouseleave', 'div.image > img', handleMouseLeave);
+        $(document).on('click', 'div.image > img', handleMouseLeave);
     }
 
     function handleConfigStateChange(state) {
