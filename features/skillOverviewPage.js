@@ -97,8 +97,8 @@
             skill.exp = util.expToCurrentExp(exp);
             skill.level = util.expToLevel(exp);
             skill.expToLevel = util.expToNextLevel(exp);
-            totalExp += exp;
-            totalLevel += skill.level;
+            totalExp += Math.min(exp, 12_000_000);
+            totalLevel += Math.min(skill.level, 100);
         }
 
         skillTotalExp.exp = totalExp;
