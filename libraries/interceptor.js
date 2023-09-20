@@ -28,6 +28,9 @@
             this.addEventListener('load', function() {
                 const status = this.status
                 const url = this.responseURL;
+                if(!url.includes('ironwoodrpg.com')) {
+                    return;
+                }
                 console.debug(`intercepted ${url}`);
                 const responseHeaders = this.getAllResponseHeaders();
                 if(this.responseType === 'blob') {
