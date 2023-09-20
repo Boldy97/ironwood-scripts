@@ -1348,6 +1348,9 @@ window.moduleRegistry.add('itemCache', (auth, request, Promise) => {
             if(item.compost) {
                 item.attributes.COMPOST = item.compost;
             }
+            if(item.speed) {
+                item.attributes.SPEED = item.speed;
+            }
         }
         for(const image of Object.keys(exports.byImage)) {
             if(exports.byImage[image].duplicate) {
