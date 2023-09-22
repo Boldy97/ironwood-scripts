@@ -22,7 +22,14 @@
                 return;
             }
             try {
-                return await fetchResponse.json();
+                const contentType = fetchResponse.headers.get('Content-Type');
+                if(contentType.startsWith('text/plain')) {
+                    return await fetchResponse.text();
+                } else if(contentType.startsWith('application/json')) {
+                    return await fetchResponse.json();
+                } else {
+                    console.error(`Unknown content type : ${contentType}`);
+                }
             } catch(e) {
                 if(body) {
                     return 'OK';
@@ -83,6 +90,7 @@
     makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
 
     makeRequest.getChangelogs = () => makeRequest('settings/changelog');
+    makeRequest.getVersion = () => makeRequest('settings/version');
 
     return exports;
 

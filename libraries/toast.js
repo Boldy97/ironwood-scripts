@@ -29,7 +29,7 @@
                 .append(
                     $('<div/>')
                         .addClass('customNotificationDetails')
-                        .text(config.text)
+                        .html(config.text)
                 );
         $('div.notifications').append(notificationDiv);
         await util.sleep(config.time);
@@ -49,6 +49,7 @@
             align-items: center;
             min-height: 48px;
             margin-top: 12px;
+            pointer-events: all;
         }
         .customNotificationImageDiv {
             display: flex;
@@ -63,6 +64,7 @@
         }
         .customNotificationDetails {
             margin-left: 8px;
+            text-align: center;
         }
     `;
 
