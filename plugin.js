@@ -1359,7 +1359,7 @@ window.moduleRegistry.add('itemCache', (auth, request, Promise) => {
         }
         for(const image of Object.keys(exports.byImage)) {
             if(exports.byImage[image].duplicate) {
-                exports.byImage[image];
+                delete exports.byImage[image];
             }
         }
         exports.attributes = await request.listItemAttributes();
