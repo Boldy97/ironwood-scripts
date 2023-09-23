@@ -19,6 +19,7 @@
 
     const exports = {
         ready: isReady.promise,
+        name: null,
         exp,
         inventory,
         equipment,
@@ -56,6 +57,8 @@
 
     async function handleGetUser(response) {
         await itemCache.ready;
+        // name
+        exports.name = response.user.displayName;
         // exp
         const newExp = Object.entries(response.user.skills)
                 .map(a => ({id:a[0],exp:a[1].exp}))
