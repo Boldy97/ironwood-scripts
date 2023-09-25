@@ -51,7 +51,7 @@
             handleStopAction();
         }
         if(xhr.url.endsWith('/startAutomation')) {
-            handleStartAutomation();
+            handleStartAutomation(xhr.response);
         }
     }
 

@@ -2037,7 +2037,7 @@ window.moduleRegistry.add('userCache', (events, itemCache, Promise, util) => {
             handleStopAction();
         }
         if(xhr.url.endsWith('/startAutomation')) {
-            handleStartAutomation();
+            handleStartAutomation(xhr.response);
         }
     }
 
