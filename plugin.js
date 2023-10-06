@@ -1000,181 +1000,6 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
 
 }
 );
-// estimationCache
-window.moduleRegistry.add('estimationCache', (events, request, configuration, itemCache, userCache, util) => {
-
-    const registerPageHandler = events.register.bind(null, 'page');
-    const registerXhrHandler = events.register.bind(null, 'xhr');
-    const registerUserCacheHandler = events.register.bind(null, 'userCache');
-    const getLastPage = events.getLast.bind(null, 'page');
-    const getLastEstimation = events.getLast.bind(null, 'estimation');
-    const emitEvent = events.emit.bind(null, 'estimation');
-
-    let enabled = false;
-    let cache = {};
-
-    function initialise() {
-        configuration.registerCheckbox({
-            category: 'UI Features',
-            key: 'estimations',
-            name: 'Estimations',
-            default: true,
-            handler: handleConfigStateChange
-        });
-
-        registerPageHandler(handlePage);
-        registerXhrHandler(handleXhr);
-        registerUserCacheHandler(handleUserCache);
-    }
-
-    function handleConfigStateChange(state) {
-        const previous = enabled;
-        enabled = state;
-        if(!enabled) {
-            emitEvent(null);
-        }
-        if(enabled && !previous) {
-            handlePage(getLastPage());
-        }
-    }
-
-    async function handlePage(page) {
-        emitEvent(null);
-        let result = null;
-        if(!enabled || !page) {
-            result = null;
-        } else if(page.type === 'action') {
-            const cacheKey = `action-${page.skill}-${page.action}`;
-            const fetcher = getAction.bind(null, page.skill, page.action);
-            result = await getEstimationData(cacheKey, fetcher);
-        } else if(page.type === 'automation') {
-            const cacheKey = `automation-${page.action}`;
-            const fetcher = getAutomation.bind(null, page.action);
-            result = await getEstimationData(cacheKey, fetcher);
-        }
-        // it could have changed by now
-        if(enabled && page === getLastPage()) {
-            emitEvent(result);
-        }
-    }
-
-    function handleXhr(xhr) {
-        if(xhr.url.endsWith('/time')) {
-            return;
-        }
-        cache = {};
-        emitEvent(null);
-        handlePage(getLastPage());
-    }
-
-    async function handleUserCache() {
-        await updateAll();
-        emitEvent(getLastEstimation());
-    }
-
-    async function getEstimationData(cacheKey, fetcher) {
-        const estimation = cache[cacheKey] || await fetcher();
-        cache[cacheKey] = estimation;
-        return estimation;
-    }
-
-    async function getAction(skill, action) {
-        const result = await request.getActionEstimation(skill, action);
-        result.actionId = action;
-        return convertEstimation(result);
-    }
-
-    async function getAutomation(action) {
-        const result = await request.getAutomationEstimation(action);
-        result.actionId = action;
-        return convertEstimation(result);
-    }
-
-    async function convertEstimation(estimation) {
-        await itemCache.ready;
-        const loot = estimation.loot;
-        const materials = estimation.materials;
-        const equipments = estimation.equipments;
-        estimation.loot = [];
-        for(const entry of Object.entries(loot)) {
-            estimation.loot.push({
-                item: itemCache.byId[entry[0]],
-                amount: entry[1],
-                gold: entry[1] * (itemCache.byId[entry[0]].attributes.SELL_PRICE || 0)
-            });
-        }
-        estimation.materials = [];
-        for(const entry of Object.entries(materials)) {
-            estimation.materials.push({
-                item: itemCache.byId[entry[0]],
-                amount: entry[1],
-                stored: 0,
-                secondsLeft: 0,
-                gold: entry[1] * (itemCache.byId[entry[0]].attributes.SELL_PRICE || 0)
-            });
-        }
-        estimation.equipments = [];
-        for(const entry of Object.entries(equipments)) {
-            estimation.equipments.push({
-                item: itemCache.byId[entry[0]],
-                amount: entry[1],
-                stored: 0,
-                secondsLeft: 0,
-                gold: entry[1] * (itemCache.byId[entry[0]].attributes.SELL_PRICE || 0)
-            });
-        }
-        estimation.goldLoot = estimation.loot.map(a => a.gold).reduce((a,v) => a+v, 0);
-        estimation.goldMaterials = estimation.materials.map(a => a.gold).reduce((a,v) => a+v, 0);
-        estimation.goldEquipments = estimation.equipments.map(a => a.gold).reduce((a,v) => a+v, 0);
-        estimation.goldTotal = estimation.goldLoot - estimation.goldMaterials - estimation.goldEquipments;
-        await updateOne(estimation);
-        return estimation;
-    }
-
-    async function updateAll() {
-        if(!enabled) {
-            return;
-        }
-        for(const estimation of Object.values(cache)) {
-            await updateOne(estimation);
-        }
-    }
-
-    async function updateOne(estimation) {
-        await userCache.ready;
-        for(const material of estimation.materials) {
-            material.stored = userCache.inventory[material.item.id] || 0;
-            material.secondsLeft = material.stored / material.amount * 3600;
-        }
-        for(const equipment of estimation.equipments) {
-            equipment.stored = userCache.equipment[equipment.item.id] || 0;
-            equipment.secondsLeft = equipment.stored / equipment.amount * 3600;
-        }
-        if(estimation.type === 'AUTOMATION' && userCache.automations[estimation.actionId]) {
-            estimation.amountSecondsLeft = estimation.actionSpeed * (userCache.automations[estimation.actionId].maxAmount - userCache.automations[estimation.actionId].amount);
-        } else if(estimation.maxAmount) {
-            estimation.amountSecondsLeft = estimation.actionSpeed * (estimation.maxAmount - userCache.action.amount);
-        } else {
-            estimation.amountSecondsLeft = Number.MAX_VALUE;
-        }
-        if(estimation.type === 'AUTOMATION' && estimation.amountSecondsLeft !== Number.MAX_VALUE) {
-            estimation.secondsLeft = estimation.amountSecondsLeft;
-        } else {
-            estimation.secondsLeft = Math.min(
-                estimation.amountSecondsLeft,
-                ...estimation.materials.map(a => a.secondsLeft),
-                ...estimation.equipments.map(a => a.secondsLeft)
-            );
-        }
-        const currentExp = userCache.exp[estimation.skill];
-        estimation.secondsToNextlevel = util.expToNextLevel(currentExp) / estimation.exp * 3600;
-        estimation.secondsToNextTier = util.expToNextTier(currentExp) / estimation.exp * 3600;
-    }
-
-    initialise();
-
-}
-);
 // events
 window.moduleRegistry.add('events', () => {
 
@@ -1314,76 +1139,6 @@ window.moduleRegistry.add('interceptor', (events, _specialInterceptor) => {
     initialise();
 
 });
-// itemCache
-window.moduleRegistry.add('itemCache', (auth, request, Promise) => {
-
-    const authenticated = auth.ready;
-    const isReady = new Promise.Deferred();
-
-    const exports = {
-        ready: isReady.promise,
-        list: [],
-        byId: null,
-        byName: null,
-        byImage: null,
-        attributes: null
-    };
-
-    async function initialise() {
-        await authenticated;
-        const enrichedItems = await request.listItems();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
-        for(const enrichedItem of enrichedItems) {
-            const item = Object.assign(enrichedItem.item, enrichedItem);
-            delete item.item;
-            exports.list.push(item);
-            exports.byId[item.id] = item;
-            exports.byName[item.name] = item;
-            const lastPart = item.image.split('/').at(-1);
-            if(exports.byImage[lastPart]) {
-                exports.byImage[lastPart].duplicate = true;
-            } else {
-                exports.byImage[lastPart] = item;
-            }
-            if(!item.attributes) {
-                item.attributes = {};
-            }
-            if(item.charcoal) {
-                item.attributes.CHARCOAL = item.charcoal;
-            }
-            if(item.compost) {
-                item.attributes.COMPOST = item.compost;
-            }
-            if(item.speed) {
-                item.attributes.SPEED = item.speed;
-            }
-        }
-        for(const image of Object.keys(exports.byImage)) {
-            if(exports.byImage[image].duplicate) {
-                delete exports.byImage[image];
-            }
-        }
-        exports.attributes = await request.listItemAttributes();
-        exports.attributes.push({
-            technicalName: 'CHARCOAL',
-            name: 'Charcoal',
-            image: '/assets/items/charcoal.png'
-        },{
-            technicalName: 'COMPOST',
-            name: 'Compost',
-            image: '/assets/misc/compost.png'
-        });
-        isReady.resolve();
-    }
-
-    initialise();
-
-    return exports;
-
-}
-);
 // localDatabase
 window.moduleRegistry.add('localDatabase', (Promise) => {
 
@@ -1499,7 +1254,7 @@ window.moduleRegistry.add('pageDetector', (events) => {
 }
 );
 // pages
-window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, skillCache, elementCreator) => {
+window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, skillStore, elementCreator) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const getLastPage = events.getLast.bind(null, 'page');
@@ -1688,8 +1443,8 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
         await elementWatcher.exists('nav-component > div.nav');
         let headerName = null;
         if(page.type === 'action') {
-            await skillCache.ready;
-            headerName = skillCache.byId[page.skill].name;
+            await skillStore.ready;
+            headerName = skillStore.byId[page.skill].name;
         } else if(page.type === 'automation') {
             headerName = 'House';
         } else if(page.type === 'structure') {
@@ -1951,38 +1706,6 @@ window.moduleRegistry.add('request', (auth) => {
 
 }
 );
-// skillCache
-window.moduleRegistry.add('skillCache', (auth, request, Promise) => {
-
-    const authenticated = auth.ready;
-    const isReady = new Promise.Deferred();
-
-    const exports = {
-        ready: isReady.promise,
-        list: [],
-        byId: null,
-        byName: null,
-    };
-
-    async function initialise() {
-        await authenticated;
-        const skills = await request.listSkills();
-        exports.byId = {};
-        exports.byName = {};
-        for(const skill of skills) {
-            exports.list.push(skill);
-            exports.byId[skill.id] = skill;
-            exports.byName[skill.name] = skill;
-        }
-        isReady.resolve();
-    }
-
-    initialise();
-
-    return exports;
-
-}
-);
 // toast
 window.moduleRegistry.add('toast', (util, elementCreator) => {
 
@@ -2057,252 +1780,6 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
     initialise();
 
     return exports;
-}
-);
-// userCache
-window.moduleRegistry.add('userCache', (events, itemCache, Promise, util) => {
-
-    const registerPageHandler = events.register.bind(null, 'page');
-    const registerXhrHandler = events.register.bind(null, 'xhr');
-    const emitEvent = events.emit.bind(null, 'userCache');
-    const isReady = new Promise.Deferred();
-
-    const exp = {};
-    const inventory = {};
-    const equipment = {};
-    const action = {
-        actionId: null,
-        skillId: null,
-        amount: null,
-        maxAmount: null
-    };
-    const automations = {};
-    let currentPage = null;
-
-    const exports = {
-        ready: isReady.promise,
-        name: null,
-        exp,
-        inventory,
-        equipment,
-        action,
-        automations
-    };
-
-    function initialise() {
-        registerPageHandler(handlePage);
-        registerXhrHandler(handleXhr);
-
-        window.setInterval(update, 1000);
-    }
-
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
-    async function handleXhr(xhr) {
-        if(xhr.url.endsWith('/getUser')) {
-            await handleGetUser(xhr.response);
-            isReady.resolve();
-        }
-        if(xhr.url.endsWith('/startAction')) {
-            handleStartAction(xhr.response);
-        }
-        if(xhr.url.endsWith('/stopAction')) {
-            handleStopAction();
-        }
-        if(xhr.url.endsWith('/startAutomation')) {
-            handleStartAutomation(xhr.response);
-        }
-    }
-
-    async function handleGetUser(response) {
-        await itemCache.ready;
-        // name
-        exports.name = response.user.displayName;
-        // exp
-        const newExp = Object.entries(response.user.skills)
-                .map(a => ({id:a[0],exp:a[1].exp}))
-                .reduce((a,v) => Object.assign(a,{[v.id]:v.exp}), {});
-        Object.assign(exp, newExp);
-        // inventory
-        const newInventory = Object.values(response.user.inventory)
-            .reduce((a,v) => Object.assign(a,{[v.id]:v.amount}), {});
-        newInventory[-1] = response.user.compost;
-        newInventory[2] = response.user.charcoal;
-        Object.assign(inventory, newInventory);
-        // equipment
-        const newEquipment = Object.values(response.user.equipment)
-            .filter(a => a)
-            .map(a => {
-                if(a.uses) {
-                    const duration = itemCache.byId[a.id]?.attributes?.DURATION || 1;
-                    a.amount += a.uses / duration;
-                }
-                return a;
-            })
-            .reduce((a,v) => Object.assign(a,{[v.id]:v.amount}), {});
-        Object.assign(equipment, newEquipment);
-        // action
-        if(!response.user.action) {
-            action.actionId = null;
-            action.skillId = null;
-            action.amount = null;
-        } else {
-            action.actionId = +response.user.action.actionId;
-            action.skillId = +response.user.action.skillId;
-            action.amount = 0;
-        }
-    }
-
-    function handleStartAction(response) {
-        action.actionId = +response.actionId;
-        action.skillId = +response.skillId;
-        action.amount = 0;
-        action.maxAmount = response.amount;
-    }
-
-    function handleStopAction() {
-        action.actionId = null;
-        action.skillId = null;
-        action.amount = null;
-        action.maxAmount = null;
-    }
-
-    function handleStartAutomation(response) {
-        automations[+response.automationId] = {
-            amount: 0,
-            maxAmount: response.amount
-        }
-    }
-
-    async function update() {
-        await itemCache.ready;
-        if(!currentPage) {
-            return;
-        }
-        let updated = false;
-        if(currentPage.type === 'action') {
-            updated |= updateAction(); // bitwise OR because of lazy evaluation
-        }
-        if(currentPage.type === 'equipment') {
-            updated |= updateEquipment(); // bitwise OR because of lazy evaluation
-        }
-        if(currentPage.type === 'automation') {
-            updated |= updateAutomation(); // bitwise OR because of lazy evaluation
-        }
-        if(updated) {
-            emitEvent();
-        }
-    }
-
-    function updateAction() {
-        let updated = false;
-        $('skill-page .card').each((i,element) => {
-            const header = $(element).find('.header').text();
-            if(header === 'Materials') {
-                $(element).find('.row').each((j,row) => {
-                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
-                });
-            } else if(header === 'Consumables') {
-                $(element).find('.row').each((j,row) => {
-                    updated |= extractItem(row, equipment); // bitwise OR because of lazy evaluation
-                });
-            } else if(header === 'Stats') {
-                $(element).find('.row').each((j,row) => {
-                    const text = $(row).find('.name').text();
-                    if(text.startsWith('Total ') && text.endsWith(' XP')) {
-                        let expValue = $(row).find('.value').text().split(' ')[0];
-                        expValue = util.parseNumber(expValue);
-                        updated |= exp[currentPage.skill] !== expValue; // bitwise OR because of lazy evaluation
-                        exp[currentPage.skill] = expValue;
-                    }
-                });
-            } else if(header.startsWith('Loot')) {
-                const amount = $(element).find('.header .amount').text();
-                let newActionAmountValue = null;
-                let newActionMaxAmountValue = null;
-                if(amount) {
-                    newActionAmountValue = util.parseNumber(amount.split(' / ')[0]);
-                    newActionMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
-                }
-                updated |= action.amount !== newActionAmountValue; // bitwise OR because of lazy evaluation
-                updated |= action.maxAmount !== newActionMaxAmountValue; // bitwise OR because of lazy evaluation
-                action.amount = newActionAmountValue;
-                action.maxAmount = newActionMaxAmountValue;
-            }
-        });
-        return updated;
-    }
-
-    function updateEquipment() {
-        let updated = false;
-        $('equipment-component .card:nth-child(4) .item').each((i,element) => {
-            updated |= extractItem(element, equipment); // bitwise OR because of lazy evaluation
-        });
-        return updated;
-    }
-
-    function updateAutomation() {
-        let updated = false;
-        $('produce-component .card').each((i,element) => {
-            const header = $(element).find('.header').text();
-            if(header === 'Materials') {
-                $(element).find('.row').each((j,row) => {
-                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
-                });
-            } else if(header.startsWith('Loot')) {
-                const amount = $(element).find('.header .amount').text();
-                let newAutomationAmountValue = null;
-                let newAutomationMaxAmountValue = null;
-                if(amount) {
-                    newAutomationAmountValue = util.parseNumber(amount.split(' / ')[0]);
-                    newAutomationMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
-                }
-                updated |= automations[currentPage.action]?.amount !== newAutomationAmountValue; // bitwise OR because of lazy evaluation
-                updated |= automations[currentPage.action]?.maxAmount !== newAutomationMaxAmountValue; // bitwise OR because of lazy evaluation
-                automations[currentPage.action] = {
-                    amount: newAutomationAmountValue,
-                    maxAmount: newAutomationMaxAmountValue
-                }
-            }
-        });
-        return updated;
-    }
-
-    function extractItem(element, target) {
-        element = $(element);
-        const name = element.find('.name').text();
-        if(!name) {
-            return false;
-        }
-        const item = itemCache.byName[name];
-        if(!item) {
-            console.warn(`Could not find item with name [${name}]`);
-            return false;
-        }
-        let amount = element.find('.amount, .value').text();
-        if(!amount) {
-            return false;
-        }
-        if(amount.includes(' / ')) {
-            amount = amount.split(' / ')[0];
-        }
-        amount = util.parseNumber(amount);
-        let uses = element.find('.uses, .use').text();
-        if(uses) {
-            amount += util.parseNumber(uses);
-        }
-        const updated = target[item.id] !== amount;
-        target[item.id] = amount;
-        return updated;
-    }
-
-    initialise();
-
-    return exports;
-
 }
 );
 // util
@@ -3435,7 +2912,7 @@ window.moduleRegistry.add('idleBeep', (configuration, events, util) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) => {
+window.moduleRegistry.add('itemHover', (auth, configuration, itemStore, util) => {
 
     let enabled = false;
     let entered = false;
@@ -3464,26 +2941,26 @@ window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) =>
     }
 
     function handleMouseEnter(event) {
-        if(!enabled || entered || !itemCache.byId) {
+        if(!enabled || entered || !itemStore.byId) {
             return;
         }
         entered = true;
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = itemCache.byName[name];
+        const nameMatch = itemStore.byName[name];
         if(nameMatch) {
             return show(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = itemCache.byImage[lastPart];
+        const imageMatch = itemStore.byImage[lastPart];
         if(imageMatch) {
             return show(imageMatch);
         }
     }
 
     function handleMouseLeave(event) {
-        if(!enabled || !itemCache.byId) {
+        if(!enabled || !itemStore.byId) {
             return;
         }
         entered = false;
@@ -3493,7 +2970,7 @@ window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) =>
     function show(item) {
         element.find('.image').attr('src', `/assets/${item.image}`);
         element.find('.name').text(item.name);
-        for(const attribute of itemCache.attributes) {
+        for(const attribute of itemStore.attributes) {
             let value = item.attributes[attribute.technicalName];
             if(converters[attribute.technicalName]) {
                 value = converters[attribute.technicalName](value);
@@ -3517,8 +2994,8 @@ window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) =>
     }
 
     async function setup() {
-        await itemCache.ready;
-        const attributesHtml = itemCache.attributes
+        await itemStore.ready;
+        const attributesHtml = itemStore.attributes
             .map(a => `<div class='${a.technicalName}-row'><img src='${a.image}'/><span>${a.name}</span><span class='${a.technicalName}'/></div>`)
             .join('');
         $('head').append(`
@@ -3568,7 +3045,7 @@ window.moduleRegistry.add('itemHover', (auth, configuration, itemCache, util) =>
 }
 );
 // marketCompetition
-window.moduleRegistry.add('marketCompetition', (configuration, events, userCache, itemCache, colorMapper, util, elementCreator, Promise) => {
+window.moduleRegistry.add('marketCompetition', (configuration, events, userStore, itemStore, colorMapper, util, elementCreator, Promise) => {
 
     const isReady = new Promise.Deferred();
     let enabled = false;
@@ -3595,7 +3072,7 @@ window.moduleRegistry.add('marketCompetition', (configuration, events, userCache
         if(!enabled || !xhr.url.endsWith('getMarketItems')) {
             return;
         }
-        await itemCache.ready;
+        await itemStore.ready;
         const listings = xhr.response.listings;
         await processListings(listings, '1', (a,b) => a < b); // sell
         await processListings(listings, '2', (a,b) => a > b); // buy
@@ -3604,21 +3081,21 @@ window.moduleRegistry.add('marketCompetition', (configuration, events, userCache
             .map(a => ({
                 color: a.color,
                 competitors: a.competitors,
-                key: `${itemCache.byId[a.itemId].name}-${a.cost}`
+                key: `${itemStore.byId[a.itemId].name}-${a.cost}`
             }));
         isReady.resolve();
     }
 
     async function processListings(listings, type, comparator) {
-        await userCache.ready;
+        await userStore.ready;
         const ownedListings = listings
-            .filter(a => a.name === userCache.name)
+            .filter(a => a.name === userStore.name)
             .filter(a => a.type === type);
         for(const listing of ownedListings) {
             const otherListings = listings
                 .filter(a => a.itemId === listing.itemId)
                 .filter(a => a.type === type)
-                .filter(a => a.name !== userCache.name);
+                .filter(a => a.name !== userStore.name);
             const warnListings = otherListings.filter(a => a.cost === listing.cost);
             const dangerListings = otherListings.filter(a => comparator(a.cost, listing.cost));
             if(warnListings.length) {
@@ -4097,9 +3574,9 @@ window.moduleRegistry.add('recipeClickthrough', (request, configuration, util) =
 }
 );
 // skillOverviewPage
-window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatcher, skillCache, userCache, events, util, configuration) => {
+window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatcher, skillStore, userStore, events, util, configuration) => {
 
-    const registerUserCacheHandler = events.register.bind(null, 'userCache');
+    const registerUserStoreHandler = events.register.bind(null, 'userStore');
 
     const PAGE_NAME = 'Skill overview';
     const SKILL_COUNT = 13;
@@ -4112,7 +3589,7 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
     let skillTotalExp = null;
 
     async function initialise() {
-        registerUserCacheHandler(handleUserCache);
+        registerUserStoreHandler(handleuserStore);
         await pages.register({
             category: 'Skills',
             name: PAGE_NAME,
@@ -4129,43 +3606,43 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
         });
 
         await setupSkillProperties();
-        await handleUserCache();
+        await handleuserStore();
     }
 
     async function setupSkillProperties() {
-        await skillCache.ready;
-        await userCache.ready;
+        await skillStore.ready;
+        await userStore.ready;
         skillProperties = [];
-        const skillIds = Object.keys(userCache.exp);
+        const skillIds = Object.keys(userStore.exp);
         for(const id of skillIds) {
-            if(!skillCache.byId[id]) {
+            if(!skillStore.byId[id]) {
                 continue;
             }
             skillProperties.push({
                 id: id,
-                name: skillCache.byId[id].name,
-                image: skillCache.byId[id].image,
-                color: skillCache.byId[id].color,
-                defaultActionId: skillCache.byId[id].defaultActionId,
+                name: skillStore.byId[id].name,
+                image: skillStore.byId[id].image,
+                color: skillStore.byId[id].color,
+                defaultActionId: skillStore.byId[id].defaultActionId,
                 maxLevel: MAX_LEVEL,
                 showExp: true,
                 showLevel: true
             });
         }
         skillProperties.push(skillTotalLevel = {
-            id: skillCache.byName['Total-level'].id,
+            id: skillStore.byName['Total-level'].id,
             name: 'Total Level',
-            image: skillCache.byName['Total-level'].image,
-            color: skillCache.byName['Total-level'].color,
+            image: skillStore.byName['Total-level'].image,
+            color: skillStore.byName['Total-level'].color,
             maxLevel: MAX_TOTAL_LEVEL,
             showExp: false,
             showLevel: true
         });
         skillProperties.push(skillTotalExp = {
-            id: skillCache.byName['Total-exp'].id,
+            id: skillStore.byName['Total-exp'].id,
             name: 'Total Exp',
-            image: skillCache.byName['Total-exp'].image,
-            color: skillCache.byName['Total-exp'].color,
+            image: skillStore.byName['Total-exp'].image,
+            color: skillStore.byName['Total-exp'].color,
             maxLevel: MAX_TOTAL_EXP,
             showExp: true,
             showLevel: false
@@ -4180,11 +3657,11 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
         }
     }
 
-    async function handleUserCache() {
+    async function handleuserStore() {
         if(!skillProperties) {
             return;
         }
-        await userCache.ready;
+        await userStore.ready;
 
         let totalExp = 0;
         let totalLevel = 0;
@@ -4192,7 +3669,7 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
             if(skill.id <= 0) {
                 continue;
             }
-            let exp = userCache.exp[skill.id];
+            let exp = userStore.exp[skill.id];
             skill.exp = util.expToCurrentExp(exp);
             skill.level = util.expToLevel(exp);
             skill.expToLevel = util.expToNextLevel(exp);
@@ -4519,6 +3996,251 @@ window.moduleRegistry.add('webhooksRegistry', (webhooks) => {
 
 }
 );
+// estimationStore
+window.moduleRegistry.add('estimationStore', (events, request, configuration, itemStore, userStore, util) => {
+
+    const registerPageHandler = events.register.bind(null, 'page');
+    const registerXhrHandler = events.register.bind(null, 'xhr');
+    const registerUserStoreHandler = events.register.bind(null, 'userStore');
+    const getLastPage = events.getLast.bind(null, 'page');
+    const getLastEstimation = events.getLast.bind(null, 'estimation');
+    const emitEvent = events.emit.bind(null, 'estimation');
+
+    let enabled = false;
+    let cache = {};
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'estimations',
+            name: 'Estimations',
+            default: true,
+            handler: handleConfigStateChange
+        });
+
+        registerPageHandler(handlePage);
+        registerXhrHandler(handleXhr);
+        registerUserStoreHandler(handleuserStore);
+    }
+
+    function handleConfigStateChange(state) {
+        const previous = enabled;
+        enabled = state;
+        if(!enabled) {
+            emitEvent(null);
+        }
+        if(enabled && !previous) {
+            handlePage(getLastPage());
+        }
+    }
+
+    async function handlePage(page) {
+        emitEvent(null);
+        let result = null;
+        if(!enabled || !page) {
+            result = null;
+        } else if(page.type === 'action') {
+            const cacheKey = `action-${page.skill}-${page.action}`;
+            const fetcher = getAction.bind(null, page.skill, page.action);
+            result = await getEstimationData(cacheKey, fetcher);
+        } else if(page.type === 'automation') {
+            const cacheKey = `automation-${page.action}`;
+            const fetcher = getAutomation.bind(null, page.action);
+            result = await getEstimationData(cacheKey, fetcher);
+        }
+        // it could have changed by now
+        if(enabled && page === getLastPage()) {
+            emitEvent(result);
+        }
+    }
+
+    function handleXhr(xhr) {
+        if(xhr.url.endsWith('/time')) {
+            return;
+        }
+        cache = {};
+        emitEvent(null);
+        handlePage(getLastPage());
+    }
+
+    async function handleuserStore() {
+        await updateAll();
+        emitEvent(getLastEstimation());
+    }
+
+    async function getEstimationData(cacheKey, fetcher) {
+        const estimation = cache[cacheKey] || await fetcher();
+        cache[cacheKey] = estimation;
+        return estimation;
+    }
+
+    async function getAction(skill, action) {
+        const result = await request.getActionEstimation(skill, action);
+        result.actionId = action;
+        return convertEstimation(result);
+    }
+
+    async function getAutomation(action) {
+        const result = await request.getAutomationEstimation(action);
+        result.actionId = action;
+        return convertEstimation(result);
+    }
+
+    async function convertEstimation(estimation) {
+        await itemStore.ready;
+        const loot = estimation.loot;
+        const materials = estimation.materials;
+        const equipments = estimation.equipments;
+        estimation.loot = [];
+        for(const entry of Object.entries(loot)) {
+            estimation.loot.push({
+                item: itemStore.byId[entry[0]],
+                amount: entry[1],
+                gold: entry[1] * (itemStore.byId[entry[0]].attributes.SELL_PRICE || 0)
+            });
+        }
+        estimation.materials = [];
+        for(const entry of Object.entries(materials)) {
+            estimation.materials.push({
+                item: itemStore.byId[entry[0]],
+                amount: entry[1],
+                stored: 0,
+                secondsLeft: 0,
+                gold: entry[1] * (itemStore.byId[entry[0]].attributes.SELL_PRICE || 0)
+            });
+        }
+        estimation.equipments = [];
+        for(const entry of Object.entries(equipments)) {
+            estimation.equipments.push({
+                item: itemStore.byId[entry[0]],
+                amount: entry[1],
+                stored: 0,
+                secondsLeft: 0,
+                gold: entry[1] * (itemStore.byId[entry[0]].attributes.SELL_PRICE || 0)
+            });
+        }
+        estimation.goldLoot = estimation.loot.map(a => a.gold).reduce((a,v) => a+v, 0);
+        estimation.goldMaterials = estimation.materials.map(a => a.gold).reduce((a,v) => a+v, 0);
+        estimation.goldEquipments = estimation.equipments.map(a => a.gold).reduce((a,v) => a+v, 0);
+        estimation.goldTotal = estimation.goldLoot - estimation.goldMaterials - estimation.goldEquipments;
+        await updateOne(estimation);
+        return estimation;
+    }
+
+    async function updateAll() {
+        if(!enabled) {
+            return;
+        }
+        for(const estimation of Object.values(cache)) {
+            await updateOne(estimation);
+        }
+    }
+
+    async function updateOne(estimation) {
+        await userStore.ready;
+        for(const material of estimation.materials) {
+            material.stored = userStore.inventory[material.item.id] || 0;
+            material.secondsLeft = material.stored / material.amount * 3600;
+        }
+        for(const equipment of estimation.equipments) {
+            equipment.stored = userStore.equipment[equipment.item.id] || 0;
+            equipment.secondsLeft = equipment.stored / equipment.amount * 3600;
+        }
+        if(estimation.type === 'AUTOMATION' && userStore.automations[estimation.actionId]) {
+            estimation.amountSecondsLeft = estimation.actionSpeed * (userStore.automations[estimation.actionId].maxAmount - userStore.automations[estimation.actionId].amount);
+        } else if(estimation.maxAmount) {
+            estimation.amountSecondsLeft = estimation.actionSpeed * (estimation.maxAmount - userStore.action.amount);
+        } else {
+            estimation.amountSecondsLeft = Number.MAX_VALUE;
+        }
+        if(estimation.type === 'AUTOMATION' && estimation.amountSecondsLeft !== Number.MAX_VALUE) {
+            estimation.secondsLeft = estimation.amountSecondsLeft;
+        } else {
+            estimation.secondsLeft = Math.min(
+                estimation.amountSecondsLeft,
+                ...estimation.materials.map(a => a.secondsLeft),
+                ...estimation.equipments.map(a => a.secondsLeft)
+            );
+        }
+        const currentExp = userStore.exp[estimation.skill];
+        estimation.secondsToNextlevel = util.expToNextLevel(currentExp) / estimation.exp * 3600;
+        estimation.secondsToNextTier = util.expToNextTier(currentExp) / estimation.exp * 3600;
+    }
+
+    initialise();
+
+}
+);
+// itemStore
+window.moduleRegistry.add('itemStore', (auth, request, Promise) => {
+
+    const authenticated = auth.ready;
+    const isReady = new Promise.Deferred();
+
+    const exports = {
+        ready: isReady.promise,
+        list: [],
+        byId: null,
+        byName: null,
+        byImage: null,
+        attributes: null
+    };
+
+    async function initialise() {
+        await authenticated;
+        const enrichedItems = await request.listItems();
+        exports.byId = {};
+        exports.byName = {};
+        exports.byImage = {};
+        for(const enrichedItem of enrichedItems) {
+            const item = Object.assign(enrichedItem.item, enrichedItem);
+            delete item.item;
+            exports.list.push(item);
+            exports.byId[item.id] = item;
+            exports.byName[item.name] = item;
+            const lastPart = item.image.split('/').at(-1);
+            if(exports.byImage[lastPart]) {
+                exports.byImage[lastPart].duplicate = true;
+            } else {
+                exports.byImage[lastPart] = item;
+            }
+            if(!item.attributes) {
+                item.attributes = {};
+            }
+            if(item.charcoal) {
+                item.attributes.CHARCOAL = item.charcoal;
+            }
+            if(item.compost) {
+                item.attributes.COMPOST = item.compost;
+            }
+            if(item.speed) {
+                item.attributes.SPEED = item.speed;
+            }
+        }
+        for(const image of Object.keys(exports.byImage)) {
+            if(exports.byImage[image].duplicate) {
+                delete exports.byImage[image];
+            }
+        }
+        exports.attributes = await request.listItemAttributes();
+        exports.attributes.push({
+            technicalName: 'CHARCOAL',
+            name: 'Charcoal',
+            image: '/assets/items/charcoal.png'
+        },{
+            technicalName: 'COMPOST',
+            name: 'Compost',
+            image: '/assets/misc/compost.png'
+        });
+        isReady.resolve();
+    }
+
+    initialise();
+
+    return exports;
+
+}
+);
 // localConfigurationStore
 window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
 
@@ -4543,6 +4265,284 @@ window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
     async function save(key, value) {
         await localDatabase.saveEntry(storeName, {key, value});
     }
+
+    return exports;
+
+}
+);
+// skillStore
+window.moduleRegistry.add('skillStore', (auth, request, Promise) => {
+
+    const authenticated = auth.ready;
+    const isReady = new Promise.Deferred();
+
+    const exports = {
+        ready: isReady.promise,
+        list: [],
+        byId: null,
+        byName: null,
+    };
+
+    async function initialise() {
+        await authenticated;
+        const skills = await request.listSkills();
+        exports.byId = {};
+        exports.byName = {};
+        for(const skill of skills) {
+            exports.list.push(skill);
+            exports.byId[skill.id] = skill;
+            exports.byName[skill.name] = skill;
+        }
+        isReady.resolve();
+    }
+
+    initialise();
+
+    return exports;
+
+}
+);
+// userStore
+window.moduleRegistry.add('userStore', (events, itemStore, Promise, util) => {
+
+    const registerPageHandler = events.register.bind(null, 'page');
+    const registerXhrHandler = events.register.bind(null, 'xhr');
+    const emitEvent = events.emit.bind(null, 'userStore');
+    const isReady = new Promise.Deferred();
+
+    const exp = {};
+    const inventory = {};
+    const equipment = {};
+    const action = {
+        actionId: null,
+        skillId: null,
+        amount: null,
+        maxAmount: null
+    };
+    const automations = {};
+    let currentPage = null;
+
+    const exports = {
+        ready: isReady.promise,
+        name: null,
+        exp,
+        inventory,
+        equipment,
+        action,
+        automations
+    };
+
+    function initialise() {
+        registerPageHandler(handlePage);
+        registerXhrHandler(handleXhr);
+
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    async function handleXhr(xhr) {
+        if(xhr.url.endsWith('/getUser')) {
+            await handleGetUser(xhr.response);
+            isReady.resolve();
+        }
+        if(xhr.url.endsWith('/startAction')) {
+            handleStartAction(xhr.response);
+        }
+        if(xhr.url.endsWith('/stopAction')) {
+            handleStopAction();
+        }
+        if(xhr.url.endsWith('/startAutomation')) {
+            handleStartAutomation(xhr.response);
+        }
+    }
+
+    async function handleGetUser(response) {
+        await itemStore.ready;
+        // name
+        exports.name = response.user.displayName;
+        // exp
+        const newExp = Object.entries(response.user.skills)
+                .map(a => ({id:a[0],exp:a[1].exp}))
+                .reduce((a,v) => Object.assign(a,{[v.id]:v.exp}), {});
+        Object.assign(exp, newExp);
+        // inventory
+        const newInventory = Object.values(response.user.inventory)
+            .reduce((a,v) => Object.assign(a,{[v.id]:v.amount}), {});
+        newInventory[-1] = response.user.compost;
+        newInventory[2] = response.user.charcoal;
+        Object.assign(inventory, newInventory);
+        // equipment
+        const newEquipment = Object.values(response.user.equipment)
+            .filter(a => a)
+            .map(a => {
+                if(a.uses) {
+                    const duration = itemStore.byId[a.id]?.attributes?.DURATION || 1;
+                    a.amount += a.uses / duration;
+                }
+                return a;
+            })
+            .reduce((a,v) => Object.assign(a,{[v.id]:v.amount}), {});
+        Object.assign(equipment, newEquipment);
+        // action
+        if(!response.user.action) {
+            action.actionId = null;
+            action.skillId = null;
+            action.amount = null;
+        } else {
+            action.actionId = +response.user.action.actionId;
+            action.skillId = +response.user.action.skillId;
+            action.amount = 0;
+        }
+    }
+
+    function handleStartAction(response) {
+        action.actionId = +response.actionId;
+        action.skillId = +response.skillId;
+        action.amount = 0;
+        action.maxAmount = response.amount;
+    }
+
+    function handleStopAction() {
+        action.actionId = null;
+        action.skillId = null;
+        action.amount = null;
+        action.maxAmount = null;
+    }
+
+    function handleStartAutomation(response) {
+        automations[+response.automationId] = {
+            amount: 0,
+            maxAmount: response.amount
+        }
+    }
+
+    async function update() {
+        await itemStore.ready;
+        if(!currentPage) {
+            return;
+        }
+        let updated = false;
+        if(currentPage.type === 'action') {
+            updated |= updateAction(); // bitwise OR because of lazy evaluation
+        }
+        if(currentPage.type === 'equipment') {
+            updated |= updateEquipment(); // bitwise OR because of lazy evaluation
+        }
+        if(currentPage.type === 'automation') {
+            updated |= updateAutomation(); // bitwise OR because of lazy evaluation
+        }
+        if(updated) {
+            emitEvent();
+        }
+    }
+
+    function updateAction() {
+        let updated = false;
+        $('skill-page .card').each((i,element) => {
+            const header = $(element).find('.header').text();
+            if(header === 'Materials') {
+                $(element).find('.row').each((j,row) => {
+                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
+                });
+            } else if(header === 'Consumables') {
+                $(element).find('.row').each((j,row) => {
+                    updated |= extractItem(row, equipment); // bitwise OR because of lazy evaluation
+                });
+            } else if(header === 'Stats') {
+                $(element).find('.row').each((j,row) => {
+                    const text = $(row).find('.name').text();
+                    if(text.startsWith('Total ') && text.endsWith(' XP')) {
+                        let expValue = $(row).find('.value').text().split(' ')[0];
+                        expValue = util.parseNumber(expValue);
+                        updated |= exp[currentPage.skill] !== expValue; // bitwise OR because of lazy evaluation
+                        exp[currentPage.skill] = expValue;
+                    }
+                });
+            } else if(header.startsWith('Loot')) {
+                const amount = $(element).find('.header .amount').text();
+                let newActionAmountValue = null;
+                let newActionMaxAmountValue = null;
+                if(amount) {
+                    newActionAmountValue = util.parseNumber(amount.split(' / ')[0]);
+                    newActionMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
+                }
+                updated |= action.amount !== newActionAmountValue; // bitwise OR because of lazy evaluation
+                updated |= action.maxAmount !== newActionMaxAmountValue; // bitwise OR because of lazy evaluation
+                action.amount = newActionAmountValue;
+                action.maxAmount = newActionMaxAmountValue;
+            }
+        });
+        return updated;
+    }
+
+    function updateEquipment() {
+        let updated = false;
+        $('equipment-component .card:nth-child(4) .item').each((i,element) => {
+            updated |= extractItem(element, equipment); // bitwise OR because of lazy evaluation
+        });
+        return updated;
+    }
+
+    function updateAutomation() {
+        let updated = false;
+        $('produce-component .card').each((i,element) => {
+            const header = $(element).find('.header').text();
+            if(header === 'Materials') {
+                $(element).find('.row').each((j,row) => {
+                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
+                });
+            } else if(header.startsWith('Loot')) {
+                const amount = $(element).find('.header .amount').text();
+                let newAutomationAmountValue = null;
+                let newAutomationMaxAmountValue = null;
+                if(amount) {
+                    newAutomationAmountValue = util.parseNumber(amount.split(' / ')[0]);
+                    newAutomationMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
+                }
+                updated |= automations[currentPage.action]?.amount !== newAutomationAmountValue; // bitwise OR because of lazy evaluation
+                updated |= automations[currentPage.action]?.maxAmount !== newAutomationMaxAmountValue; // bitwise OR because of lazy evaluation
+                automations[currentPage.action] = {
+                    amount: newAutomationAmountValue,
+                    maxAmount: newAutomationMaxAmountValue
+                }
+            }
+        });
+        return updated;
+    }
+
+    function extractItem(element, target) {
+        element = $(element);
+        const name = element.find('.name').text();
+        if(!name) {
+            return false;
+        }
+        const item = itemStore.byName[name];
+        if(!item) {
+            console.warn(`Could not find item with name [${name}]`);
+            return false;
+        }
+        let amount = element.find('.amount, .value').text();
+        if(!amount) {
+            return false;
+        }
+        if(amount.includes(' / ')) {
+            amount = amount.split(' / ')[0];
+        }
+        amount = util.parseNumber(amount);
+        let uses = element.find('.uses, .use').text();
+        if(uses) {
+            amount += util.parseNumber(uses);
+        }
+        const updated = target[item.id] !== amount;
+        target[item.id] = amount;
+        return updated;
+    }
+
+    initialise();
 
     return exports;
 

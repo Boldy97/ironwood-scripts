@@ -1,4 +1,4 @@
-(elementWatcher, events, colorMapper, util, skillCache, elementCreator) => {
+(elementWatcher, events, colorMapper, util, skillStore, elementCreator) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const getLastPage = events.getLast.bind(null, 'page');
@@ -187,8 +187,8 @@
         await elementWatcher.exists('nav-component > div.nav');
         let headerName = null;
         if(page.type === 'action') {
-            await skillCache.ready;
-            headerName = skillCache.byId[page.skill].name;
+            await skillStore.ready;
+            headerName = skillStore.byId[page.skill].name;
         } else if(page.type === 'automation') {
             headerName = 'House';
         } else if(page.type === 'structure') {

@@ -1,8 +1,8 @@
-(events, request, configuration, itemCache, userCache, util) => {
+(events, request, configuration, itemStore, userStore, util) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const registerXhrHandler = events.register.bind(null, 'xhr');
-    const registerUserCacheHandler = events.register.bind(null, 'userCache');
+    const registerUserStoreHandler = events.register.bind(null, 'userStore');
     const getLastPage = events.getLast.bind(null, 'page');
     const getLastEstimation = events.getLast.bind(null, 'estimation');
     const emitEvent = events.emit.bind(null, 'estimation');
@@ -21,7 +21,7 @@
 
         registerPageHandler(handlePage);
         registerXhrHandler(handleXhr);
-        registerUserCacheHandler(handleUserCache);
+        registerUserStoreHandler(handleuserStore);
     }
 
     function handleConfigStateChange(state) {
@@ -64,7 +64,7 @@
         handlePage(getLastPage());
     }
 
-    async function handleUserCache() {
+    async function handleuserStore() {
         await updateAll();
         emitEvent(getLastEstimation());
     }
@@ -88,36 +88,36 @@
     }
 
     async function convertEstimation(estimation) {
-        await itemCache.ready;
+        await itemStore.ready;
         const loot = estimation.loot;
         const materials = estimation.materials;
         const equipments = estimation.equipments;
         estimation.loot = [];
         for(const entry of Object.entries(loot)) {
             estimation.loot.push({
-                item: itemCache.byId[entry[0]],
+                item: itemStore.byId[entry[0]],
                 amount: entry[1],
-                gold: entry[1] * (itemCache.byId[entry[0]].attributes.SELL_PRICE || 0)
+                gold: entry[1] * (itemStore.byId[entry[0]].attributes.SELL_PRICE || 0)
             });
         }
         estimation.materials = [];
         for(const entry of Object.entries(materials)) {
             estimation.materials.push({
-                item: itemCache.byId[entry[0]],
+                item: itemStore.byId[entry[0]],
                 amount: entry[1],
                 stored: 0,
                 secondsLeft: 0,
-                gold: entry[1] * (itemCache.byId[entry[0]].attributes.SELL_PRICE || 0)
+                gold: entry[1] * (itemStore.byId[entry[0]].attributes.SELL_PRICE || 0)
             });
         }
         estimation.equipments = [];
         for(const entry of Object.entries(equipments)) {
             estimation.equipments.push({
-                item: itemCache.byId[entry[0]],
+                item: itemStore.byId[entry[0]],
                 amount: entry[1],
                 stored: 0,
                 secondsLeft: 0,
-                gold: entry[1] * (itemCache.byId[entry[0]].attributes.SELL_PRICE || 0)
+                gold: entry[1] * (itemStore.byId[entry[0]].attributes.SELL_PRICE || 0)
             });
         }
         estimation.goldLoot = estimation.loot.map(a => a.gold).reduce((a,v) => a+v, 0);
@@ -138,19 +138,19 @@
     }
 
     async function updateOne(estimation) {
-        await userCache.ready;
+        await userStore.ready;
         for(const material of estimation.materials) {
-            material.stored = userCache.inventory[material.item.id] || 0;
+            material.stored = userStore.inventory[material.item.id] || 0;
             material.secondsLeft = material.stored / material.amount * 3600;
         }
         for(const equipment of estimation.equipments) {
-            equipment.stored = userCache.equipment[equipment.item.id] || 0;
+            equipment.stored = userStore.equipment[equipment.item.id] || 0;
             equipment.secondsLeft = equipment.stored / equipment.amount * 3600;
         }
-        if(estimation.type === 'AUTOMATION' && userCache.automations[estimation.actionId]) {
-            estimation.amountSecondsLeft = estimation.actionSpeed * (userCache.automations[estimation.actionId].maxAmount - userCache.automations[estimation.actionId].amount);
+        if(estimation.type === 'AUTOMATION' && userStore.automations[estimation.actionId]) {
+            estimation.amountSecondsLeft = estimation.actionSpeed * (userStore.automations[estimation.actionId].maxAmount - userStore.automations[estimation.actionId].amount);
         } else if(estimation.maxAmount) {
-            estimation.amountSecondsLeft = estimation.actionSpeed * (estimation.maxAmount - userCache.action.amount);
+            estimation.amountSecondsLeft = estimation.actionSpeed * (estimation.maxAmount - userStore.action.amount);
         } else {
             estimation.amountSecondsLeft = Number.MAX_VALUE;
         }
@@ -163,7 +163,7 @@
                 ...estimation.equipments.map(a => a.secondsLeft)
             );
         }
-        const currentExp = userCache.exp[estimation.skill];
+        const currentExp = userStore.exp[estimation.skill];
         estimation.secondsToNextlevel = util.expToNextLevel(currentExp) / estimation.exp * 3600;
         estimation.secondsToNextTier = util.expToNextTier(currentExp) / estimation.exp * 3600;
     }

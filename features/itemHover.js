@@ -1,4 +1,4 @@
-(auth, configuration, itemCache, util) => {
+(auth, configuration, itemStore, util) => {
 
     let enabled = false;
     let entered = false;
@@ -27,26 +27,26 @@
     }
 
     function handleMouseEnter(event) {
-        if(!enabled || entered || !itemCache.byId) {
+        if(!enabled || entered || !itemStore.byId) {
             return;
         }
         entered = true;
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = itemCache.byName[name];
+        const nameMatch = itemStore.byName[name];
         if(nameMatch) {
             return show(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = itemCache.byImage[lastPart];
+        const imageMatch = itemStore.byImage[lastPart];
         if(imageMatch) {
             return show(imageMatch);
         }
     }
 
     function handleMouseLeave(event) {
-        if(!enabled || !itemCache.byId) {
+        if(!enabled || !itemStore.byId) {
             return;
         }
         entered = false;
@@ -56,7 +56,7 @@
     function show(item) {
         element.find('.image').attr('src', `/assets/${item.image}`);
         element.find('.name').text(item.name);
-        for(const attribute of itemCache.attributes) {
+        for(const attribute of itemStore.attributes) {
             let value = item.attributes[attribute.technicalName];
             if(converters[attribute.technicalName]) {
                 value = converters[attribute.technicalName](value);
@@ -80,8 +80,8 @@
     }
 
     async function setup() {
-        await itemCache.ready;
-        const attributesHtml = itemCache.attributes
+        await itemStore.ready;
+        const attributesHtml = itemStore.attributes
             .map(a => `<div class='${a.technicalName}-row'><img src='${a.image}'/><span>${a.name}</span><span class='${a.technicalName}'/></div>`)
             .join('');
         $('head').append(`

@@ -1,6 +1,6 @@
-(pages, components, elementWatcher, skillCache, userCache, events, util, configuration) => {
+(pages, components, elementWatcher, skillStore, userStore, events, util, configuration) => {
 
-    const registerUserCacheHandler = events.register.bind(null, 'userCache');
+    const registerUserStoreHandler = events.register.bind(null, 'userStore');
 
     const PAGE_NAME = 'Skill overview';
     const SKILL_COUNT = 13;
@@ -13,7 +13,7 @@
     let skillTotalExp = null;
 
     async function initialise() {
-        registerUserCacheHandler(handleUserCache);
+        registerUserStoreHandler(handleuserStore);
         await pages.register({
             category: 'Skills',
             name: PAGE_NAME,
@@ -30,43 +30,43 @@
         });
 
         await setupSkillProperties();
-        await handleUserCache();
+        await handleuserStore();
     }
 
     async function setupSkillProperties() {
-        await skillCache.ready;
-        await userCache.ready;
+        await skillStore.ready;
+        await userStore.ready;
         skillProperties = [];
-        const skillIds = Object.keys(userCache.exp);
+        const skillIds = Object.keys(userStore.exp);
         for(const id of skillIds) {
-            if(!skillCache.byId[id]) {
+            if(!skillStore.byId[id]) {
                 continue;
             }
             skillProperties.push({
                 id: id,
-                name: skillCache.byId[id].name,
-                image: skillCache.byId[id].image,
-                color: skillCache.byId[id].color,
-                defaultActionId: skillCache.byId[id].defaultActionId,
+                name: skillStore.byId[id].name,
+                image: skillStore.byId[id].image,
+                color: skillStore.byId[id].color,
+                defaultActionId: skillStore.byId[id].defaultActionId,
                 maxLevel: MAX_LEVEL,
                 showExp: true,
                 showLevel: true
             });
         }
         skillProperties.push(skillTotalLevel = {
-            id: skillCache.byName['Total-level'].id,
+            id: skillStore.byName['Total-level'].id,
             name: 'Total Level',
-            image: skillCache.byName['Total-level'].image,
-            color: skillCache.byName['Total-level'].color,
+            image: skillStore.byName['Total-level'].image,
+            color: skillStore.byName['Total-level'].color,
             maxLevel: MAX_TOTAL_LEVEL,
             showExp: false,
             showLevel: true
         });
         skillProperties.push(skillTotalExp = {
-            id: skillCache.byName['Total-exp'].id,
+            id: skillStore.byName['Total-exp'].id,
             name: 'Total Exp',
-            image: skillCache.byName['Total-exp'].image,
-            color: skillCache.byName['Total-exp'].color,
+            image: skillStore.byName['Total-exp'].image,
+            color: skillStore.byName['Total-exp'].color,
             maxLevel: MAX_TOTAL_EXP,
             showExp: true,
             showLevel: false
@@ -81,11 +81,11 @@
         }
     }
 
-    async function handleUserCache() {
+    async function handleuserStore() {
         if(!skillProperties) {
             return;
         }
-        await userCache.ready;
+        await userStore.ready;
 
         let totalExp = 0;
         let totalLevel = 0;
@@ -93,7 +93,7 @@
             if(skill.id <= 0) {
                 continue;
             }
-            let exp = userCache.exp[skill.id];
+            let exp = userStore.exp[skill.id];
             skill.exp = util.expToCurrentExp(exp);
             skill.level = util.expToLevel(exp);
             skill.expToLevel = util.expToNextLevel(exp);

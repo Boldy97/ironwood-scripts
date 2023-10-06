@@ -1,8 +1,8 @@
-(events, itemCache, Promise, util) => {
+(events, itemStore, Promise, util) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const registerXhrHandler = events.register.bind(null, 'xhr');
-    const emitEvent = events.emit.bind(null, 'userCache');
+    const emitEvent = events.emit.bind(null, 'userStore');
     const isReady = new Promise.Deferred();
 
     const exp = {};
@@ -56,7 +56,7 @@
     }
 
     async function handleGetUser(response) {
-        await itemCache.ready;
+        await itemStore.ready;
         // name
         exports.name = response.user.displayName;
         // exp
@@ -75,7 +75,7 @@
             .filter(a => a)
             .map(a => {
                 if(a.uses) {
-                    const duration = itemCache.byId[a.id]?.attributes?.DURATION || 1;
+                    const duration = itemStore.byId[a.id]?.attributes?.DURATION || 1;
                     a.amount += a.uses / duration;
                 }
                 return a;
@@ -116,7 +116,7 @@
     }
 
     async function update() {
-        await itemCache.ready;
+        await itemStore.ready;
         if(!currentPage) {
             return;
         }
@@ -215,7 +215,7 @@
         if(!name) {
             return false;
         }
-        const item = itemCache.byName[name];
+        const item = itemStore.byName[name];
         if(!item) {
             console.warn(`Could not find item with name [${name}]`);
             return false;

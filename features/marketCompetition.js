@@ -1,4 +1,4 @@
-(configuration, events, userCache, itemCache, colorMapper, util, elementCreator, Promise) => {
+(configuration, events, userStore, itemStore, colorMapper, util, elementCreator, Promise) => {
 
     const isReady = new Promise.Deferred();
     let enabled = false;
@@ -25,7 +25,7 @@
         if(!enabled || !xhr.url.endsWith('getMarketItems')) {
             return;
         }
-        await itemCache.ready;
+        await itemStore.ready;
         const listings = xhr.response.listings;
         await processListings(listings, '1', (a,b) => a < b); // sell
         await processListings(listings, '2', (a,b) => a > b); // buy
@@ -34,21 +34,21 @@
             .map(a => ({
                 color: a.color,
                 competitors: a.competitors,
-                key: `${itemCache.byId[a.itemId].name}-${a.cost}`
+                key: `${itemStore.byId[a.itemId].name}-${a.cost}`
             }));
         isReady.resolve();
     }
 
     async function processListings(listings, type, comparator) {
-        await userCache.ready;
+        await userStore.ready;
         const ownedListings = listings
-            .filter(a => a.name === userCache.name)
+            .filter(a => a.name === userStore.name)
             .filter(a => a.type === type);
         for(const listing of ownedListings) {
             const otherListings = listings
                 .filter(a => a.itemId === listing.itemId)
                 .filter(a => a.type === type)
-                .filter(a => a.name !== userCache.name);
+                .filter(a => a.name !== userStore.name);
             const warnListings = otherListings.filter(a => a.cost === listing.cost);
             const dangerListings = otherListings.filter(a => comparator(a.cost, listing.cost));
             if(warnListings.length) {
