@@ -3,7 +3,8 @@ const path = require('path');
 
 const directories = [
     '../libraries',
-    '../features'
+    '../features',
+    '../stores'
 ];
 
 async function run() {

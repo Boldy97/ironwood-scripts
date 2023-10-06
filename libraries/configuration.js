@@ -1,6 +1,7 @@
-(auth, request, Promise) => {
+(auth, Promise, localConfigurationStore, _remoteConfigurationStore) => {
 
     const loaded = new Promise.Deferred();
+    const configurationStore = _remoteConfigurationStore || localConfigurationStore;
 
     const exports = {
         ready: loaded.promise,
@@ -61,7 +62,7 @@
     }
 
     async function load() {
-        const configs = await request.getConfigurations();
+        const configs = await configurationStore.load();
         for(const item of exports.items) {
             let value;
             if(configs[item.key]) {
@@ -81,7 +82,7 @@
         if(item.type === 'input' || item.type === 'json') {
             value = JSON.stringify(value);
         }
-        await request.saveConfiguration(item.key, value);
+        await configurationStore.save(item.key, value);
     }
 
     function validate(item, keys) {

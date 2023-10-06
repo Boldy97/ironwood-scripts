@@ -1,6 +1,9 @@
-(events) => {
+(events, _specialInterceptor) => {
 
     function initialise() {
+        if(_specialInterceptor) {
+            return;
+        }
         registerInterceptorXhr();
         registerInterceptorUrlChange();
         events.emit('url', window.location.href);

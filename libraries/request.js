@@ -74,12 +74,6 @@
 
     makeRequest.getLeaderboardGuildRanks = () => makeRequest('leaderboard/ranks/guild');
 
-    makeRequest.listActions = () => makeRequest('list/action');
-    makeRequest.listItems = () => makeRequest('list/item');
-    makeRequest.listItemAttributes = () => makeRequest('list/itemAttributes');
-    makeRequest.listRecipes = () => makeRequest('list/recipe');
-    makeRequest.listSkills = () => makeRequest('list/skills');
-
     makeRequest.getMarketConversion = () => makeRequest('market/conversions');
     makeRequest.getMarketFilters = () => makeRequest('market/filters');
     makeRequest.saveMarketFilter = (filter) => makeRequest('market/filters', filter);
@@ -87,10 +81,17 @@
 
     makeRequest.saveWebhook = (webhook) => makeRequest('notification/webhook', webhook);
 
+    makeRequest.listActions = () => makeRequest('public/list/action');
+    makeRequest.listItems = () => makeRequest('public/list/item');
+    makeRequest.listItemAttributes = () => makeRequest('public/list/itemAttributes');
+    makeRequest.listRecipes = () => makeRequest('public/list/recipe');
+    makeRequest.listSkills = () => makeRequest('public/list/skills');
+
+    makeRequest.getChangelogs = () => makeRequest('public/settings/changelog');
+    makeRequest.getVersion = () => makeRequest('public/settings/version');
+
     makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
 
-    makeRequest.getChangelogs = () => makeRequest('settings/changelog');
-    makeRequest.getVersion = () => makeRequest('settings/version');
 
     return exports;
 

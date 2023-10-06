@@ -821,9 +821,10 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 }
 );
 // configuration
-window.moduleRegistry.add('configuration', (auth, request, Promise) => {
+window.moduleRegistry.add('configuration', (auth, Promise, localConfigurationStore, _remoteConfigurationStore) => {
 
     const loaded = new Promise.Deferred();
+    const configurationStore = _remoteConfigurationStore || localConfigurationStore;
 
     const exports = {
         ready: loaded.promise,
@@ -884,7 +885,7 @@ window.moduleRegistry.add('configuration', (auth, request, Promise) => {
     }
 
     async function load() {
-        const configs = await request.getConfigurations();
+        const configs = await configurationStore.load();
         for(const item of exports.items) {
             let value;
             if(configs[item.key]) {
@@ -904,7 +905,7 @@ window.moduleRegistry.add('configuration', (auth, request, Promise) => {
         if(item.type === 'input' || item.type === 'json') {
             value = JSON.stringify(value);
         }
-        await request.saveConfiguration(item.key, value);
+        await configurationStore.save(item.key, value);
     }
 
     function validate(item, keys) {
@@ -1226,9 +1227,12 @@ window.moduleRegistry.add('events', () => {
 }
 );
 // interceptor
-window.moduleRegistry.add('interceptor', (events) => {
+window.moduleRegistry.add('interceptor', (events, _specialInterceptor) => {
 
     function initialise() {
+        if(_specialInterceptor) {
+            return;
+        }
         registerInterceptorXhr();
         registerInterceptorUrlChange();
         events.emit('url', window.location.href);
@@ -1309,8 +1313,7 @@ window.moduleRegistry.add('interceptor', (events) => {
 
     initialise();
 
-}
-);
+});
 // itemCache
 window.moduleRegistry.add('itemCache', (auth, request, Promise) => {
 
@@ -1373,6 +1376,78 @@ window.moduleRegistry.add('itemCache', (auth, request, Promise) => {
             image: '/assets/misc/compost.png'
         });
         isReady.resolve();
+    }
+
+    initialise();
+
+    return exports;
+
+}
+);
+// localDatabase
+window.moduleRegistry.add('localDatabase', (Promise) => {
+
+    const exports = {
+        getAllEntries,
+        saveEntry
+    }
+
+    const isReady = new Promise.Deferred();
+    let database = null;
+
+    const databaseName = 'PancakeScripts';
+
+    function initialise() {
+        const request = window.indexedDB.open(databaseName, 1);
+        request.onsuccess = function(event) {
+            database = this.result;
+            isReady.resolve();
+        };
+        request.onerror = function(event) {
+            console.error(`Failed creating IndexedDB : ${event.target.errorCode}`);
+        };
+        request.onupgradeneeded = function(event) {
+            console.debug('Creating IndexedDB');
+            const db = event.target.result;
+            const objectStore = db.createObjectStore('settings', { keyPath: 'key' });
+            objectStore.createIndex('key', 'key', { unique: true });
+        };
+    }
+
+    async function getAllEntries(storeName) {
+        await isReady.promise;
+        const result = new Promise.Expiring(1000);
+        const entries = [];
+        const store = database.transaction(storeName, 'readonly').objectStore(storeName);
+        const request = store.openCursor();
+        request.onsuccess = function(event) {
+            const cursor = event.target.result;
+            if(cursor) {
+                entries.push(cursor.value);
+                cursor.continue();
+            } else {
+                result.resolve(entries);
+            }
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result.promise;
+    }
+
+    async function saveEntry(storeName, entry) {
+        await isReady.promise;
+        const result = new Promise.Expiring(1000);
+        const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
+        const request = store.put(entry);
+        request.onsuccess = function(event) {
+            result.resolve();
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result.promise;
+
     }
 
     initialise();
@@ -1853,12 +1928,6 @@ window.moduleRegistry.add('request', (auth) => {
 
     makeRequest.getLeaderboardGuildRanks = () => makeRequest('leaderboard/ranks/guild');
 
-    makeRequest.listActions = () => makeRequest('list/action');
-    makeRequest.listItems = () => makeRequest('list/item');
-    makeRequest.listItemAttributes = () => makeRequest('list/itemAttributes');
-    makeRequest.listRecipes = () => makeRequest('list/recipe');
-    makeRequest.listSkills = () => makeRequest('list/skills');
-
     makeRequest.getMarketConversion = () => makeRequest('market/conversions');
     makeRequest.getMarketFilters = () => makeRequest('market/filters');
     makeRequest.saveMarketFilter = (filter) => makeRequest('market/filters', filter);
@@ -1866,10 +1935,17 @@ window.moduleRegistry.add('request', (auth) => {
 
     makeRequest.saveWebhook = (webhook) => makeRequest('notification/webhook', webhook);
 
+    makeRequest.listActions = () => makeRequest('public/list/action');
+    makeRequest.listItems = () => makeRequest('public/list/item');
+    makeRequest.listItemAttributes = () => makeRequest('public/list/itemAttributes');
+    makeRequest.listRecipes = () => makeRequest('public/list/recipe');
+    makeRequest.listSkills = () => makeRequest('public/list/skills');
+
+    makeRequest.getChangelogs = () => makeRequest('public/settings/changelog');
+    makeRequest.getVersion = () => makeRequest('public/settings/version');
+
     makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
 
-    makeRequest.getChangelogs = () => makeRequest('settings/changelog');
-    makeRequest.getVersion = () => makeRequest('settings/version');
 
     return exports;
 
@@ -4440,6 +4516,35 @@ window.moduleRegistry.add('webhooksRegistry', (webhooks) => {
     }
 
     initialise();
+
+}
+);
+// localConfigurationStore
+window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
+
+    const exports = {
+        load,
+        save
+    };
+
+    const databaseName = 'PancakeScripts';
+    const storeName = 'settings';
+    let database;
+
+    async function load() {
+        const entries = await localDatabase.getAllEntries(storeName);
+        const configurations = {};
+        for(const entry of entries) {
+            configurations[entry.key] = entry.value;
+        }
+        return configurations;
+    }
+
+    async function save(key, value) {
+        await localDatabase.saveEntry(storeName, {key, value});
+    }
+
+    return exports;
 
 }
 );
