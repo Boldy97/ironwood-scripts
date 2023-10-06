@@ -1,4 +1,4 @@
-(auth, pages, components, util) => {
+(userStore, pages, components, util) => {
 
     const PAGE_NAME = 'Plugin not synced';
     const STARTED = new Date().getTime();
@@ -6,7 +6,7 @@
     async function initialise() {
         await addSyncedPage();
         const intervalReference = window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
-        await auth.ready;
+        await userStore.ready;
         clearInterval(intervalReference);
         removeSyncedPage();
     }

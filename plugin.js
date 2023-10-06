@@ -110,9 +110,8 @@ window.PANCAKE_VERSION = '2.9';
 
 })();
 // actionCache
-window.moduleRegistry.add('actionCache', (auth, request, Promise) => {
+window.moduleRegistry.add('actionCache', (request, Promise) => {
 
-    const authenticated = auth.ready;
     const isReady = new Promise.Deferred();
 
     const exports = {
@@ -123,7 +122,6 @@ window.moduleRegistry.add('actionCache', (auth, request, Promise) => {
     };
 
     async function initialise() {
-        await authenticated;
         const actions = await request.listActions();
         exports.byId = {};
         exports.byName = {};
@@ -158,7 +156,6 @@ window.moduleRegistry.add('auth', (Promise) => {
         TOKEN = 'Basic ' + btoa(name + ':' + password);
         authenticated.resolve();
         exports.isReady = true;
-        $('#authenticatedMarker').remove();
     }
 
     function getHeaders() {
@@ -821,7 +818,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 }
 );
 // configuration
-window.moduleRegistry.add('configuration', (auth, Promise, localConfigurationStore, _remoteConfigurationStore) => {
+window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _remoteConfigurationStore) => {
 
     const loaded = new Promise.Deferred();
     const configurationStore = _remoteConfigurationStore || localConfigurationStore;
@@ -880,22 +877,22 @@ window.moduleRegistry.add('configuration', (auth, Promise, localConfigurationSto
                 save(item, value);
             }
         }
+        loaded.promise.then(configs => {
+            let value;
+            if(item.key in configs) {
+                value = JSON.parse(configs[item.key]);
+            } else {
+                value = item.default;
+            }
+            item.handler(value, true);
+        });
         exports.items.push(item);
         return item;
     }
 
     async function load() {
         const configs = await configurationStore.load();
-        for(const item of exports.items) {
-            let value;
-            if(configs[item.key]) {
-                value = JSON.parse(configs[item.key]);
-            } else {
-                value = item.default;
-            }
-            item.handler(value, true);
-        }
-        loaded.resolve();
+        loaded.resolve(configs);
     }
 
     async function save(item, value) {
@@ -1611,14 +1608,20 @@ window.moduleRegistry.add('request', (auth) => {
 
     const authenticated = auth.ready;
 
-    const exports = makeRequest;
-
     let CURRENT_REQUEST = null;
 
-    async function makeRequest(url, body) {
-        await authenticated;
-        await throttle();
-        const headers = auth.getHeaders();
+    async function makeAuthenticatedRequest(url, body) {
+        return makeRequest(url, body, true);
+    }
+
+    async function makeRequest(url, body, useAuthentication) {
+        if(useAuthentication) {
+            await authenticated;
+            await throttle();
+        }
+        const headers = useAuthentication ? auth.getHeaders() : {
+            'Content-Type': 'application/json'
+        };
         const method = body ? 'POST' : 'GET';
         try {
             if(body) {
@@ -1668,27 +1671,28 @@ window.moduleRegistry.add('request', (auth) => {
         }
     }
 
+    makeRequest.authenticated = makeAuthenticatedRequest;
+
     // alphabetical
 
-    makeRequest.getConfigurations = () => makeRequest('configuration');
-    makeRequest.saveConfiguration = (key, value) => makeRequest('configuration', {[key]: value});
+    makeRequest.getConfigurations = () => makeRequest.authenticated('configuration');
+    makeRequest.saveConfiguration = (key, value) => makeRequest.authenticated('configuration', {[key]: value});
 
-    makeRequest.getActionEstimation = (skill, action) => makeRequest(`estimation/action?skill=${skill}&action=${action}`);
-    makeRequest.getAutomationEstimation = (action) => makeRequest(`estimation/automation?id=${action}`);
+    makeRequest.getActionEstimation = (skill, action) => makeRequest.authenticated(`estimation/action?skill=${skill}&action=${action}`);
+    makeRequest.getAutomationEstimation = (action) => makeRequest.authenticated(`estimation/automation?id=${action}`);
 
-    makeRequest.getGuildMembers = () => makeRequest('guild/members');
-    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest('guild/quest/register', {itemId, amount});
-    makeRequest.getGuildQuestStats = () => makeRequest('guild/quest/stats');
-    makeRequest.unregisterGuildQuest = (itemId) => makeRequest('guild/quest/unregister', {itemId});
+    makeRequest.getGuildMembers = () => makeRequest.authenticated('guild/members');
+    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest.authenticated('guild/quest/register', {itemId, amount});
+    makeRequest.getGuildQuestStats = () => makeRequest.authenticated('guild/quest/stats');
+    makeRequest.unregisterGuildQuest = (itemId) => makeRequest.authenticated('guild/quest/unregister', {itemId});
 
-    makeRequest.getLeaderboardGuildRanks = () => makeRequest('leaderboard/ranks/guild');
+    makeRequest.getLeaderboardGuildRanks = () => makeRequest.authenticated('leaderboard/ranks/guild');
 
-    makeRequest.getMarketConversion = () => makeRequest('market/conversions');
-    makeRequest.getMarketFilters = () => makeRequest('market/filters');
-    makeRequest.saveMarketFilter = (filter) => makeRequest('market/filters', filter);
-    makeRequest.removeMarketFilter = (id) => makeRequest(`market/filters/${id}/remove`);
+    makeRequest.getMarketFilters = () => makeRequest.authenticated('market/filters');
+    makeRequest.saveMarketFilter = (filter) => makeRequest.authenticated('market/filters', filter);
+    makeRequest.removeMarketFilter = (id) => makeRequest.authenticated(`market/filters/${id}/remove`);
 
-    makeRequest.saveWebhook = (webhook) => makeRequest('notification/webhook', webhook);
+    makeRequest.saveWebhook = (webhook) => makeRequest.authenticated('notification/webhook', webhook);
 
     makeRequest.listActions = () => makeRequest('public/list/action');
     makeRequest.listItems = () => makeRequest('public/list/item');
@@ -1696,11 +1700,130 @@ window.moduleRegistry.add('request', (auth) => {
     makeRequest.listRecipes = () => makeRequest('public/list/recipe');
     makeRequest.listSkills = () => makeRequest('public/list/skills');
 
+    makeRequest.getMarketConversion = () => makeRequest('public/market/conversions');
+
     makeRequest.getChangelogs = () => makeRequest('public/settings/changelog');
     makeRequest.getVersion = () => makeRequest('public/settings/version');
 
-    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
+    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest.authenticated('request', interceptedRequest);
 
+    return makeRequest;
+
+}
+);
+// specialInterceptor
+window.moduleRegistry.add('specialInterceptor', (events) => {
+
+    const exports = {
+        interceptSend
+    }
+
+    function initialise() {
+        registerInterceptorXhr();
+        registerInterceptorUrlChange();
+        events.emit('url', window.location.href);
+    }
+
+    function registerInterceptorXhr() {
+        const request = window.XMLHttpRequest;
+        delete window.XMLHttpRequest;
+        Object.defineProperty(window, 'XMLHttpRequest', {
+            value: request,
+            writable: true,
+            configurable: true
+        });
+
+        const handler = {
+            construct(target, args) {
+                const reference = new request(...args);
+                const proxy = new Proxy(reference, {
+                        get: function(target, prop) {
+                            let result = reference[prop];
+                            if(typeof result === 'function') {
+                                result = result.bind(reference);
+                            }
+                            if(prop === 'open') {
+                                return (function() {
+                                    this.__url = arguments[1];
+                                    return result(...arguments);
+                                }).bind(reference);
+                            }
+                            if(prop === 'send') {
+                                return (function() {
+                                    exports.interceptSend.apply(reference, arguments);
+                                    return result(...arguments);
+                                }).bind(reference);
+                            }
+                            return result;
+                        },
+                        set(obj, prop, value) {
+                            reference[prop] = value;
+                            return value;
+                        }
+                });
+                return proxy;
+            }
+        };
+        window.XMLHttpRequest = new Proxy(request, handler);
+    }
+
+    function interceptSend() {
+        let requestBody = undefined;
+        try {
+            requestBody = JSON.parse(arguments[0]);
+        } catch(e) {}
+        this.addEventListener('load', function() {
+            const status = this.status
+            const url = this.responseURL;
+            if(!url.includes('ironwoodrpg.com')) {
+                return;
+            }
+            console.debug(`intercepted ${url}`);
+            const responseHeaders = this.getAllResponseHeaders();
+            if(this.responseType === 'blob') {
+                return;
+            }
+            const responseBody = extractResponseFromXMLHttpRequest(this);
+            events.emit('xhr', {
+                url,
+                status,
+                request: requestBody,
+                response: responseBody
+            }, { skipCache:true });
+        })
+    }
+
+    function extractResponseFromXMLHttpRequest(xhr) {
+        if(xhr.responseType === 'blob') {
+            return null;
+        }
+        let responseBody;
+        if(xhr.responseType === '' || xhr.responseType === 'text') {
+            try {
+                return JSON.parse(xhr.responseText);
+            } catch (err) {
+                console.debug('Error reading or processing response.', err);
+            }
+        }
+        return xhr.response;
+    }
+
+    function registerInterceptorUrlChange() {
+        const pushState = history.pushState;
+        history.pushState = function() {
+            pushState.apply(history, arguments);
+            console.debug(`Detected page ${arguments[2]}`);
+            events.emit('url', arguments[2]);
+        };
+        const replaceState = history.replaceState;
+        history.replaceState = function() {
+            replaceState.apply(history, arguments);
+            console.debug(`Detected page ${arguments[2]}`);
+            events.emit('url', arguments[2]);
+        }
+    }
+
+    initialise();
 
     return exports;
 
@@ -1971,10 +2094,10 @@ window.moduleRegistry.add('webhooks', (request, configuration) => {
 }
 );
 // authToast
-window.moduleRegistry.add('authToast', (auth, toast) => {
+window.moduleRegistry.add('authToast', (userStore, toast) => {
 
     async function initialise() {
-        await auth.ready;
+        await userStore.ready;
         toast.create({
             text: 'Pancake-Scripts initialised!',
             image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png'
@@ -2061,13 +2184,11 @@ window.moduleRegistry.add('changelog', (Promise, pages, components, request, uti
 }
 );
 // configurationPage
-window.moduleRegistry.add('configurationPage', (pages, components, elementWatcher, configuration, auth, elementCreator) => {
+window.moduleRegistry.add('configurationPage', (pages, components, elementWatcher, configuration, elementCreator) => {
 
     const PAGE_NAME = 'Configuration';
-    const blueprints = [];
 
     async function initialise() {
-        await auth.ready;
         await pages.register({
             category: 'Misc',
             name: PAGE_NAME,
@@ -2076,7 +2197,6 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
             render: renderPage
         });
         elementCreator.addStyles(styles);
-        await generateBlueprint();
         pages.show(PAGE_NAME);
     }
 
@@ -2092,6 +2212,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
             }
             categories[item.category].items.push(item);
         }
+        const blueprints = [];
         let column = 1;
         for(const category in categories) {
             column = 1 - column;
@@ -2111,6 +2232,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
                 }]
             });
         }
+        return blueprints;
     }
 
     function createRows(item) {
@@ -2174,6 +2296,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
     }
 
     async function renderPage() {
+        const blueprints = await generateBlueprint();
         for(const blueprint of blueprints) {
             components.addComponent(blueprint);
         }
@@ -2186,40 +2309,6 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
     `;
 
     initialise();
-}
-);
-// dataTransmitter
-window.moduleRegistry.add('dataTransmitter', (auth, request, events) => {
-
-    function initialise() {
-        events.register('xhr', handleXhr);
-    }
-
-    async function handleXhr(xhr) {
-        if(xhr.status !== 200) {
-            return;
-        }
-        let response = xhr.response;
-        if(Array.isArray(response)) {
-            response = {
-                value: response
-            };
-        }
-        if(xhr.url.endsWith('getUser')) {
-            const name = response.user.displayName;
-            const password = new Date(response.user.createdAt).getTime();
-            auth.register(name, password);
-        }
-        await request.handleInterceptedRequest({
-            url: xhr.url,
-            status: xhr.status,
-            payload: JSON.stringify(xhr.request),
-            response: JSON.stringify(response)
-        });
-    }
-
-    initialise();
-
 }
 );
 // estimations
@@ -2912,7 +3001,7 @@ window.moduleRegistry.add('idleBeep', (configuration, events, util) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (auth, configuration, itemStore, util) => {
+window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
 
     let enabled = false;
     let entered = false;
@@ -3759,7 +3848,7 @@ window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatche
 }
 );
 // syncWarningPage
-window.moduleRegistry.add('syncWarningPage', (auth, pages, components, util) => {
+window.moduleRegistry.add('syncWarningPage', (userStore, pages, components, util) => {
 
     const PAGE_NAME = 'Plugin not synced';
     const STARTED = new Date().getTime();
@@ -3767,7 +3856,7 @@ window.moduleRegistry.add('syncWarningPage', (auth, pages, components, util) => 
     async function initialise() {
         await addSyncedPage();
         const intervalReference = window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
-        await auth.ready;
+        await userStore.ready;
         clearInterval(intervalReference);
         removeSyncedPage();
     }
@@ -4172,9 +4261,8 @@ window.moduleRegistry.add('estimationStore', (events, request, configuration, it
 }
 );
 // itemStore
-window.moduleRegistry.add('itemStore', (auth, request, Promise) => {
+window.moduleRegistry.add('itemStore', (request, Promise) => {
 
-    const authenticated = auth.ready;
     const isReady = new Promise.Deferred();
 
     const exports = {
@@ -4187,7 +4275,6 @@ window.moduleRegistry.add('itemStore', (auth, request, Promise) => {
     };
 
     async function initialise() {
-        await authenticated;
         const enrichedItems = await request.listItems();
         exports.byId = {};
         exports.byName = {};
@@ -4271,9 +4358,8 @@ window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
 }
 );
 // skillStore
-window.moduleRegistry.add('skillStore', (auth, request, Promise) => {
+window.moduleRegistry.add('skillStore', (request, Promise) => {
 
-    const authenticated = auth.ready;
     const isReady = new Promise.Deferred();
 
     const exports = {
@@ -4284,7 +4370,6 @@ window.moduleRegistry.add('skillStore', (auth, request, Promise) => {
     };
 
     async function initialise() {
-        await authenticated;
         const skills = await request.listSkills();
         exports.byId = {};
         exports.byName = {};

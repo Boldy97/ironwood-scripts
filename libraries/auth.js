@@ -14,7 +14,6 @@
         TOKEN = 'Basic ' + btoa(name + ':' + password);
         authenticated.resolve();
         exports.isReady = true;
-        $('#authenticatedMarker').remove();
     }
 
     function getHeaders() {

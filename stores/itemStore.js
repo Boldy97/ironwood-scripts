@@ -1,6 +1,5 @@
-(auth, request, Promise) => {
+(request, Promise) => {
 
-    const authenticated = auth.ready;
     const isReady = new Promise.Deferred();
 
     const exports = {
@@ -13,7 +12,6 @@
     };
 
     async function initialise() {
-        await authenticated;
         const enrichedItems = await request.listItems();
         exports.byId = {};
         exports.byName = {};

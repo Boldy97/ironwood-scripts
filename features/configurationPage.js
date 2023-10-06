@@ -1,10 +1,8 @@
-(pages, components, elementWatcher, configuration, auth, elementCreator) => {
+(pages, components, elementWatcher, configuration, elementCreator) => {
 
     const PAGE_NAME = 'Configuration';
-    const blueprints = [];
 
     async function initialise() {
-        await auth.ready;
         await pages.register({
             category: 'Misc',
             name: PAGE_NAME,
@@ -13,7 +11,6 @@
             render: renderPage
         });
         elementCreator.addStyles(styles);
-        await generateBlueprint();
         pages.show(PAGE_NAME);
     }
 
@@ -29,6 +26,7 @@
             }
             categories[item.category].items.push(item);
         }
+        const blueprints = [];
         let column = 1;
         for(const category in categories) {
             column = 1 - column;
@@ -48,6 +46,7 @@
                 }]
             });
         }
+        return blueprints;
     }
 
     function createRows(item) {
@@ -111,6 +110,7 @@
     }
 
     async function renderPage() {
+        const blueprints = await generateBlueprint();
         for(const blueprint of blueprints) {
             components.addComponent(blueprint);
         }

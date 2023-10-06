@@ -1,4 +1,4 @@
-(auth, configuration, itemStore, util) => {
+(configuration, itemStore, util) => {
 
     let enabled = false;
     let entered = false;

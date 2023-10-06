@@ -1,4 +1,4 @@
-(auth, Promise, localConfigurationStore, _remoteConfigurationStore) => {
+(Promise, localConfigurationStore, _remoteConfigurationStore) => {
 
     const loaded = new Promise.Deferred();
     const configurationStore = _remoteConfigurationStore || localConfigurationStore;
@@ -57,22 +57,22 @@
                 save(item, value);
             }
         }
+        loaded.promise.then(configs => {
+            let value;
+            if(item.key in configs) {
+                value = JSON.parse(configs[item.key]);
+            } else {
+                value = item.default;
+            }
+            item.handler(value, true);
+        });
         exports.items.push(item);
         return item;
     }
 
     async function load() {
         const configs = await configurationStore.load();
-        for(const item of exports.items) {
-            let value;
-            if(configs[item.key]) {
-                value = JSON.parse(configs[item.key]);
-            } else {
-                value = item.default;
-            }
-            item.handler(value, true);
-        }
-        loaded.resolve();
+        loaded.resolve(configs);
     }
 
     async function save(item, value) {

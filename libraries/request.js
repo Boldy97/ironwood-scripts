@@ -2,14 +2,20 @@
 
     const authenticated = auth.ready;
 
-    const exports = makeRequest;
-
     let CURRENT_REQUEST = null;
 
-    async function makeRequest(url, body) {
-        await authenticated;
-        await throttle();
-        const headers = auth.getHeaders();
+    async function makeAuthenticatedRequest(url, body) {
+        return makeRequest(url, body, true);
+    }
+
+    async function makeRequest(url, body, useAuthentication) {
+        if(useAuthentication) {
+            await authenticated;
+            await throttle();
+        }
+        const headers = useAuthentication ? auth.getHeaders() : {
+            'Content-Type': 'application/json'
+        };
         const method = body ? 'POST' : 'GET';
         try {
             if(body) {
@@ -59,27 +65,28 @@
         }
     }
 
+    makeRequest.authenticated = makeAuthenticatedRequest;
+
     // alphabetical
 
-    makeRequest.getConfigurations = () => makeRequest('configuration');
-    makeRequest.saveConfiguration = (key, value) => makeRequest('configuration', {[key]: value});
+    makeRequest.getConfigurations = () => makeRequest.authenticated('configuration');
+    makeRequest.saveConfiguration = (key, value) => makeRequest.authenticated('configuration', {[key]: value});
 
-    makeRequest.getActionEstimation = (skill, action) => makeRequest(`estimation/action?skill=${skill}&action=${action}`);
-    makeRequest.getAutomationEstimation = (action) => makeRequest(`estimation/automation?id=${action}`);
+    makeRequest.getActionEstimation = (skill, action) => makeRequest.authenticated(`estimation/action?skill=${skill}&action=${action}`);
+    makeRequest.getAutomationEstimation = (action) => makeRequest.authenticated(`estimation/automation?id=${action}`);
 
-    makeRequest.getGuildMembers = () => makeRequest('guild/members');
-    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest('guild/quest/register', {itemId, amount});
-    makeRequest.getGuildQuestStats = () => makeRequest('guild/quest/stats');
-    makeRequest.unregisterGuildQuest = (itemId) => makeRequest('guild/quest/unregister', {itemId});
+    makeRequest.getGuildMembers = () => makeRequest.authenticated('guild/members');
+    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest.authenticated('guild/quest/register', {itemId, amount});
+    makeRequest.getGuildQuestStats = () => makeRequest.authenticated('guild/quest/stats');
+    makeRequest.unregisterGuildQuest = (itemId) => makeRequest.authenticated('guild/quest/unregister', {itemId});
 
-    makeRequest.getLeaderboardGuildRanks = () => makeRequest('leaderboard/ranks/guild');
+    makeRequest.getLeaderboardGuildRanks = () => makeRequest.authenticated('leaderboard/ranks/guild');
 
-    makeRequest.getMarketConversion = () => makeRequest('market/conversions');
-    makeRequest.getMarketFilters = () => makeRequest('market/filters');
-    makeRequest.saveMarketFilter = (filter) => makeRequest('market/filters', filter);
-    makeRequest.removeMarketFilter = (id) => makeRequest(`market/filters/${id}/remove`);
+    makeRequest.getMarketFilters = () => makeRequest.authenticated('market/filters');
+    makeRequest.saveMarketFilter = (filter) => makeRequest.authenticated('market/filters', filter);
+    makeRequest.removeMarketFilter = (id) => makeRequest.authenticated(`market/filters/${id}/remove`);
 
-    makeRequest.saveWebhook = (webhook) => makeRequest('notification/webhook', webhook);
+    makeRequest.saveWebhook = (webhook) => makeRequest.authenticated('notification/webhook', webhook);
 
     makeRequest.listActions = () => makeRequest('public/list/action');
     makeRequest.listItems = () => makeRequest('public/list/item');
@@ -87,12 +94,13 @@
     makeRequest.listRecipes = () => makeRequest('public/list/recipe');
     makeRequest.listSkills = () => makeRequest('public/list/skills');
 
+    makeRequest.getMarketConversion = () => makeRequest('public/market/conversions');
+
     makeRequest.getChangelogs = () => makeRequest('public/settings/changelog');
     makeRequest.getVersion = () => makeRequest('public/settings/version');
 
-    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest('request', interceptedRequest);
+    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest.authenticated('request', interceptedRequest);
 
-
-    return exports;
+    return makeRequest;
 
 }
