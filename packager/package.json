@@ -4,7 +4,8 @@
   "description": "",
   "main": "run.js",
   "scripts": {
-    "start": "node run.js"
+    "start": "node run.js",
+    "watch": "nodemon -w ../ -i plugin.js"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/Boldy97/ironwood-scripts/issues"
   },
-  "homepage": "https://github.com/Boldy97/ironwood-scripts#readme"
+  "homepage": "https://github.com/Boldy97/ironwood-scripts#readme",
+  "dependencies": {
+    "nodemon": "^3.0.1"
+  }
 }

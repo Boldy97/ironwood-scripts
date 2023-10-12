@@ -10,6 +10,36 @@ Available on [Greasy Fork](https://greasyfork.org/en/scripts/475356-ironwood-rpg
 * Make a change to your fork
 * Submit a pull request for your change - [github docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
+# How to develop
+
+These steps assume you are using the Tampermonkey extension with Chrome
+
+* Create a new Tampermonkey script, with this content.
+Replace the last require with the path to the actual plugin.js
+```
+// ==UserScript==
+// @name         Ironwood RGP - Development
+// @namespace    http://tampermonkey.net/
+// @version      0.1
+// @description  try to take over the world!
+// @author       You
+// @match        https://ironwoodrpg.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=ironwoodrpg.com
+// @grant        none
+// @require      https://code.jquery.com/jquery-3.6.4.min.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js
+// @require      file://C:\some\path\here\plugin.js
+// ==/UserScript==
+```
+* You may need to enable local file access for Tampermonkey
+  * Go to chrome://extensions
+  * Navigate to Tampermonkey > details
+  * Scroll down, and enable "Allow access to file URLs"
+* You can now load the page, and the scripts should be there
+* run `npm run watch` in the packager folder
+  * this will update the plugin.js in the root folder every time a change is made to the scripts
+* refresh the game/page to get the updated version
+
 # FAQ
 
 ## What's this module registry ?

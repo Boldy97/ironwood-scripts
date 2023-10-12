@@ -13,7 +13,7 @@
     let skillTotalExp = null;
 
     async function initialise() {
-        registerUserStoreHandler(handleuserStore);
+        registerUserStoreHandler(handleUserStore);
         await pages.register({
             category: 'Skills',
             name: PAGE_NAME,
@@ -28,9 +28,10 @@
             default: true,
             handler: handleConfigStateChange
         });
-
         await setupSkillProperties();
-        await handleuserStore();
+
+        await userStore.ready;
+        await handleUserStore();
     }
 
     async function setupSkillProperties() {
@@ -81,7 +82,7 @@
         }
     }
 
-    async function handleuserStore() {
+    async function handleUserStore() {
         if(!skillProperties) {
             return;
         }

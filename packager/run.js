@@ -18,6 +18,7 @@ async function run() {
     }
     result += await readFile('suffix.js');
     writeFile('../plugin.js', result);
+    console.log('Generated plugin.js');
 }
 
 async function formatFile(directory, filename) {
