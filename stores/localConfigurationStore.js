@@ -5,12 +5,10 @@
         save
     };
 
-    const databaseName = 'PancakeScripts';
-    const storeName = 'settings';
-    let database;
+    const STORE_NAME = 'settings';
 
     async function load() {
-        const entries = await localDatabase.getAllEntries(storeName);
+        const entries = await localDatabase.getAllEntries(STORE_NAME);
         const configurations = {};
         for(const entry of entries) {
             configurations[entry.key] = entry.value;
@@ -19,7 +17,7 @@
     }
 
     async function save(key, value) {
-        await localDatabase.saveEntry(storeName, {key, value});
+        await localDatabase.saveEntry(STORE_NAME, {key, value});
     }
 
     return exports;

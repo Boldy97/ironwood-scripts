@@ -3,6 +3,7 @@
     const exports = {
         levelToExp,
         expToLevel,
+        expToVirtualLevel,
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
@@ -12,7 +13,9 @@
         parseDuration,
         divmod,
         sleep,
-        goToPage
+        goToPage,
+        compareObjects,
+        debounce
     };
 
     function levelToExp(level) {
@@ -23,6 +26,10 @@
     }
 
     function expToLevel(exp) {
+        return Math.min(100, expToVirtualLevel(exp));
+    }
+
+    function expToVirtualLevel(exp) {
         let level = Math.pow((exp + 1) * 5 / 6, 1 / 3.5);
         level = Math.floor(level);
         level = Math.max(1, level);
@@ -56,6 +63,11 @@
         if(!text) {
             return 0;
         }
+        const regexMatch = /\d+.*/.exec(text);
+        if(!regexMatch) {
+            return 0;
+        }
+        text = regexMatch[0];
         text = text.replaceAll(/,/g, '');
         let multiplier = 1;
         if(text.endsWith('%')) {
@@ -96,9 +108,7 @@
         if(result || +minutes) {
             result += `${minutes}m `;
         }
-        if(result || +seconds) {
-            result += `${seconds}s`;
-        }
+        result += `${seconds}s`;
 
         return result;
     }
@@ -133,6 +143,35 @@
 
     async function sleep(millis) {
         await new Promise(r => window.setTimeout(r, millis));
+    }
+
+    function compareObjects(object1, object2) {
+        const keys1 = Object.keys(object1);
+        const keys2 = Object.keys(object2);
+        if(keys1.length !== keys2.length) {
+            return false;
+        }
+        keys1.sort();
+        keys2.sort();
+        for(let i=0;i<keys1.length;i++) {
+            if(keys1[i] !== keys2[i]) {
+                return false;
+            }
+            if(object1[keys1[i]] !== object2[keys2[i]]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function debounce(callback, delay) {
+        let timer;
+        return function() {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                callback();
+            }, delay);
+        }
     }
 
     return exports;

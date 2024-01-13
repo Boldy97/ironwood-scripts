@@ -4,7 +4,6 @@
     const configurationStore = _remoteConfigurationStore || localConfigurationStore;
 
     const exports = {
-        ready: loaded.promise,
         registerCheckbox,
         registerInput,
         registerDropdown,
@@ -13,7 +12,8 @@
     };
 
     async function initialise() {
-        await load();
+        const configs = await configurationStore.load();
+        loaded.resolve(configs);
     }
 
     const CHECKBOX_KEYS = ['category', 'key', 'name', 'default', 'handler'];
@@ -57,7 +57,7 @@
                 save(item, value);
             }
         }
-        loaded.promise.then(configs => {
+        loaded.then(configs => {
             let value;
             if(item.key in configs) {
                 value = JSON.parse(configs[item.key]);
@@ -68,11 +68,6 @@
         });
         exports.items.push(item);
         return item;
-    }
-
-    async function load() {
-        const configs = await configurationStore.load();
-        loaded.resolve(configs);
     }
 
     async function save(item, value) {

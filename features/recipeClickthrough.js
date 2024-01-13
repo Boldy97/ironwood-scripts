@@ -1,11 +1,8 @@
-(request, configuration, util) => {
+(recipeCache, configuration, util) => {
 
     let enabled = false;
-    let recipeCacheByName;
-    let recipeCacheByImage;
-    let element;
 
-    async function initialise() {
+    function initialise() {
         configuration.registerCheckbox({
             category: 'UI Features',
             key: 'recipe-click',
@@ -18,29 +15,10 @@
 
     function handleConfigStateChange(state) {
         enabled = state;
-        setupRecipeCache();
-    }
-
-    async function setupRecipeCache() {
-        if(!enabled || recipeCacheByName) {
-            return;
-        }
-        recipeCacheByName = {};
-        recipeCacheByImage = {};
-        const recipes = await request.listRecipes();
-        for(const recipe of recipes) {
-            if(!recipeCacheByName[recipe.name]) {
-                recipeCacheByName[recipe.name] = recipe;
-            }
-            const lastPart = recipe.image.split('/').at(-1);
-            if(!recipeCacheByImage[lastPart]) {
-                recipeCacheByImage[lastPart] = recipe;
-            }
-        }
     }
 
     function handleClick(event) {
-        if(!enabled || !recipeCacheByName) {
+        if(!enabled) {
             return;
         }
         if($(event.currentTarget).closest('button').length) {
@@ -48,14 +26,14 @@
         }
         event.stopPropagation();
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = recipeCacheByName[name];
+        const nameMatch = recipeCache.byName[name];
         if(nameMatch) {
             return followRecipe(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = recipeCacheByImage[lastPart];
+        const imageMatch = recipeCache.byImage[lastPart];
         if(imageMatch) {
             return followRecipe(imageMatch);
         }

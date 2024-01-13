@@ -13,7 +13,7 @@
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
-window.PANCAKE_VERSION = '3.0';
+window.PANCAKE_VERSION = '4.0';
 (() => {
 
     if(window.moduleRegistry) {
@@ -30,16 +30,15 @@ window.PANCAKE_VERSION = '3.0';
 
     function add(name, initialiser) {
         modules[name] = createModule(name, initialiser);
-        buildModule(modules[name], true);
     }
 
     function get(name) {
         return modules[name] || null;
     }
 
-    function build() {
+    async function build() {
         for(const module of Object.values(modules)) {
-            buildModule(module);
+            await buildModule(module);
         }
     }
 
@@ -65,7 +64,7 @@ window.PANCAKE_VERSION = '3.0';
         return module;
     }
 
-    function buildModule(module, partial, chain) {
+    async function buildModule(module, partial, chain) {
         if(module.built) {
             return true;
         }
@@ -87,14 +86,19 @@ window.PANCAKE_VERSION = '3.0';
                 }
                 throw `Unresolved dependency : ${dependency.name}`;
             }
-            const built = buildModule(dependency.module, partial, chain);
+            const built = await buildModule(dependency.module, partial, chain);
             if(!built) {
                 return false;
             }
         }
 
         const parameters = module.dependencies.map(a => a.module?.reference);
-        module.reference = module.initialiser.apply(null, parameters);
+        try {
+            module.reference = await module.initialiser.apply(null, parameters);
+        } catch(e) {
+            console.error(`Failed building ${module.name}`, e);
+            return false;
+        }
         module.built = true;
 
         chain.pop();
@@ -109,66 +113,6 @@ window.PANCAKE_VERSION = '3.0';
     }
 
 })();
-// actionCache
-window.moduleRegistry.add('actionCache', (request, Promise) => {
-
-    const isReady = new Promise.Deferred();
-
-    const exports = {
-        ready: isReady.promise,
-        list: [],
-        byId: null,
-        byName: null
-    };
-
-    async function initialise() {
-        const actions = await request.listActions();
-        exports.byId = {};
-        exports.byName = {};
-        for(const action of actions) {
-            exports.list.push(action);
-            exports.byId[action.id] = action;
-            exports.byName[action.name] = action;
-        }
-        isReady.resolve();
-    }
-
-    initialise();
-
-    return exports;
-
-}
-);
-// auth
-window.moduleRegistry.add('auth', (Promise) => {
-
-    const authenticated = new Promise.Deferred();
-    let TOKEN = null;
-
-    const exports = {
-        ready: authenticated.promise,
-        isReady: false,
-        register,
-        getHeaders
-    };
-
-    function register(name, password) {
-        TOKEN = 'Basic ' + btoa(name + ':' + password);
-        authenticated.resolve();
-        exports.isReady = true;
-    }
-
-    function getHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': TOKEN
-        };
-    }
-
-    return exports;
-
-}
-);
 // colorMapper
 window.moduleRegistry.add('colorMapper', () => {
 
@@ -334,7 +278,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     function createRow_Input(inputBlueprint) {
-        const parentRow = $('<div/>').addClass('customRow myItemInputRowAdjustment');
+        const parentRow = $('<div/>').addClass('customRow');
         if(inputBlueprint.text) {
             parentRow
                 .append(
@@ -370,7 +314,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     function createRow_Button(buttonBlueprint) {
-        const parentRow = $('<div/>').addClass('customRow myItemInputRowAdjustment');
+        const parentRow = $('<div/>').addClass('customRow');
         for(const button of buttonBlueprint.buttons) {
             parentRow
                 .append(
@@ -386,7 +330,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     function createRow_Select(selectBlueprint) {
-        const parentRow = $('<div/>').addClass('customRow myItemInputRowAdjustment');
+        const parentRow = $('<div/>').addClass('customRow');
         const select = $('<select/>')
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
@@ -630,10 +574,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             justify-content: center;
             align-items: center;
             border-top: 1px solid var(--border-color);
-            padding: 5px 12px 5px 6px;
+            /*padding: 5px 12px 5px 6px;*/
             min-height: 0px;
             min-width: 0px;
             gap: var(--margin);
+            padding: calc(var(--gap) / 2) var(--gap);
         }
         .myItemImage {
             position: relative;
@@ -672,9 +617,6 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             text-align: center;
             border-radius: 4px;
             border: 1px solid var(--border-color);
-        }
-        .myItemInputRowAdjustment {
-            padding-right: 6px !important;
         }
         .myItemSelect {
             height: 40px;
@@ -824,7 +766,6 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
     const configurationStore = _remoteConfigurationStore || localConfigurationStore;
 
     const exports = {
-        ready: loaded.promise,
         registerCheckbox,
         registerInput,
         registerDropdown,
@@ -833,7 +774,8 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
     };
 
     async function initialise() {
-        await load();
+        const configs = await configurationStore.load();
+        loaded.resolve(configs);
     }
 
     const CHECKBOX_KEYS = ['category', 'key', 'name', 'default', 'handler'];
@@ -877,7 +819,7 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
                 save(item, value);
             }
         }
-        loaded.promise.then(configs => {
+        loaded.then(configs => {
             let value;
             if(item.key in configs) {
                 value = JSON.parse(configs[item.key]);
@@ -888,11 +830,6 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
         });
         exports.items.push(item);
         return item;
-    }
-
-    async function load() {
-        const configs = await configurationStore.load();
-        loaded.resolve(configs);
     }
 
     async function save(item, value) {
@@ -916,6 +853,238 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
     initialise();
 
     return exports;
+
+}
+);
+// Distribution
+window.moduleRegistry.add('Distribution', () => {
+
+    class Distribution {
+
+        #map = new Map();
+
+        constructor(initial) {
+            if(initial) {
+                this.add(initial, 1);
+            }
+        }
+
+        add(value, probability) {
+            if(this.#map.has(value)) {
+                this.#map.set(value, this.#map.get(value) + probability);
+            } else {
+                this.#map.set(value, probability);
+            }
+        }
+
+        addDistribution(other, weight) {
+            other.#map.forEach((probability, value) => {
+                this.add(value, probability * weight);
+            });
+        }
+
+        convolution(other, multiplier) {
+            const old = this.#map;
+            this.#map = new Map();
+            old.forEach((probability, value) => {
+                other.#map.forEach((probability2, value2) => {
+                    this.add(multiplier(value, value2), probability * probability2);
+                });
+            });
+        }
+
+        convolutionWithGenerator(generator, multiplier) {
+            const result = new Distribution();
+            this.#map.forEach((probability, value) => {
+                const other = generator(value);
+                other.#map.forEach((probability2, value2) => {
+                    result.add(multiplier(value, value2), probability * probability2);
+                });
+            });
+            return result;
+        }
+
+        count() {
+            return this.#map.size;
+        }
+
+        average() {
+            let result = 0;
+            this.#map.forEach((probability, value) => {
+                result += value * probability;
+            });
+            return result;
+        }
+
+        sum() {
+            let result = 0;
+            this.#map.forEach(probability => {
+                result += probability;
+            });
+            return result;
+        }
+
+        min() {
+            return Array.from(this.#map, ([k, v]) => k).reduce((a,b) => Math.min(a,b), Infinity);
+        }
+
+        max() {
+            return Array.from(this.#map, ([k, v]) => k).reduce((a,b) => Math.max(a,b), -Infinity);
+        }
+
+        variance() {
+            let result = 0;
+            const average = this.average();
+            this.#map.forEach((probability, value) => {
+                const dist = average - value;
+                result += dist * dist * probability;
+            });
+            return result;
+        }
+
+        normalize() {
+            const sum = this.sum();
+            this.#map = new Map(Array.from(this.#map, ([k, v]) => [k, v / sum]));
+        }
+
+        expectedRollsUntill(limit) {
+            const x = (this.count() - 1) / 2.0;
+            const y = x * (x + 1) * (2 * x + 1) / 6;
+            const z = 2*y / this.variance();
+            const average = this.average();
+            const a = y + average * (average - 1) * z / 2;
+            const b = z * average * average;
+            return limit / average + a / b;
+        }
+
+        clone() {
+            const result = new Distribution();
+            result.#map = new Map(this.#map);
+            return result;
+        }
+
+        getLeftTail(rolls, cutoff) {
+            const mean = rolls * this.average();
+            const variance = rolls * this.variance();
+            const stdev = Math.sqrt(variance);
+            return Distribution.cdf(cutoff, mean, stdev);
+        }
+
+        getRightTail(rolls, cutoff) {
+            return 1 - this.getLeftTail(rolls, cutoff);
+        }
+
+        getRange(rolls, left, right) {
+            return 1 - this.getLeftTail(rolls, left) - this.getRightTail(rolls, right);
+        }
+
+        getMeanLeftTail(rolls, cutoff) {
+            return this.getMeanRange(rolls, -Infinity, cutoff);
+        }
+
+        getMeanRightTail(rolls, cutoff) {
+            return this.getMeanRange(rolls, cutoff, Infinity);
+        }
+
+        getMeanRange(rolls, left, right) {
+            const mean = rolls * this.average();
+            const variance = rolls * this.variance();
+            const stdev = Math.sqrt(variance);
+            const alpha = (left - mean) / stdev;
+            const beta = (right - mean) / stdev;
+            const c = Distribution.pdf(beta) - Distribution.pdf(alpha);
+            const d = Distribution.cdf(beta, 0, 1) - Distribution.cdf(alpha, 0, 1);
+            if(!c || !d) {
+                return (left + right) / 2;
+            }
+            return mean - stdev * c / d;
+        }
+
+        toChart(other) {
+            if(other) {
+                const min = Math.min(this.min(), other.min());
+                const max = Math.max(this.max(), other.max());
+                for(let i=min;i<=max;i++) {
+                    if(!this.#map.has(i)) {
+                        this.#map.set(i, 0);
+                    }
+                }
+            }
+            const result = Array.from(this.#map, ([k, v]) => ({x:k,y:v}));
+            result.sort((a,b) => a.x - b.x);
+            return result;
+        }
+
+        redistribute(value, exceptions) {
+            // redistributes this single value across all others, except the exceptions
+            const probability = this.#map.get(value);
+            if(!probability) {
+                return;
+            }
+            this.#map.delete(value);
+
+            let sum = 0;
+            this.#map.forEach((p, v) => {
+                if(!exceptions.includes(v)) {
+                    sum += p;
+                }
+            });
+            this.#map.forEach((p, v) => {
+                if(!exceptions.includes(v)) {
+                    this.#map.set(v, p + probability*p/sum);
+                }
+            });
+        }
+
+    };
+
+    Distribution.getRandomChance = function(probability) {
+        const result = new Distribution();
+        result.add(true, probability);
+        result.add(false, 1-probability);
+        return result;
+    };
+
+    // probability density function -> probability mass function
+    Distribution.getRandomOutcomeFloored = function(min, max) {
+        const result = new Distribution();
+        const rangeMult = 1 / (max - min);
+        for(let value=Math.floor(min); value<max; value++) {
+            let lower = value;
+            let upper = value + 1;
+            if(lower < min) {
+                lower = min;
+            }
+            if(upper > max) {
+                upper = max;
+            }
+            result.add(value, (upper - lower) * rangeMult);
+        }
+        return result;
+    };
+
+    Distribution.getRandomOutcomeRounded = function(min, max) {
+        return Distribution.getRandomOutcomeFloored(min + 0.5, max + 0.5);
+    }
+
+    // Cumulative Distribution Function
+    // https://stackoverflow.com/a/59217784
+    Distribution.cdf = function(value, mean, std) {
+        const z = (value - mean) / std;
+        const t = 1 / (1 + .2315419 * Math.abs(z));
+        const d =.3989423 * Math.exp( -z * z / 2);
+        let prob = d * t * (.3193815 + t * ( -.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+        if(z > 0 ) {
+            prob = 1 - prob;
+        }
+        return prob
+    };
+
+    Distribution.pdf = function(zScore) {
+        return (Math.E ** (-zScore*zScore/2)) / Math.sqrt(2 * Math.PI);
+    };
+
+    return Distribution;
 
 }
 );
@@ -953,11 +1122,14 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
 
     const $ = window.$;
 
-    async function exists(selector) {
+    async function exists(selector, delay, timeout, inverted) {
+        delay = delay !== undefined ? delay : 10;
+        timeout = timeout !== undefined ? timeout : 5000;
         const promiseWrapper = new Promise.Checking(() => {
-            return $(selector)[0];
-        }, 10, 5000);
-        return promiseWrapper.promise;
+            let result = $(selector)[0];
+            return inverted ? !result : result;
+        }, delay, timeout);
+        return promiseWrapper;
     }
 
     async function childAdded(selector) {
@@ -978,7 +1150,7 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
             promiseWrapper.reject(error);
         }
 
-        return promiseWrapper.promise;
+        return promiseWrapper;
     }
 
     async function childAddedContinuous(selector, callback) {
@@ -1049,73 +1221,11 @@ window.moduleRegistry.add('events', () => {
 }
 );
 // interceptor
-window.moduleRegistry.add('interceptor', (events, _specialInterceptor) => {
+window.moduleRegistry.add('interceptor', (events) => {
 
     function initialise() {
-        if(_specialInterceptor) {
-            return;
-        }
-        registerInterceptorXhr();
         registerInterceptorUrlChange();
         events.emit('url', window.location.href);
-    }
-
-    function registerInterceptorXhr() {
-        const XHR = XMLHttpRequest.prototype;
-        const open = XHR.open;
-        const send = XHR.send;
-        const setRequestHeader = XHR.setRequestHeader;
-
-        XHR.open = function() {
-            this._requestHeaders = {};
-            return open.apply(this, arguments);
-        }
-        XHR.setRequestHeader = function(header, value) {
-            this._requestHeaders[header] = value;
-            return setRequestHeader.apply(this, arguments);
-        }
-        XHR.send = function() {
-            let requestBody = undefined;
-            try {
-                requestBody = JSON.parse(arguments[0]);
-            } catch(e) {}
-            this.addEventListener('load', function() {
-                const status = this.status
-                const url = this.responseURL;
-                if(!url.includes('ironwoodrpg.com')) {
-                    return;
-                }
-                console.debug(`intercepted ${url}`);
-                const responseHeaders = this.getAllResponseHeaders();
-                if(this.responseType === 'blob') {
-                    return;
-                }
-                const responseBody = extractResponseFromXMLHttpRequest(this);
-                events.emit('xhr', {
-                    url,
-                    status,
-                    request: requestBody,
-                    response: responseBody
-                }, { skipCache:true });
-            })
-
-            return send.apply(this, arguments);
-        }
-    }
-
-    function extractResponseFromXMLHttpRequest(xhr) {
-        if(xhr.responseType === 'blob') {
-            return null;
-        }
-        let responseBody;
-        if(xhr.responseType === '' || xhr.responseType === 'text') {
-            try {
-                return JSON.parse(xhr.responseText);
-            } catch (err) {
-                console.debug('Error reading or processing response.', err);
-            }
-        }
-        return xhr.response;
     }
 
     function registerInterceptorUrlChange() {
@@ -1135,7 +1245,56 @@ window.moduleRegistry.add('interceptor', (events, _specialInterceptor) => {
 
     initialise();
 
-});
+}
+);
+// itemUtil
+window.moduleRegistry.add('itemUtil', (util, itemCache) => {
+
+    const exports = {
+        extractItem
+    };
+
+    function extractItem(element, target, ignoreMissing) {
+        element = $(element);
+        const name = element.find('.name').text();
+        let item = itemCache.byName[name];
+        if(!item) {
+            const src = element.find('img').attr('src');
+            if(src) {
+                const image = src.split('/').at(-1);
+                item = itemCache.byImage[image];
+            }
+        }
+        if(!item) {
+            if(!ignoreMissing) {
+                console.warn(`Could not find item with name [${name}]`);
+            }
+            return false;
+        }
+        let amount = 1;
+        let amountElements = element.find('.amount, .value');
+        if(amountElements.length) {
+            amount = amountElements.text();
+            if(!amount) {
+                return false;
+            }
+            if(amount.includes(' / ')) {
+                amount = amount.split(' / ')[0];
+            }
+            amount = util.parseNumber(amount);
+        }
+        let uses = element.find('.uses, .use').text();
+        if(uses && !uses.endsWith('HP')) {
+            amount += util.parseNumber(uses);
+        }
+        target[item.id] = (target[item.id] || 0) + amount;
+        return item;
+    }
+
+    return exports;
+
+}
+);
 // localDatabase
 window.moduleRegistry.add('localDatabase', (Promise) => {
 
@@ -1144,30 +1303,35 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         saveEntry
     }
 
-    const isReady = new Promise.Deferred();
+    const initialised = new Promise.Expiring(2000);
     let database = null;
 
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 1);
+        const request = window.indexedDB.open(databaseName, 2);
         request.onsuccess = function(event) {
             database = this.result;
-            isReady.resolve();
+            initialised.resolve(exports);
         };
         request.onerror = function(event) {
             console.error(`Failed creating IndexedDB : ${event.target.errorCode}`);
         };
         request.onupgradeneeded = function(event) {
-            console.debug('Creating IndexedDB');
             const db = event.target.result;
-            const objectStore = db.createObjectStore('settings', { keyPath: 'key' });
-            objectStore.createIndex('key', 'key', { unique: true });
+            if(event.oldVersion <= 0) {
+                console.debug('Creating IndexedDB');
+                const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
+                settingsStore.createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 1) {
+                const syncTrackingStore = db.createObjectStore('sync-tracking', { keyPath: 'key' });
+                syncTrackingStore.createIndex('key', 'key', { unique: true });
+            }
         };
     }
 
     async function getAllEntries(storeName) {
-        await isReady.promise;
         const result = new Promise.Expiring(1000);
         const entries = [];
         const store = database.transaction(storeName, 'readonly').objectStore(storeName);
@@ -1184,11 +1348,10 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         request.onerror = function(event) {
             result.reject(event.error);
         };
-        return result.promise;
+        return result;
     }
 
     async function saveEntry(storeName, entry) {
-        await isReady.promise;
         const result = new Promise.Expiring(1000);
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
@@ -1198,13 +1361,12 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         request.onerror = function(event) {
             result.reject(event.error);
         };
-        return result.promise;
-
+        return result;
     }
 
     initialise();
 
-    return exports;
+    return initialised;
 
 }
 );
@@ -1227,16 +1389,21 @@ window.moduleRegistry.add('pageDetector', (events) => {
                 skill: +parts[parts.length-3],
                 action: +parts[parts.length-1]
             };
-        } else if(url.includes('house/produce')) {
-            result = {
-                type: 'automation',
-                building: +parts[parts.length-2],
-                action: +parts[parts.length-1]
-            };
         } else if(url.includes('house/build')) {
             result = {
                 type: 'structure',
-                building: +parts[parts.length-1]
+                structure: +parts[parts.length-1]
+            };
+        } else if(url.includes('house/enhance')) {
+            result = {
+                type: 'enhancement',
+                structure: +parts[parts.length-1]
+            };
+        } else if(url.includes('house/produce')) {
+            result = {
+                type: 'automation',
+                structure: +parts[parts.length-2],
+                action: +parts[parts.length-1]
             };
         } else {
             result = {
@@ -1251,7 +1418,7 @@ window.moduleRegistry.add('pageDetector', (events) => {
 }
 );
 // pages
-window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, skillStore, elementCreator) => {
+window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, skillCache, elementCreator) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const getLastPage = events.getLast.bind(null, 'page');
@@ -1260,7 +1427,8 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
         register,
         requestRender,
         show,
-        hide
+        hide,
+        open: visitPage
     }
 
     const pages = [];
@@ -1368,7 +1536,7 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
                 .attr('type', 'button')
                 .addClass(`customMenuButton ${page.class}`)
                 .css('display', 'none')
-                .click(() => visitPage(page))
+                .click(() => visitPage(page.name))
                 .append(
                     $('<img/>')
                         .addClass('customMenuButtonImage')
@@ -1383,7 +1551,8 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
         return menuButton;
     }
 
-    async function visitPage(page) {
+    async function visitPage(name) {
+        const page = pages.find(p => p.name === name);
         if($('custom-page').length) {
             $('custom-page').remove();
         } else {
@@ -1440,11 +1609,12 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
         await elementWatcher.exists('nav-component > div.nav');
         let headerName = null;
         if(page.type === 'action') {
-            await skillStore.ready;
-            headerName = skillStore.byId[page.skill].name;
-        } else if(page.type === 'automation') {
-            headerName = 'House';
+            headerName = skillCache.byId[page.skill].name;
         } else if(page.type === 'structure') {
+            headerName = 'House';
+        } else if(page.type === 'enhancement') {
+            headerName = 'House';
+        } else if(page.type === 'automation') {
             headerName = 'House';
         } else {
             headerName = page.type;
@@ -1530,23 +1700,34 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
 window.moduleRegistry.add('Promise', () => {
 
     class Deferred {
-        promise;
+        #promise;
         resolve;
         reject;
-        isResolved = false;
         constructor() {
-            this.promise = new Promise((resolve, reject)=> {
+            this.#promise = new Promise((resolve, reject) => {
                 this.resolve = resolve;
                 this.reject = reject;
-            }).then(result => {
-                this.isResolved = true;
-                return result;
             }).catch(error => {
                 if(error) {
                     console.warn(error);
                 }
                 throw error;
             });
+        }
+
+        then() {
+            this.#promise.then.apply(this.#promise, arguments);
+            return this;
+        }
+
+        catch() {
+            this.#promise.catch.apply(this.#promise, arguments);
+            return this;
+        }
+
+        finally() {
+            this.#promise.finally.apply(this.#promise, arguments);
+            return this;
         }
     }
 
@@ -1556,7 +1737,7 @@ window.moduleRegistry.add('Promise', () => {
             const timeoutReference = window.setTimeout(() => {
                 this.resolve();
             }, timeout);
-            this.promise.finally(() => {
+            this.finally(() => {
                 window.clearTimeout(timeoutReference)
             });
         }
@@ -1565,10 +1746,13 @@ window.moduleRegistry.add('Promise', () => {
     class Expiring extends Deferred {
         constructor(timeout) {
             super();
+            if(timeout <= 0) {
+                return;
+            }
             const timeoutReference = window.setTimeout(() => {
                 this.reject(`Timed out after ${timeout} ms`);
             }, timeout);
-            this.promise.finally(() => {
+            this.finally(() => {
                 window.clearTimeout(timeoutReference)
             });
         }
@@ -1581,7 +1765,7 @@ window.moduleRegistry.add('Promise', () => {
             this.#checker = checker;
             this.#check();
             const intervalReference = window.setInterval(this.#check.bind(this), interval);
-            this.promise.finally(() => {
+            this.finally(() => {
                 window.clearInterval(intervalReference)
             });
         }
@@ -1604,31 +1788,19 @@ window.moduleRegistry.add('Promise', () => {
 }
 );
 // request
-window.moduleRegistry.add('request', (auth) => {
+window.moduleRegistry.add('request', () => {
 
-    const authenticated = auth.ready;
-
-    let CURRENT_REQUEST = null;
-
-    async function makeAuthenticatedRequest(url, body) {
-        return makeRequest(url, body, true);
-    }
-
-    async function makeRequest(url, body, useAuthentication) {
-        if(useAuthentication) {
-            await authenticated;
-            await throttle();
+    async function request(url, body, headers) {
+        if(!headers) {
+            headers = {};
         }
-        const headers = useAuthentication ? auth.getHeaders() : {
-            'Content-Type': 'application/json'
-        };
+        headers['Content-Type'] = 'application/json';
         const method = body ? 'POST' : 'GET';
         try {
             if(body) {
                 body = JSON.stringify(body);
             }
-            CURRENT_REQUEST = fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
-            const fetchResponse = await CURRENT_REQUEST;
+            const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
             if(fetchResponse.status !== 200) {
                 console.error(await fetchResponse.text());
                 return;
@@ -1652,62 +1824,24 @@ window.moduleRegistry.add('request', (auth) => {
         }
     }
 
-    async function throttle() {
-        if(!CURRENT_REQUEST) {
-            CURRENT_REQUEST = Promise.resolve();
-        }
-        while(CURRENT_REQUEST) {
-            const waitingOn = CURRENT_REQUEST;
-            try {
-                await CURRENT_REQUEST;
-            } catch(e) { }
-            if(CURRENT_REQUEST === null) {
-                CURRENT_REQUEST = Promise.resolve();
-                continue;
-            }
-            if(CURRENT_REQUEST === waitingOn) {
-                CURRENT_REQUEST = null;
-            }
-        }
-    }
-
-    makeRequest.authenticated = makeAuthenticatedRequest;
-
     // alphabetical
 
-    makeRequest.getConfigurations = () => makeRequest.authenticated('configuration');
-    makeRequest.saveConfiguration = (key, value) => makeRequest.authenticated('configuration', {[key]: value});
+    request.listActions = () => request('public/list/action');
+    request.listDrops = () => request('public/list/drop');
+    request.listItems = () => request('public/list/item');
+    request.listItemAttributes = () => request('public/list/itemAttribute');
+    request.listIngredients = () => request('public/list/ingredient');
+    request.listMonsters = () => request('public/list/monster');
+    request.listRecipes = () => request('public/list/recipe');
+    request.listSkills = () => request('public/list/skill');
+    request.listStructures = () => request('public/list/structure');
 
-    makeRequest.getActionEstimation = (skill, action) => makeRequest.authenticated(`estimation/action?skill=${skill}&action=${action}`);
-    makeRequest.getAutomationEstimation = (action) => makeRequest.authenticated(`estimation/automation?id=${action}`);
+    request.getMarketConversion = () => request('public/market/conversions');
 
-    makeRequest.getGuildMembers = () => makeRequest.authenticated('guild/members');
-    makeRequest.registerGuildQuest = (itemId, amount) => makeRequest.authenticated('guild/quest/register', {itemId, amount});
-    makeRequest.getGuildQuestStats = () => makeRequest.authenticated('guild/quest/stats');
-    makeRequest.unregisterGuildQuest = (itemId) => makeRequest.authenticated('guild/quest/unregister', {itemId});
+    request.getChangelogs = () => request('public/settings/changelog');
+    request.getVersion = () => request('public/settings/version');
 
-    makeRequest.getLeaderboardGuildRanks = () => makeRequest.authenticated('leaderboard/ranks/guild');
-
-    makeRequest.getMarketFilters = () => makeRequest.authenticated('market/filters');
-    makeRequest.saveMarketFilter = (filter) => makeRequest.authenticated('market/filters', filter);
-    makeRequest.removeMarketFilter = (id) => makeRequest.authenticated(`market/filters/${id}/remove`);
-
-    makeRequest.saveWebhook = (webhook) => makeRequest.authenticated('notification/webhook', webhook);
-
-    makeRequest.listActions = () => makeRequest('public/list/action');
-    makeRequest.listItems = () => makeRequest('public/list/item');
-    makeRequest.listItemAttributes = () => makeRequest('public/list/itemAttributes');
-    makeRequest.listRecipes = () => makeRequest('public/list/recipe');
-    makeRequest.listSkills = () => makeRequest('public/list/skills');
-
-    makeRequest.getMarketConversion = () => makeRequest('public/market/conversions');
-
-    makeRequest.getChangelogs = () => makeRequest('public/settings/changelog');
-    makeRequest.getVersion = () => makeRequest('public/settings/version');
-
-    makeRequest.handleInterceptedRequest = (interceptedRequest) => makeRequest.authenticated('request', interceptedRequest);
-
-    return makeRequest;
+    return request;
 
 }
 );
@@ -1726,7 +1860,7 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
     async function create(config) {
         config.time ||= 2000;
         config.image ||= 'https://ironwoodrpg.com/assets/misc/quests.png';
-        const notificationId = `customNotification_${Date.now()}`
+        const notificationId = `customNotification_${Math.floor(Date.now() * Math.random())}`
         const notificationDiv =
             $('<div/>')
                 .addClass('customNotification')
@@ -1793,6 +1927,7 @@ window.moduleRegistry.add('util', () => {
     const exports = {
         levelToExp,
         expToLevel,
+        expToVirtualLevel,
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
@@ -1802,7 +1937,9 @@ window.moduleRegistry.add('util', () => {
         parseDuration,
         divmod,
         sleep,
-        goToPage
+        goToPage,
+        compareObjects,
+        debounce
     };
 
     function levelToExp(level) {
@@ -1813,6 +1950,10 @@ window.moduleRegistry.add('util', () => {
     }
 
     function expToLevel(exp) {
+        return Math.min(100, expToVirtualLevel(exp));
+    }
+
+    function expToVirtualLevel(exp) {
         let level = Math.pow((exp + 1) * 5 / 6, 1 / 3.5);
         level = Math.floor(level);
         level = Math.max(1, level);
@@ -1846,6 +1987,11 @@ window.moduleRegistry.add('util', () => {
         if(!text) {
             return 0;
         }
+        const regexMatch = /\d+.*/.exec(text);
+        if(!regexMatch) {
+            return 0;
+        }
+        text = regexMatch[0];
         text = text.replaceAll(/,/g, '');
         let multiplier = 1;
         if(text.endsWith('%')) {
@@ -1886,9 +2032,7 @@ window.moduleRegistry.add('util', () => {
         if(result || +minutes) {
             result += `${minutes}m `;
         }
-        if(result || +seconds) {
-            result += `${seconds}s`;
-        }
+        result += `${seconds}s`;
 
         return result;
     }
@@ -1925,15 +2069,339 @@ window.moduleRegistry.add('util', () => {
         await new Promise(r => window.setTimeout(r, millis));
     }
 
+    function compareObjects(object1, object2) {
+        const keys1 = Object.keys(object1);
+        const keys2 = Object.keys(object2);
+        if(keys1.length !== keys2.length) {
+            return false;
+        }
+        keys1.sort();
+        keys2.sort();
+        for(let i=0;i<keys1.length;i++) {
+            if(keys1[i] !== keys2[i]) {
+                return false;
+            }
+            if(object1[keys1[i]] !== object2[keys2[i]]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function debounce(callback, delay) {
+        let timer;
+        return function() {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                callback();
+            }, delay);
+        }
+    }
+
     return exports;
 
 }
 );
-// authToast
-window.moduleRegistry.add('authToast', (userStore, toast) => {
+// enhancementsReader
+window.moduleRegistry.add('enhancementsReader', (events, util) => {
 
-    async function initialise() {
-        await userStore.ready;
+    const emitEvent = events.emit.bind(null, 'reader-enhancements');
+
+    let currentPage;
+
+    function initialise() {
+        events.register('page', handlePage);
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    function update() {
+        if(!currentPage) {
+            return;
+        }
+        if(currentPage.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
+            readEnhancementsScreen();
+        }
+    }
+
+    function readEnhancementsScreen() {
+        const enhancements = {};
+        $('home-page .categories + .card button').each((i,element) => {
+            element = $(element);
+            const name = element.find('.name').text();
+            const level = util.parseNumber(element.find('.level').text());
+            enhancements[name] = level;
+        });
+        emitEvent({
+            type: 'full',
+            value: enhancements
+        });
+    }
+
+    initialise();
+
+}
+);
+// equipmentReader
+window.moduleRegistry.add('equipmentReader', (events, itemCache, util, itemUtil) => {
+
+    let currentPage;
+
+    function initialise() {
+        events.register('page', handlePage);
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    function update() {
+        if(!currentPage) {
+            return;
+        }
+        if(currentPage.type === 'equipment') {
+            readEquipmentScreen();
+        }
+        if(currentPage.type === 'action') {
+            readActionScreen();
+        }
+    }
+
+    function readEquipmentScreen() {
+        const equipment = {};
+        const activeTab = $('equipment-page .categories button[disabled]').text().toLowerCase();
+        $('equipment-page .header + .items > .item > .description').parent().each((i,element) => {
+            itemUtil.extractItem(element, equipment);
+        });
+        events.emit(`reader-equipment-${activeTab}`, {
+            type: 'full',
+            value: equipment
+        });
+    }
+
+    function readActionScreen() {
+        const equipment = {};
+        $('skill-page .header > .name:contains("Consumables")').closest('.card').find('button > .name:not(.placeholder)').parent().each((i,element) => {
+            itemUtil.extractItem(element, equipment);
+        });
+        events.emit('reader-equipment-equipment', {
+            type: 'partial',
+            value: equipment
+        });
+    }
+
+    initialise();
+
+}
+);
+// expReader
+window.moduleRegistry.add('expReader', (events, skillCache, util) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-exp');
+
+    let currentPage;
+
+    function initialise() {
+        events.register('page', handlePage);
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    function update() {
+        if(!currentPage) {
+            return;
+        }
+        if(currentPage.type === 'action') {
+            readActionScreen(currentPage.skill);
+        }
+        readSidebar();
+    }
+
+    function readActionScreen(id) {
+        const text = $('skill-page .header > .name:contains("Stats")')
+            .closest('.card')
+            .find('.row > .name:contains("Total"):contains("XP")')
+            .closest('.row')
+            .find('.value')
+            .text();
+        const exp = util.parseNumber(text);
+        emitEvent([{ id, exp }]);
+    }
+
+    function readSidebar() {
+        const levels = [];
+        $('nav-component button.skill').each((i,element) => {
+            element = $(element);
+            const name = element.find('.name').text();
+            const id = skillCache.byName[name].id;
+            const level = +(/\d+/.exec(element.find('.level').text())?.[0]);
+            const exp = util.levelToExp(level);
+            levels.push({ id, exp });
+        });
+        emitEvent(levels);
+    }
+
+    initialise();
+
+}
+);
+// guildStructuresReader
+window.moduleRegistry.add('guildStructuresReader', (events, util) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-structures-guild');
+
+    let currentPage;
+
+    function initialise() {
+        events.register('page', handlePage);
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    function update() {
+        if(!currentPage) {
+            return;
+        }
+        if(currentPage.type === 'guild' && $('guild-page .tracker + div button.row-active').text() === 'Buildings') {
+            readGuildStructuresScreen();
+        }
+    }
+
+    function readGuildStructuresScreen() {
+        const structures = {};
+        $('guild-page .card').first().find('button').each((i,element) => {
+            element = $(element);
+            const name = element.find('.name').text();
+            const level = util.parseNumber(element.find('.amount').text());
+            structures[name] = level;
+        });
+        emitEvent({
+            type: 'full',
+            value: structures
+        });
+    }
+
+    initialise();
+
+}
+);
+// inventoryReader
+window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-inventory');
+
+    let currentPage;
+
+    function initialise() {
+        events.register('page', handlePage);
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    function update() {
+        if(!currentPage) {
+            return;
+        }
+        if(currentPage.type === 'inventory') {
+            readInventoryScreen();
+        }
+        if(currentPage.type === 'action') {
+            readActionScreen();
+        }
+    }
+
+    function readInventoryScreen() {
+        const inventory = {};
+        $('inventory-page .items > .item').each((i,element) => {
+            itemUtil.extractItem(element, inventory, true);
+        });
+        emitEvent({
+            type: 'full',
+            value: inventory
+        });
+    }
+
+    function readActionScreen() {
+        const inventory = {};
+        $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((i,element) => {
+            itemUtil.extractItem(element, inventory);
+        });
+        emitEvent({
+            type: 'partial',
+            value: inventory
+        });
+    }
+
+    initialise();
+
+}
+);
+// structuresReader
+window.moduleRegistry.add('structuresReader', (events, util) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-structures');
+
+    let currentPage;
+
+    function initialise() {
+        events.register('page', handlePage);
+        window.setInterval(update, 1000);
+    }
+
+    function handlePage(page) {
+        currentPage = page;
+        update();
+    }
+
+    function update() {
+        if(!currentPage) {
+            return;
+        }
+        if(currentPage.type === 'structure' && $('home-page .categories .category-active').text() === 'Build') {
+            readStructuresScreen();
+        }
+    }
+
+    function readStructuresScreen() {
+        const structures = {};
+        $('home-page .categories + .card button').each((i,element) => {
+            element = $(element);
+            const name = element.find('.name').text();
+            const level = util.parseNumber(element.find('.level').text());
+            structures[name] = level;
+        });
+        emitEvent({
+            type: 'full',
+            value: structures
+        });
+    }
+
+    initialise();
+
+}
+);
+// authToast
+window.moduleRegistry.add('authToast', (toast) => {
+
+    function initialise() {
         toast.create({
             text: 'Pancake-Scripts initialised!',
             image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png'
@@ -1984,7 +2452,7 @@ window.moduleRegistry.add('changelog', (Promise, pages, components, request, uti
     }
 
     async function renderPage() {
-        await loaded.promise;
+        await loaded;
         const header = components.search(componentBlueprint, 'header');
         const list = components.search(componentBlueprint, 'list');
         for(const index in changelogs) {
@@ -2017,6 +2485,7 @@ window.moduleRegistry.add('changelog', (Promise, pages, components, request, uti
     };
 
     initialise();
+
 }
 );
 // configurationPage
@@ -2027,6 +2496,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
     async function initialise() {
         await pages.register({
             category: 'Misc',
+            after: 'Settings',
             name: PAGE_NAME,
             image: 'https://cdn-icons-png.flaticon.com/512/3953/3953226.png',
             columns: '2',
@@ -2036,8 +2506,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
         pages.show(PAGE_NAME);
     }
 
-    async function generateBlueprint() {
-        await configuration.ready;
+    function generateBlueprint() {
         const categories = {};
         for(const item of configuration.items) {
             if(!categories[item.category]) {
@@ -2131,8 +2600,8 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
         }]
     }
 
-    async function renderPage() {
-        const blueprints = await generateBlueprint();
+    function renderPage() {
+        const blueprints = generateBlueprint();
         for(const blueprint of blueprints) {
             components.addComponent(blueprint);
         }
@@ -2145,6 +2614,855 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
     `;
 
     initialise();
+}
+);
+// estimator
+window.moduleRegistry.add('estimator', (configuration, events, skillCache, actionCache, itemCache, estimatorActivity, estimatorCombat, estimatorOutskirts, components, util, statsStore) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Other',
+            key: 'estimations',
+            name: 'Estimations',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', update);
+        events.register('state-stats', update);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function update() {
+        if(!enabled) {
+            return;
+        }
+        const page = events.getLast('page');
+        const stats = events.getLast('state-stats');
+        if(!page || !stats || page.type !== 'action') {
+            return;
+        }
+        const skill = skillCache.byId[page.skill];
+        const action = actionCache.byId[page.action];
+        let estimation;
+        if(action.type === 'OUTSKIRTS') {
+            estimation = estimatorOutskirts.get(page.skill, page.action);
+        } else if(skill.type === 'Gathering' || skill.type === 'Crafting') {
+            estimation = estimatorActivity.get(page.skill, page.action);
+        } else if(skill.type === 'Combat') {
+            estimation = estimatorCombat.get(page.skill, page.action);
+        }
+        if(estimation) {
+            enrichTimings(estimation);
+            enrichValues(estimation);
+            render(estimation);
+        }
+    }
+
+    function enrichTimings(estimation) {
+        const inventory = Object.entries(estimation.ingredients).map(([id,amount]) => ({
+            id,
+            stored: statsStore.getInventoryItem(id),
+            secondsLeft: statsStore.getInventoryItem(id) * 3600 / amount
+        })).reduce((a,b) => (a[b.id] = b, a), {});
+        const equipment = Object.entries(estimation.equipments).map(([id,amount]) => ({
+            id,
+            stored: statsStore.getEquipmentItem(id),
+            secondsLeft: statsStore.getEquipmentItem(id) * 3600 / amount
+        })).reduce((a,b) => (a[b.id] = b, a), {});
+        const levelState = statsStore.getLevel(estimation.skill);
+        estimation.timings = {
+            inventory,
+            equipment,
+            finished: Math.min(...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
+            level: levelState.level === 100 ? 0 : util.expToNextLevel(levelState.level) * 3600 / estimation.exp,
+            tier: levelState.level === 100 ? 0 : util.expToNextTier(levelState.level) * 3600 / estimation.exp,
+        };
+    }
+
+    function enrichValues(estimation) {
+        estimation.values = {
+            drop: getSellPrice(estimation.drops),
+            ingredient: getSellPrice(estimation.ingredients),
+            equipment: getSellPrice(estimation.equipments),
+            net: 0
+        };
+        estimation.values.net = estimation.values.drop - estimation.values.ingredient - estimation.values.equipment;
+    }
+
+    function getSellPrice(object) {
+        return Object.entries(object)
+            .map(a => a[1] * itemCache.byId[a[0]].attributes.SELL_PRICE)
+            .filter(a => a)
+            .reduce((a,b) => a+b, 0);
+    }
+
+    function render(estimation) {
+        components.search(componentBlueprint, 'speed').value
+            = util.formatNumber(estimation.speed/10) + ' s';
+        components.search(componentBlueprint, 'exp').hidden
+            = estimation.exp === 0;
+        components.search(componentBlueprint, 'exp').value
+            = util.formatNumber(estimation.exp);
+        components.search(componentBlueprint, 'survivalChance').hidden
+            = estimation.type === 'ACTIVITY';
+        components.search(componentBlueprint, 'survivalChance').value
+            = util.formatNumber(estimation.survivalChance * 100) + ' %';
+        components.search(componentBlueprint, 'finishedTime').value
+            = util.secondsToDuration(estimation.timings.finished);
+        components.search(componentBlueprint, 'levelTime').hidden
+            = estimation.exp === 0 || estimation.timings.level === 0;
+        components.search(componentBlueprint, 'levelTime').value
+            = util.secondsToDuration(estimation.timings.level);
+        components.search(componentBlueprint, 'tierTime').hidden
+            = estimation.exp === 0 || estimation.timings.tier === 0;
+        components.search(componentBlueprint, 'tierTime').value
+            = util.secondsToDuration(estimation.timings.tier);
+        components.search(componentBlueprint, 'dropValue').hidden
+            = estimation.values.drop === 0;
+        components.search(componentBlueprint, 'dropValue').value
+            = util.formatNumber(estimation.values.drop);
+        components.search(componentBlueprint, 'ingredientValue').hidden
+            = estimation.values.ingredient === 0;
+        components.search(componentBlueprint, 'ingredientValue').value
+            = util.formatNumber(estimation.values.ingredient);
+        components.search(componentBlueprint, 'equipmentValue').hidden
+            = estimation.values.equipment === 0;
+        components.search(componentBlueprint, 'equipmentValue').value
+            = util.formatNumber(estimation.values.equipment);
+        components.search(componentBlueprint, 'netValue').hidden
+            = estimation.values.net === 0;
+        components.search(componentBlueprint, 'netValue').value
+            = util.formatNumber(estimation.values.net);
+        components.search(componentBlueprint, 'tabTime').hidden
+            = (estimation.timings.inventory.length + estimation.timings.equipment.length) === 0;
+
+        const dropRows = components.search(componentBlueprint, 'dropRows');
+        const ingredientRows = components.search(componentBlueprint, 'ingredientRows');
+        const timeRows = components.search(componentBlueprint, 'timeRows');
+        dropRows.rows = [];
+        ingredientRows.rows = [];
+        timeRows.rows = [];
+        for(const id in estimation.drops) {
+            const item = itemCache.byId[id];
+            dropRows.rows.push({
+                type: 'item',
+                image: `/assets/${item.image}`,
+                imagePixelated: true,
+                name: item.name,
+                value: util.formatNumber(estimation.drops[id]) + ' / hour'
+            });
+        }
+        for(const id in estimation.ingredients) {
+            const item = itemCache.byId[id];
+            const timing = estimation.timings.inventory[id];
+            ingredientRows.rows.push({
+                type: 'item',
+                image: `/assets/${item.image}`,
+                imagePixelated: true,
+                name: item.name,
+                value: util.formatNumber(estimation.ingredients[id]) + ' / hour'
+            });
+            timeRows.rows.push({
+                type: 'item',
+                image: `/assets/${item.image}`,
+                imagePixelated: true,
+                name: `${item.name} [${util.formatNumber(timing.stored)}]`,
+                value: util.secondsToDuration(timing.secondsLeft)
+            });
+        }
+        for(const id in estimation.equipments) {
+            const item = itemCache.byId[id];
+            const timing = estimation.timings.equipment[id];
+            ingredientRows.rows.push({
+                type: 'item',
+                image: `/assets/${item.image}`,
+                imagePixelated: true,
+                name: item.name,
+                value: util.formatNumber(estimation.equipments[id]) + ' / hour'
+            });
+            timeRows.rows.push({
+                type: 'item',
+                image: `/assets/${item.image}`,
+                imagePixelated: true,
+                name: `${item.name} [${util.formatNumber(timing.stored)}]`,
+                value: util.secondsToDuration(timing.secondsLeft)
+            });
+        }
+
+        components.addComponent(componentBlueprint);
+    }
+
+    const componentBlueprint = {
+        componentId: 'estimatorComponent',
+        dependsOn: 'skill-page',
+        parent: 'actions-component',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'Overview',
+            rows: [{
+                type: 'item',
+                id: 'speed',
+                name: 'Time per action',
+                image: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'exp',
+                name: 'Exp/hour',
+                image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'survivalChance',
+                name: 'Survival chance',
+                image: 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'finishedTime',
+                name: 'Finished',
+                image: 'https://cdn-icons-png.flaticon.com/512/1505/1505471.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'levelTime',
+                name: 'Level up',
+                image: 'https://cdn-icons-png.flaticon.com/512/4614/4614145.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'tierTime',
+                name: 'Tier up',
+                image: 'https://cdn-icons-png.flaticon.com/512/4789/4789514.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'dropValue',
+                name: 'Gold/hour (loot)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'ingredientValue',
+                name: 'Gold/hour (materials)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'equipmentValue',
+                name: 'Gold/hour (equipments)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'netValue',
+                name: 'Gold/hour (total)',
+                image: 'https://cdn-icons-png.flaticon.com/512/11937/11937869.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            }]
+        },{
+            title: 'Items',
+            rows: [{
+                type: 'header',
+                title: 'Produced'
+            },{
+                type: 'segment',
+                id: 'dropRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Consumed'
+            },{
+                type: 'segment',
+                id: 'ingredientRows',
+                rows: []
+            }]
+        },{
+            title: 'Time',
+            id: 'tabTime',
+            rows: [{
+                type: 'segment',
+                id: 'timeRows',
+                rows: []
+            }]
+        }]
+    };
+
+    initialise();
+
+}
+);
+// estimatorAction
+window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredientCache, skillCache, itemCache, statsStore) => {
+
+    const LOOPS_PER_HOUR = 10 * 60 * 60; // 1 second = 10 loops
+    const LOOPS_PER_FOOD = 150;
+
+    const exports = {
+        LOOPS_PER_HOUR,
+        LOOPS_PER_FOOD,
+        getDrops,
+        getIngredients,
+        getEquipmentUses
+    };
+
+    function getDrops(skillId, actionId, isCombat, multiplier = 1) {
+        const drops = dropCache.byAction[actionId];
+        if(!drops) {
+            return [];
+        }
+        const hasFailDrops = !!drops.find(a => a.type === 'FAILED');
+        const hasMonsterDrops = !!drops.find(a => a.type === 'MONSTER');
+        const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
+        return drops.map(drop => {
+            let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
+            if(drop.type !== 'MONSTER' && isCombat && hasMonsterDrops) {
+                amount = 0;
+            } else if(drop.type === 'MONSTER' && !isCombat) {
+                amount = 0;
+            } else if(drop.type === 'FAILED') {
+                amount *= 1 - successChance;
+            } else {
+                amount *= successChance;
+            }
+            if(amount) {
+                return {
+                    id: drop.item,
+                    amount
+                };
+            }
+        })
+        .filter(a => a)
+        .reduce((a,b) => (a[b.id] = b.amount, a), {});
+    }
+
+    function getSuccessChance(skillId, actionId) {
+        const action = actionCache.byId[actionId];
+        const level = statsStore.getLevel(skillId).level;
+        return Math.min(95, 80 + level - action.level) + Math.floor(level / 20);
+    }
+
+    function getIngredients(actionId, multiplier = 1) {
+        const ingredients = ingredientCache.byAction[actionId];
+        if(!ingredients) {
+            return [];
+        }
+        return ingredients.map(ingredient => ({
+            id: ingredient.item,
+            amount: ingredient.amount * multiplier
+        }))
+        .reduce((a,b) => (a[b.id] = b.amount, a), {});
+    }
+
+    function getEquipmentUses(skillId, actionId, isCombat = false, foodPerHour = 0) {
+        const skill = skillCache.byId[skillId];
+        const action = actionCache.byId[actionId];
+        const result = {};
+        const potionMultiplier = 1 + statsStore.get('DECREASED_POTION_DURATION') / 100;
+        if(isCombat) {
+            if(action.type !== 'OUTSKIRTS') {
+                // combat potions
+                statsStore.getManyEquipmentItems(itemCache.specialIds.potionCombat)
+                    .forEach(a => result[a.id] = 20 * potionMultiplier);
+            }
+            if(action.type === 'DUNGEON') {
+                // dungeon map
+                statsStore.getManyEquipmentItems(itemCache.specialIds.map)
+                    .forEach(a => result[a.id] = 3);
+            }
+            if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
+                // active food
+                statsStore.getManyEquipmentItems(itemCache.specialIds.food)
+                    .forEach(a => result[a.id] = foodPerHour);
+            }
+            if(statsStore.getAttackStyle() === 'Ranged') {
+                // ammo
+                const attacksPerHour = LOOPS_PER_HOUR / 5 / statsStore.get('ATTACK_SPEED');
+                const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);
+                statsStore.getManyEquipmentItems(itemCache.specialIds.arrow)
+                    .forEach(a => result[a.id] = ammoPerHour);
+            }
+        } else {
+            if(skill.type === 'Gathering') {
+                // gathering potions
+                statsStore.getManyEquipmentItems(itemCache.specialIds.potionGathering)
+                    .forEach(a => result[a.id] = 20 * potionMultiplier);
+            }
+            if(skill.type === 'Crafting') {
+                // crafting potions
+                statsStore.getManyEquipmentItems(itemCache.specialIds.potionCrafting)
+                    .forEach(a => result[a.id] = 20 * potionMultiplier);
+            }
+        }
+        if(statsStore.get('PASSIVE_FOOD_CONSUMPTION') && statsStore.get('HEAL')) {
+            // passive food
+            statsStore.getManyEquipmentItems(itemCache.specialIds.food)
+                .forEach(a => result[a.id] = statsStore.get('PASSIVE_FOOD_CONSUMPTION')* 3600 / 5 / statsStore.get('HEAL'));
+        }
+        return result;
+    }
+
+    return exports;
+
+}
+);
+// estimatorActivity
+window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimatorAction, statsStore, itemCache, dropCache) => {
+
+    const exports = {
+        get
+    };
+
+    function get(skillId, actionId) {
+        const skill = skillCache.byId[skillId];
+        const action = actionCache.byId[actionId];
+        const speed = getSpeed(skill, action);
+        const actionCount = estimatorAction.LOOPS_PER_HOUR / speed;
+        const actualActionCount = actionCount * (1 + statsStore.get('EFFICIENCY', skill.technicalName) / 100);
+        const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP', skill.technicalName) / 100);
+        const ingredientCount = actualActionCount * (1 - statsStore.get('PRESERVATION', skill.technicalName) / 100);
+        const exp = actualActionCount * action.exp * (1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100);
+        const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount);
+        const ingredients = estimatorAction.getIngredients(actionId, ingredientCount);
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId);
+
+        let statLowerTierChance;
+        if(skill.type === 'Gathering' && (statLowerTierChance = statsStore.get('LOWER_TIER_CHANCE', skill.technicalName) / 100)) {
+            for(const item in drops) {
+                const mappings = dropCache.lowerGatherMappings[item];
+                if(mappings) {
+                    for(const other of mappings) {
+                        drops[other] = (drops[other] || 0) + statLowerTierChance * drops[item] / mappings.length;
+                    }
+                    drops[item] *= 1 - statLowerTierChance;
+                }
+            }
+        }
+
+        let statMerchantSellChance;
+        if(skill.type === 'Crafting' && (statMerchantSellChance = statsStore.get('MERCHANT_SELL_CHANCE', skill.technicalName) / 100)) {
+            for(const item in drops) {
+                drops[itemCache.specialIds.coins] = (drops[itemCache.specialIds.coins] || 0) + 2 * statMerchantSellChance * drops[item] * itemCache.byId[item].attributes.SELL_PRICE;
+                drops[item] *= 1 - statMerchantSellChance;
+            }
+        }
+
+        return {
+            type: 'ACTIVITY',
+            skill: skillId,
+            speed,
+            exp,
+            drops,
+            ingredients,
+            equipments
+        };
+    }
+
+    function getSpeed(skill, action) {
+        const speedBonus = statsStore.get('SKILL_SPEED', skill.technicalName);
+        return Math.round(action.speed * 1000 / (100 + speedBonus)) + 1;
+    }
+
+    return exports;
+
+}
+);
+// estimatorCombat
+window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCache, itemCache, dropCache, statsStore, Distribution, estimatorAction) => {
+
+    const exports = {
+        get,
+        getDamageDistributions,
+        getSurvivalChance
+    };
+
+    function get(skillId, actionId) {
+        const skill = skillCache.byId[skillId];
+        const action = actionCache.byId[actionId];
+        const monsterIds = action.monster ? [action.monster] : action.monsterGroup;
+        const playerStats = getPlayerStats();
+        const sampleMonsterStats = getMonsterStats(monsterIds[Math.floor(monsterIds.length / 2)]);
+        playerStats.damage_ = new Distribution();
+        sampleMonsterStats.damage_ = new Distribution();
+        for(const monsterId of monsterIds) {
+            const monsterStats = getMonsterStats(monsterId);
+            let damage_ = getInternalDamageDistribution(playerStats, monsterStats, monsterIds.length > 1);
+            const weight = damage_.expectedRollsUntill(monsterStats.health);
+            playerStats.damage_.addDistribution(damage_, weight);
+            damage_ = getInternalDamageDistribution(monsterStats, playerStats, monsterIds.length > 1);
+            sampleMonsterStats.damage_.addDistribution(damage_, weight);
+        }
+        playerStats.damage_.normalize();
+        sampleMonsterStats.damage_.normalize();
+
+        const loopsPerKill = playerStats.attackSpeed * playerStats.damage_.expectedRollsUntill(sampleMonsterStats.health) * 10 + 5;
+        const actionCount = estimatorAction.LOOPS_PER_HOUR / loopsPerKill;
+        const efficiency = 1 + statsStore.get('EFFICIENCY', skill.technicalName) / 100;
+        const actualActionCount = actionCount * efficiency;
+        const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP', skill.technicalName) / 100);
+        const attacksReceivedPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / sampleMonsterStats.attackSpeed;
+        const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT') / 100);
+        const damagePerHour = attacksReceivedPerHour * sampleMonsterStats.damage_.average();
+        const foodPerHour = damagePerHour / healPerFood * (1 - statsStore.get('FOOD_PRESERVATION_CHANCE') / 100);
+
+        let exp = estimatorAction.LOOPS_PER_HOUR * action.exp / 1000;
+        exp *= efficiency;
+        exp *= 1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100;
+        exp *= 1 + statsStore.get('COMBAT_EXP', skill.technicalName) / 100;
+        const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount);
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, true, foodPerHour);
+        const survivalChance = getSurvivalChance(playerStats, sampleMonsterStats, loopsPerKill);
+
+        let statCoinSnatch;
+        if(statCoinSnatch = statsStore.get('COIN_SNATCH')) {
+            const attacksPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / playerStats.attackSpeed;
+            const coinsPerHour = (statCoinSnatch + 1) / 2 * attacksPerHour;
+            drops[itemCache.specialIds.coins] = (drops[itemCache.specialIds.coins] || 0) + coinsPerHour;
+        }
+
+        let statCarveChance = 0.1;
+        if(action.type !== 'OUTSKIRTS' && (statCarveChance = statsStore.get('CARVE_CHANCE') / 100)) {
+            const boneDrop = dropCache.byAction[actionId].find(a => a.chance === 1);
+            const boneDropCount = drops[boneDrop.item];
+            const coinDrop = dropCache.byAction[actionId].find(a => a.item === itemCache.specialIds.coins);
+            const averageAmount = (1 + coinDrop.amount) / 2;
+            drops[itemCache.specialIds.coins] -= statCarveChance * coinDrop.chance * averageAmount / 2 * boneDropCount;
+            const mappings = dropCache.boneCarveMappings[boneDrop.item];
+            for(const other of mappings) {
+                drops[other] = (drops[other] || 0) + statCarveChance * coinDrop.chance * boneDropCount / mappings.length;
+            }
+        }
+
+        return {
+            type: 'COMBAT',
+            skill: skillId,
+            speed: loopsPerKill,
+            exp,
+            drops,
+            ingredients: {},
+            equipments,
+            player: playerStats,
+            monster: sampleMonsterStats,
+            survivalChance
+        };
+    }
+
+    function getPlayerStats() {
+        const attackStyle = statsStore.getAttackStyle();
+        const attackSkill = skillCache.byTechnicalName[attackStyle];
+        const attackLevel = statsStore.getLevel(attackSkill.id).level;
+        const defenseLevel = statsStore.getLevel(8).level;
+        return {
+            isPlayer: true,
+            attackStyle,
+            attackSpeed: statsStore.get('ATTACK_SPEED'),
+            damage: statsStore.get('DAMAGE'),
+            armour: statsStore.get('ARMOUR'),
+            health: statsStore.get('HEALTH'),
+            blockChance: statsStore.get('BLOCK_CHANCE')/100,
+            critChance: statsStore.get('CRIT_CHANCE')/100,
+            stunChance: statsStore.get('STUN_CHANCE')/100,
+            parryChance: statsStore.get('PARRY_CHANCE')/100,
+            bleedChance: statsStore.get('BLEED_CHANCE')/100,
+            damageRange: (75 + statsStore.get('DAMAGE_RANGE'))/100,
+            dungeonDamage: 1 + statsStore.get('DUNGEON_DAMAGE')/100,
+            attackLevel,
+            defenseLevel
+        };
+    }
+
+    function getMonsterStats(monsterId) {
+        const monster = monsterCache.byId[monsterId];
+        return {
+            isPlayer: false,
+            attackStyle: monster.attackStyle,
+            attackSpeed: monster.speed,
+            damage: monster.attack,
+            armour: monster.armour,
+            health: monster.health,
+            blockChance: 0,
+            critChance: 0,
+            stunChance: 0,
+            parryChance: 0,
+            bleedChance: 0,
+            damageRange: 0.75,
+            dungeonDamage: 0,
+            attackLevel: monster.level,
+            defenseLevel: monster.level
+        };
+    }
+
+    function getInternalDamageDistribution(attacker, defender, isDungeon) {
+        let damage = attacker.damage;
+        damage *= getDamageTriangleModifier(attacker, defender);
+        damage *= getDamageScalingRatio(attacker, defender);
+        damage *= getDamageArmourRatio(attacker, defender);
+        damage *= !isDungeon ? 1 : attacker.dungeonDamage;
+
+        const maxDamage_ = new Distribution(damage);
+        // crit
+        if(attacker.critChance) {
+            maxDamage_.convolution(
+                Distribution.getRandomChance(attacker.critChance),
+                (dmg, crit) => dmg * (crit ? 1.5 : 1)
+            );
+        }
+        // damage range
+        const result = maxDamage_.convolutionWithGenerator(
+            dmg => Distribution.getRandomOutcomeRounded(dmg * attacker.damageRange, dmg),
+            (dmg, randomDamage) => randomDamage
+        );
+        // block
+        if(defender.blockChance) {
+            result.convolution(
+                Distribution.getRandomChance(defender.blockChance),
+                (dmg, blocked) => blocked ? 0 : dmg
+            );
+        }
+        // stun
+        if(defender.stunChance) {
+            let stunChance = defender.stunChance;
+            // only when defender accurate
+            stunChance *= getAccuracy(defender, attacker);
+            // can also happen on defender parries
+            stunChance *= 1 + defender.parryChance;
+            // modifier based on speed
+            stunChance *= attacker.attackSpeed / defender.attackSpeed;
+            // convert to actual stunned percentage
+            const stunnedPercentage = stunChance * 2.5 / attacker.attackSpeed;
+            result.convolution(
+                Distribution.getRandomChance(stunnedPercentage),
+                (dmg, stunned) => stunned ? 0 : dmg
+            );
+        }
+        // accuracy
+        const accuracy = getAccuracy(attacker, defender);
+        result.convolution(
+            Distribution.getRandomChance(accuracy),
+            (dmg, accurate) => accurate ? dmg : 0
+        );
+        // === special effects ===
+        const intermediateClone_ = result.clone();
+        // parry attacker - deal back 25% of a regular attack
+        if(attacker.parryChance) {
+            let parryChance = attacker.parryChance;
+            if(attacker.attackSpeed < defender.attackSpeed) {
+                parryChance *= attacker.attackSpeed / defender.attackSpeed;
+            }
+            const parried_ = intermediateClone_.clone();
+            parried_.convolution(
+                Distribution.getRandomChance(parryChance),
+                (dmg, parried) => parried ? Math.round(dmg/4.0) : 0
+            );
+            result.convolution(
+                parried_,
+                (dmg, extra) => dmg + extra
+            );
+            if(attacker.attackSpeed > defender.attackSpeed) {
+                // we can parry multiple times during one turn
+                parryChance *= (attacker.attackSpeed - defender.attackSpeed) / attacker.attackSpeed;
+                parried_.convolution(
+                    Distribution.getRandomChance(parryChance),
+                    (dmg, parried) => parried ? dmg : 0
+                );
+                result.convolution(
+                    parried_,
+                    (dmg, extra) => dmg + extra
+                );
+            }
+        }
+        // parry defender - deal 50% of a regular attack
+        if(defender.parryChance) {
+            result.convolution(
+                Distribution.getRandomChance(defender.parryChance),
+                (dmg, parried) => parried ? Math.round(dmg/2) : dmg
+            );
+        }
+        // bleed - 50% of damage over 3 seconds (assuming to be within one attack round)
+        if(attacker.bleedChance) {
+            const bleed_ = intermediateClone_.clone();
+            bleed_.convolution(
+                Distribution.getRandomChance(attacker.bleedChance),
+                (dmg, bleed) => bleed ? 5 * Math.round(dmg/10) : 0
+            );
+            result.convolution(
+                bleed_,
+                (dmg, extra) => dmg + extra
+            );
+        }
+        return result;
+    }
+
+    function getDamageTriangleModifier(attacker, defender) {
+        if(!attacker.attackStyle || !defender.attackStyle) {
+            return 1.0;
+        }
+        if(attacker.attackStyle === defender.attackStyle) {
+            return 1.0;
+        }
+        if(attacker.attackStyle === 'OneHanded' && defender.attackStyle === 'Ranged') {
+            return 1.1;
+        }
+        if(attacker.attackStyle === 'Ranged' && defender.attackStyle === 'TwoHanded') {
+            return 1.1;
+        }
+        if(attacker.attackStyle === 'TwoHanded' && defender.attackStyle === 'OneHanded') {
+            return 1.1;
+        }
+        return 0.9;
+    }
+
+    function getDamageScalingRatio(attacker, defender) {
+        const ratio = attacker.attackLevel / defender.defenseLevel;
+        if(attacker.isPlayer) {
+            return Math.min(1, ratio);
+        }
+        return Math.max(1, ratio);
+    }
+
+    function getDamageArmourRatio(attacker, defender) {
+        if(!defender.armour) {
+            return 1;
+        }
+        const scale = 25 + Math.min(70, (defender.armour - 25) * 50 / 105);
+        return (100 - scale) / 100;
+    }
+
+    function getAccuracy(attacker, defender) {
+        let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel) / 2.0;
+        accuracy = Math.max(25, accuracy);
+        accuracy = Math.min(95, accuracy);
+        return accuracy / 100;
+    }
+
+    function getDamageDistributions(monsterId) {
+        const playerStats = getPlayerStats();
+        const monsterStats = getMonsterStats(monsterId);
+        const playerDamage_ = getInternalDamageDistribution(playerStats, monsterStats);
+        const monsterDamage_ = getInternalDamageDistribution(monsterStats, playerStats);
+        playerDamage_.normalize();
+        monsterDamage_.normalize();
+        return [playerDamage_, monsterDamage_];
+    }
+
+    function getSurvivalChance(player, monster, loopsPerFight, fights = 10, applyCringeMultiplier = false) {
+        const loopsPerAttack = monster.attackSpeed * 10;
+        let attacksPerFight = loopsPerFight / loopsPerAttack;
+        if(fights === 1 && applyCringeMultiplier) {
+            const playerLoopsPerAttack = player.attackSpeed * 10;
+            const playerAttacksPerFight = loopsPerFight / playerLoopsPerAttack;
+            const cringeMultiplier = Math.min(1.4, Math.max(1, 1.4 - playerAttacksPerFight / 50));
+            attacksPerFight *= cringeMultiplier;
+        }
+        const foodPerAttack = loopsPerAttack / estimatorAction.LOOPS_PER_FOOD;
+        const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT') / 100);
+        const healPerAttack = Math.round(healPerFood * foodPerAttack);
+        const healPerFight = healPerAttack * attacksPerFight;
+        let deathChance = 0;
+        let scenarioChance = 1;
+        let health = player.health;
+        for(let i=0;i<fights;i++) {
+            const currentDeathChance = monster.damage_.getRightTail(attacksPerFight, health + healPerFight);
+            deathChance += currentDeathChance * scenarioChance;
+            scenarioChance *= 1 - currentDeathChance;
+            const damage = monster.damage_.getMeanRange(attacksPerFight, healPerFight, health + healPerFight);
+            health -= damage - healPerFight;
+            if(isNaN(health) || health === Infinity || health === -Infinity) {
+                // TODO NaN / Infinity result from above?
+                break;
+            }
+        }
+        const cringeCutoff = 0.10;
+        if(fights === 1 && !applyCringeMultiplier && deathChance < cringeCutoff) {
+            const other = getSurvivalChance(player, monster, loopsPerFight, fights, true);
+            const avg = (1 - deathChance + other) / 2;
+            if(avg > 1 - cringeCutoff / 2) {
+                return avg;
+            }
+        }
+        return 1 - deathChance;
+    }
+
+    return exports;
+
+}
+);
+// estimatorOutskirts
+window.moduleRegistry.add('estimatorOutskirts', (actionCache, itemCache, statsStore, estimatorActivity, estimatorCombat) => {
+
+    const exports = {
+        get
+    };
+
+    function get(skillId, actionId) {
+        try {
+            const action = actionCache.byId[actionId];
+            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.potionCombat);
+            statsStore.update(new Set(excludedItemIds));
+
+            const activityEstimation = estimatorActivity.get(skillId, actionId);
+            const combatEstimation = estimatorCombat.get(skillId, actionId);
+            const monsterChance = (1000 - action.outskirtsMonsterChance) / 1000;
+
+            // Axioms:
+            // combatRatio = 1 - activityRatio
+            // activityLoops = totalLoops * activityRatio
+            // combatLoops = totalLoops * combatRatio
+            // fights = combatLoops / combatSpeed
+            // actions = activityLoops / activitySpeed
+            // encounterChance = fights / (fights + actions)
+            const combatRatio = combatEstimation.speed / (activityEstimation.speed * (1 / monsterChance + combatEstimation.speed / activityEstimation.speed - 1));
+            const activityRatio = 1 - combatRatio;
+
+            const survivalChance = estimatorCombat.getSurvivalChance(combatEstimation.player, combatEstimation.monster, combatEstimation.speed, 1);
+
+            const exp = activityEstimation.exp * activityRatio;
+            const drops = {};
+            merge(drops, activityEstimation.drops, activityRatio);
+            merge(drops, combatEstimation.drops, combatRatio);
+            const ingredients = {};
+            merge(ingredients, activityEstimation.ingredients, activityRatio);
+            merge(ingredients, combatEstimation.ingredients, combatRatio);
+            const equipments = {};
+            merge(equipments, activityEstimation.equipments, activityRatio);
+            merge(equipments, combatEstimation.equipments, combatRatio);
+
+            return {
+                type: 'OUTSKIRTS',
+                skill: skillId,
+                speed: activityEstimation.speed,
+                exp,
+                drops,
+                ingredients,
+                equipments,
+                player: combatEstimation.player,
+                monster: combatEstimation.monster,
+                survivalChance
+            };
+        } finally {
+            statsStore.update(new Set());
+        }
+    }
+
+    function merge(target, source, ratio) {
+        for(const key in source) {
+            target[key] = (target[key] || 0) + source[key] * ratio;
+        }
+    }
+
+    return exports;
+
+
+
 }
 );
 // idleBeep
@@ -2196,7 +3514,7 @@ window.moduleRegistry.add('idleBeep', (configuration, events, util) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
+window.moduleRegistry.add('itemHover', (configuration, itemCache, util) => {
 
     let enabled = false;
     let entered = false;
@@ -2206,7 +3524,7 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
         DURATION: a => util.secondsToDuration(a/10)
     }
 
-    async function initialise() {
+    function initialise() {
         configuration.registerCheckbox({
             category: 'UI Features',
             key: 'item-hover',
@@ -2214,7 +3532,7 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
             default: true,
             handler: handleConfigStateChange
         });
-        await setup();
+        setup();
         $(document).on('mouseenter', 'div.image > img', handleMouseEnter);
         $(document).on('mouseleave', 'div.image > img', handleMouseLeave);
         $(document).on('click', 'div.image > img', handleMouseLeave);
@@ -2225,26 +3543,26 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
     }
 
     function handleMouseEnter(event) {
-        if(!enabled || entered || !itemStore.byId) {
+        if(!enabled || entered || !itemCache.byId) {
             return;
         }
         entered = true;
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = itemStore.byName[name];
+        const nameMatch = itemCache.byName[name];
         if(nameMatch) {
             return show(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = itemStore.byImage[lastPart];
+        const imageMatch = itemCache.byImage[lastPart];
         if(imageMatch) {
             return show(imageMatch);
         }
     }
 
     function handleMouseLeave(event) {
-        if(!enabled || !itemStore.byId) {
+        if(!enabled || !itemCache.byId) {
             return;
         }
         entered = false;
@@ -2254,9 +3572,9 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
     function show(item) {
         element.find('.image').attr('src', `/assets/${item.image}`);
         element.find('.name').text(item.name);
-        for(const attribute of itemStore.attributes) {
+        for(const attribute of itemCache.attributes) {
             let value = item.attributes[attribute.technicalName];
-            if(converters[attribute.technicalName]) {
+            if(value && converters[attribute.technicalName]) {
                 value = converters[attribute.technicalName](value);
             }
             updateRow(attribute.technicalName, value);
@@ -2277,9 +3595,8 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
         element.hide();
     }
 
-    async function setup() {
-        await itemStore.ready;
-        const attributesHtml = itemStore.attributes
+    function setup() {
+        const attributesHtml = itemCache.attributes
             .map(a => `<div class='${a.technicalName}-row'><img src='${a.image}'/><span>${a.name}</span><span class='${a.technicalName}'/></div>`)
             .join('');
         $('head').append(`
@@ -2309,13 +3626,17 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
                 #custom-item-hover img {
                     width: 24px;
                     height: 24px;
+                    image-rendering: auto;
+                }
+                #custom-item-hover img.pixelated {
+                    image-rendering: pixelated;
                 }
             </style>
         `);
         element = $(`
             <div id='custom-item-hover' style='display:none'>
                 <div>
-                    <img class='image'/>
+                    <img class='image pixelated'/>
                     <span class='name'/>
                 </div>
                 ${attributesHtml}
@@ -2328,125 +3649,12 @@ window.moduleRegistry.add('itemHover', (configuration, itemStore, util) => {
 
 }
 );
-// marketCompetition
-window.moduleRegistry.add('marketCompetition', (configuration, events, userStore, itemStore, colorMapper, util, elementCreator, Promise) => {
+// recipeClickthrough
+window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, util) => {
 
-    const isReady = new Promise.Deferred();
     let enabled = false;
-    let markedListings = [];
 
     function initialise() {
-        configuration.registerCheckbox({
-            category: 'UI Features',
-            key: 'market-competition',
-            name: 'Market competition indicator',
-            default: true,
-            handler: handleConfigStateChange
-        });
-        events.register('xhr', handleXhr);
-        $(document).on('click', 'market-listings-component .card > .tabs > button:last-child', render);
-        elementCreator.addStyles(styles);
-    }
-
-    function handleConfigStateChange(state) {
-        enabled = state;
-    }
-
-    async function handleXhr(xhr) {
-        if(!enabled || !xhr.url.endsWith('getMarketItems')) {
-            return;
-        }
-        await itemStore.ready;
-        const listings = xhr.response.listings;
-        await processListings(listings, '1', (a,b) => a < b); // sell
-        await processListings(listings, '2', (a,b) => a > b); // buy
-        markedListings = listings
-            .filter(a => a.color)
-            .map(a => ({
-                color: a.color,
-                competitors: a.competitors,
-                key: `${itemStore.byId[a.itemId].name}-${a.cost}`
-            }));
-        isReady.resolve();
-    }
-
-    async function processListings(listings, type, comparator) {
-        await userStore.ready;
-        const ownedListings = listings
-            .filter(a => a.name === userStore.name)
-            .filter(a => a.type === type);
-        for(const listing of ownedListings) {
-            const otherListings = listings
-                .filter(a => a.itemId === listing.itemId)
-                .filter(a => a.type === type)
-                .filter(a => a.name !== userStore.name);
-            const warnListings = otherListings.filter(a => a.cost === listing.cost);
-            const dangerListings = otherListings.filter(a => comparator(a.cost, listing.cost));
-            if(warnListings.length) {
-                listing.color = 'warning';
-                listing.competitors = warnListings.map(a => a.name);
-            }
-            if(dangerListings.length) {
-                listing.color = 'danger';
-                listing.competitors = dangerListings.map(a => a.name);
-            }
-        }
-    }
-
-    async function render() {
-        if(!enabled) {
-            return;
-        }
-        $('.market-competition').remove();
-        await isReady.promise;
-        const elements = $('market-listings-component .search ~ button').map(function(index,reference) {
-            reference = $(reference);
-            return {
-                name: reference.find('.name').text(),
-                price: util.parseNumber(reference.find('.cost').text()),
-                reference: reference
-            };
-        }).toArray();
-        for(const element of elements) {
-            element.key = `${element.name}-${element.price}`;
-        }
-        for(const listing of markedListings) {
-            const match = elements.find(a => a.key === listing.key);
-            const title = listing.competitors.join(', ');
-            match.reference.find('.cost').before(`<div class='market-competition market-competition-${listing.color}' title='${title}'></div>`);
-        }
-
-    }
-
-    const styles = `
-        .market-competition {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-        }
-
-        .market-competition-warning {
-            background-color: ${colorMapper('warning')}
-        }
-
-        .market-competition-danger {
-            background-color: ${colorMapper('danger')}
-        }
-    `;
-
-    initialise();
-
-}
-);
-// recipeClickthrough
-window.moduleRegistry.add('recipeClickthrough', (request, configuration, util) => {
-
-    let enabled = false;
-    let recipeCacheByName;
-    let recipeCacheByImage;
-    let element;
-
-    async function initialise() {
         configuration.registerCheckbox({
             category: 'UI Features',
             key: 'recipe-click',
@@ -2459,29 +3667,10 @@ window.moduleRegistry.add('recipeClickthrough', (request, configuration, util) =
 
     function handleConfigStateChange(state) {
         enabled = state;
-        setupRecipeCache();
-    }
-
-    async function setupRecipeCache() {
-        if(!enabled || recipeCacheByName) {
-            return;
-        }
-        recipeCacheByName = {};
-        recipeCacheByImage = {};
-        const recipes = await request.listRecipes();
-        for(const recipe of recipes) {
-            if(!recipeCacheByName[recipe.name]) {
-                recipeCacheByName[recipe.name] = recipe;
-            }
-            const lastPart = recipe.image.split('/').at(-1);
-            if(!recipeCacheByImage[lastPart]) {
-                recipeCacheByImage[lastPart] = recipe;
-            }
-        }
     }
 
     function handleClick(event) {
-        if(!enabled || !recipeCacheByName) {
+        if(!enabled) {
             return;
         }
         if($(event.currentTarget).closest('button').length) {
@@ -2489,14 +3678,14 @@ window.moduleRegistry.add('recipeClickthrough', (request, configuration, util) =
         }
         event.stopPropagation();
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = recipeCacheByName[name];
+        const nameMatch = recipeCache.byName[name];
         if(nameMatch) {
             return followRecipe(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = recipeCacheByImage[lastPart];
+        const imageMatch = recipeCache.byImage[lastPart];
         if(imageMatch) {
             return followRecipe(imageMatch);
         }
@@ -2510,255 +3699,247 @@ window.moduleRegistry.add('recipeClickthrough', (request, configuration, util) =
 
 }
 );
-// skillOverviewPage
-window.moduleRegistry.add('skillOverviewPage', (pages, components, elementWatcher, skillStore, userStore, events, util, configuration) => {
+// syncTracker
+window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, components, util, toast, elementWatcher) => {
 
-    const registerUserStoreHandler = events.register.bind(null, 'userStore');
+    const STORE_NAME = 'sync-tracking';
+    const PAGE_NAME = 'Sync State';
+    const TOAST_SUCCESS_TIME = 1000*60*5;
+    const TOAST_WARN_TIME = 1000*60*60*4;
+    const TOAST_REWARN_TIME = 1000*60*60;
 
-    const PAGE_NAME = 'Skill overview';
-    const SKILL_COUNT = 13;
-    const MAX_LEVEL = 100;
-    const MAX_TOTAL_LEVEL = SKILL_COUNT * MAX_LEVEL;
-    const MAX_TOTAL_EXP = SKILL_COUNT * util.levelToExp(MAX_LEVEL);
+    const sources = {
+        inventory: {
+            name: 'Inventory',
+            event: 'reader-inventory',
+            page: 'inventory'
+        },
+        'equipment-equipment': {
+            name: 'Equipment',
+            event: 'reader-equipment-equipment',
+            page: 'equipment'
+        },
+        'equipment-runes': {
+            name: 'Runes',
+            event: 'reader-equipment-runes',
+            page: 'equipment',
+            element: 'equipment-page .categories button:contains("Runes")'
+        },
+        'equipment-tomes': {
+            name: 'Tomes',
+            event: 'reader-equipment-tomes',
+            page: 'equipment',
+            element: 'equipment-page .categories button:contains("Tomes")'
+        },
+        structures: {
+            name: 'Buildings',
+            event: 'reader-structures',
+            page: 'house/build/2'
+        },
+        enhancements: {
+            name: 'Building enhancements',
+            event: 'reader-enhancements',
+            page: 'house/enhance/2'
+        },
+        'structures-guild': {
+            name: 'Guild buildings',
+            event: 'reader-structures-guild',
+            page: 'guild',
+            element: 'guild-page button:contains("Buildings")'
+        }
+    };
 
-    let skillProperties = null;
-    let skillTotalLevel = null;
-    let skillTotalExp = null;
+    let autoVisiting = false;
 
     async function initialise() {
-        registerUserStoreHandler(handleUserStore);
+        await loadSavedData();
+        for(const key of Object.keys(sources)) {
+            events.register(sources[key].event, handleReader.bind(null, key));
+        }
         await pages.register({
-            category: 'Skills',
+            category: 'Misc',
             name: PAGE_NAME,
-            image: 'https://cdn-icons-png.flaticon.com/128/1160/1160329.png',
-            columns: '2',
+            image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png',
+            columns: '3',
             render: renderPage
         });
-        configuration.registerCheckbox({
-            category: 'Pages',
-            key: 'skill-overview-enabled',
-            name: 'Skill Overview',
-            default: true,
-            handler: handleConfigStateChange
-        });
-        await setupSkillProperties();
-
-        await userStore.ready;
-        await handleUserStore();
+        pages.show(PAGE_NAME);
+        setInterval(update, 1000);
     }
 
-    async function setupSkillProperties() {
-        await skillStore.ready;
-        await userStore.ready;
-        skillProperties = [];
-        const skillIds = Object.keys(userStore.exp);
-        for(const id of skillIds) {
-            if(!skillStore.byId[id]) {
-                continue;
+    async function loadSavedData() {
+        const entries = await localDatabase.getAllEntries(STORE_NAME);
+        for(const entry of entries) {
+            if(!sources[entry.key]) {
+                sources[entry.key] = {};
             }
-            skillProperties.push({
-                id: id,
-                name: skillStore.byId[id].name,
-                image: skillStore.byId[id].image,
-                color: skillStore.byId[id].color,
-                defaultActionId: skillStore.byId[id].defaultActionId,
-                maxLevel: MAX_LEVEL,
-                showExp: true,
-                showLevel: true
+            sources[entry.key].lastSeen = entry.value.time;
+            events.emit(`reader-${entry.key}`, {
+                type: 'cache',
+                value: entry.value.value
             });
         }
-        skillProperties.push(skillTotalLevel = {
-            id: skillStore.byName['Total-level'].id,
-            name: 'Total Level',
-            image: skillStore.byName['Total-level'].image,
-            color: skillStore.byName['Total-level'].color,
-            maxLevel: MAX_TOTAL_LEVEL,
-            showExp: false,
-            showLevel: true
-        });
-        skillProperties.push(skillTotalExp = {
-            id: skillStore.byName['Total-exp'].id,
-            name: 'Total Exp',
-            image: skillStore.byName['Total-exp'].image,
-            color: skillStore.byName['Total-exp'].color,
-            maxLevel: MAX_TOTAL_EXP,
-            showExp: true,
-            showLevel: false
-        });
     }
 
-    function handleConfigStateChange(state, name) {
-        if(state) {
-            pages.show(PAGE_NAME);
-        } else {
-            pages.hide(PAGE_NAME);
-        }
-    }
-
-    async function handleUserStore() {
-        if(!skillProperties) {
+    function handleReader(key, event) {
+        if(event.type !== 'full') {
             return;
         }
-        await userStore.ready;
+        const time = Date.now();
+        let newData = false;
+        if(!sources[key].lastSeen || sources[key].lastSeen + TOAST_SUCCESS_TIME < time) {
+            newData = true;
+        }
+        sources[key].lastSeen = time;
+        sources[key].notified = false;
+        localDatabase.saveEntry(STORE_NAME, {
+            key: key,
+            value: {
+                time,
+                value: event.value
+            }
+        });
+        if(newData) {
+            toast.create({
+                text: `${sources[key].name} synced`,
+                image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png'
+            });
+            if(autoVisiting) {
+                triggerAutoVisitor();
+            }
+        }
+    }
 
-        let totalExp = 0;
-        let totalLevel = 0;
-        for(const skill of skillProperties) {
-            if(skill.id <= 0) {
+    function update() {
+        pages.requestRender(PAGE_NAME);
+        const time = Date.now();
+        for(const source of Object.values(sources)) {
+            if(source.lastSeen && source.lastSeen + TOAST_WARN_TIME >= time) {
                 continue;
             }
-            let exp = userStore.exp[skill.id];
-            skill.exp = util.expToCurrentExp(exp);
-            skill.level = util.expToLevel(exp);
-            skill.expToLevel = util.expToNextLevel(exp);
-            totalExp += Math.min(exp, 12_000_000);
-            totalLevel += Math.min(skill.level, 100);
+            if(source.notified && source.notified + TOAST_REWARN_TIME >= time) {
+                continue;
+            }
+            toast.create({
+                text: `${source.name} needs a sync`,
+                image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png',
+                time: 5000
+            });
+            source.notified = time;
         }
-
-        skillTotalExp.exp = totalExp;
-        skillTotalExp.level = totalExp;
-        skillTotalExp.expToLevel = MAX_TOTAL_EXP - totalExp;
-        skillTotalLevel.exp = totalLevel;
-        skillTotalLevel.level = totalLevel;
-        skillTotalLevel.expToLevel = MAX_TOTAL_LEVEL - totalLevel;
-
-        pages.requestRender(PAGE_NAME);
     }
 
-    async function renderPage() {
-        if(!skillProperties) {
+    async function visit(source) {
+        if(!source.page) {
             return;
         }
-        await elementWatcher.exists(componentBlueprint.dependsOn);
-
-        let column = 0;
-
-        for(const skill of skillProperties) {
-            componentBlueprint.componentId = 'skillOverviewComponent_' + skill.name;
-            componentBlueprint.parent = '.column' + column;
-            if(skill.defaultActionId) {
-                componentBlueprint.onClick = util.goToPage.bind(null, `/skill/${skill.id}/action/${skill.defaultActionId}`);
-            } else {
-                delete componentBlueprint.onClick;
-            }
-            column = 1 - column; // alternate columns
-
-            const skillHeader = components.search(componentBlueprint, 'skillHeader');
-            skillHeader.title = skill.name;
-            skillHeader.image = `/assets/${skill.image}`;
-            if(skill.showLevel) {
-                skillHeader.textRight = `Lv. ${skill.level} <span style='color: #aaa'>/ ${skill.maxLevel}</span>`;
-            } else {
-                skillHeader.textRight = '';
-            }
-
-
-            const skillProgress = components.search(componentBlueprint, 'skillProgress');
-            if(skill.showExp) {
-                skillProgress.progressText = `${util.formatNumber(skill.exp)} / ${util.formatNumber(skill.exp + skill.expToLevel)} XP`;
-            } else {
-                skillProgress.progressText = '';
-            }
-            skillProgress.progressPercent = Math.floor(skill.exp / (skill.exp + skill.expToLevel) * 100);
-            skillProgress.color = skill.color;
-
-            components.addComponent(componentBlueprint);
+        util.goToPage(source.page);
+        if(source.element) {
+            await elementWatcher.exists(source.element);
+            $(source.element).click();
         }
     }
 
-    const componentBlueprint = {
-        componentId: 'skillOverviewComponent',
+    function startAutoVisiting() {
+        autoVisiting = true;
+        triggerAutoVisitor();
+    }
+
+    const stopAutoVisiting = util.debounce(function() {
+        autoVisiting = false;
+        pages.open(PAGE_NAME);
+        toast.create({
+            text: `Auto sync finished`,
+            image: 'https://img.icons8.com/?size=48&id=1ODJ62iG96gX&format=png'
+        });
+    }, 1500);
+
+    function triggerAutoVisitor() {
+        try {
+            const time = Date.now();
+            for(const source of Object.values(sources)) {
+                let secondsAgo = (time - source.lastSeen) / 1000;
+                if(source.page && (!source.lastSeen || secondsAgo >= 60*60)) {
+                    visit(source);
+                    return;
+                }
+            }
+        } finally {
+            stopAutoVisiting();
+        }
+    }
+
+    function renderPage() {
+        components.addComponent(autoVisitBlueprint);
+        const header = components.search(sourceBlueprint, 'header');
+        const item = components.search(sourceBlueprint, 'item');
+        const buttons = components.search(sourceBlueprint, 'buttons');
+        const time = Date.now();
+        for(const source of Object.values(sources)) {
+            sourceBlueprint.componentId = `syncTrackerSourceComponent_${source.name}`;
+            header.title = source.name;
+            let secondsAgo = (time - source.lastSeen) / 1000;
+            if(!secondsAgo) {
+                secondsAgo = Number.MAX_VALUE;
+            }
+            item.value = util.secondsToDuration(secondsAgo);
+            buttons.hidden = secondsAgo < 60*60;
+            buttons.buttons[0].action = visit.bind(null, source);
+            components.addComponent(sourceBlueprint);
+        }
+    }
+
+    const autoVisitBlueprint = {
+        componentId: 'syncTrackerAutoVisitComponent',
         dependsOn: 'custom-page',
         parent: '.column0',
         selectedTabIndex: 0,
         tabs: [
             {
-                title: 'Skillname',
                 rows: [
                     {
-                        id: 'skillHeader',
-                        type: 'header',
-                        title: 'Forging',
-                        image: '/assets/misc/merchant.png',
-                        textRight: `Lv. 69 <span style='color: #aaa'>/ 420</span>`
-                    },
-                    {
-                        id: 'skillProgress',
-                        type: 'progress',
-                        progressText: '301,313 / 309,469 XP',
-                        progressPercent: '97'
+                        type: 'buttons',
+                        buttons: [
+                            {
+                                text: 'Auto sync',
+                                color: 'primary',
+                                action: startAutoVisiting
+                            }
+                        ]
                     }
                 ]
-            },
+            }
         ]
     };
 
-    initialise();
-}
-);
-// syncWarningPage
-window.moduleRegistry.add('syncWarningPage', (userStore, pages, components, util) => {
-
-    const PAGE_NAME = 'Plugin not synced';
-    const STARTED = new Date().getTime();
-
-    async function initialise() {
-        await addSyncedPage();
-        const intervalReference = window.setInterval(pages.requestRender.bind(null, PAGE_NAME), 1000);
-        await userStore.ready;
-        clearInterval(intervalReference);
-        removeSyncedPage();
-    }
-
-    async function addSyncedPage() {
-        await pages.register({
-            category: 'Character',
-            name: PAGE_NAME,
-            image: 'https://cdn-icons-png.flaticon.com/512/6119/6119820.png',
-            columns: 3,
-            render: renderPage
-        });
-        pages.show(PAGE_NAME);
-    }
-
-    function removeSyncedPage() {
-        pages.hide(PAGE_NAME);
-    }
-
-    function renderPage() {
-        const millisElapsed = new Date().getTime() - STARTED;
-        const timer = util.secondsToDuration(60 * 15 - millisElapsed/1000);
-        const texts = [
-            'For the Pancake-Scripts plugin to work correctly, it needs to be up and running as fast as possible after the page loaded.',
-            'If you see this message, it was not fast enough, and you may need to wait up to 15 minutes for the plugin to work correctly.',
-            'If you used the plugin succesfully before, and this is the first time you see this message, it may just be a one-off issue, and you can try refreshing your page.',
-            'Some things you can do to make the plugin load faster next time:',
-            '* Place the script at the top of all of your scripts. They are evaluated in order.',
-            '* Double check that "@run-at" is set to "document-start"',
-            'Estimated time until the next authentication check-in : ' + timer,
-            'If you still see this after the above timer runs out, feel free to contact @pancake.lord on Discord'
-        ];
-
-        for(const index in texts) {
-            componentBlueprint.componentId = 'authWarningComponent_' + index;
-            components.search(componentBlueprint, 'infoField').name = texts[index];
-            components.addComponent(componentBlueprint);
-        }
-    }
-
-    const componentBlueprint = {
-        componentId: 'authWarningComponent',
+    const sourceBlueprint = {
+        componentId: 'syncTrackerSourceComponent',
         dependsOn: 'custom-page',
-        parent: '.column1',
+        parent: '.column0',
         selectedTabIndex: 0,
         tabs: [
             {
-                title: 'Info',
                 rows: [
                     {
-                        id: 'infoField',
+                        type: 'header',
+                        id: 'header',
+                        title: '',
+                        centered: true
+                    }, {
                         type: 'item',
-                        name: ''
+                        id: 'item',
+                        name: 'Last detected',
+                        value: ''
+                    }, {
+                        type: 'buttons',
+                        id: 'buttons',
+                        buttons: [
+                            {
+                                text: 'Visit',
+                                color: 'danger',
+                                action: undefined
+                            }
+                        ]
                     }
                 ]
             },
@@ -2774,19 +3955,19 @@ window.moduleRegistry.add('ui', (configuration) => {
 
     const id = crypto.randomUUID();
     const sections = [
-        //'inventory-page',
-        'equipment-page',
-        'home-page',
-        'merchant-page',
-        'market-page',
-        'daily-quest-page',
-        'quest-shop-page',
-        'skill-page',
-        'upgrade-page',
-        'leaderboards-page',
+        'challenges-page',
         'changelog-page',
+        'daily-quest-page',
+        'equipment-page',
+        'guild-page',
+        'home-page',
+        'leaderboards-page',
+        'market-page',
+        'merchant-page',
+        'quests-page',
         'settings-page',
-        'guild-page'
+        'skill-page',
+        'upgrade-page'
     ].join(', ');
     const selector = `:is(${sections})`;
     let gap
@@ -2823,7 +4004,6 @@ window.moduleRegistry.add('ui', (configuration) => {
                 ) {
                     padding: 2px 6px !important;
                     min-height: 0 !important;
-                    min-width: 0 !important;
                 }
 
                 ${selector} :not(.multi-row) > :is(
@@ -2837,6 +4017,11 @@ window.moduleRegistry.add('ui', (configuration) => {
                     width: 32px !important;
                     min-height: 0 !important;
                     min-width: 0 !important;
+                }
+
+                ${selector} div.lock {
+                    height: unset !important;
+                    padding: 0 !important;
                 }
 
                 action-component div.body >  div.image,
@@ -2897,16 +4082,13 @@ window.moduleRegistry.add('ui', (configuration) => {
 }
 );
 // versionWarning
-window.moduleRegistry.add('versionWarning', (events, request, toast) => {
+window.moduleRegistry.add('versionWarning', (request, toast) => {
 
     function initialise() {
-        events.register('xhr', handleXhr);
+        setInterval(run, 1000 * 60 * 5);
     }
 
-    async function handleXhr(xhr) {
-        if(!xhr.url.endsWith('/getUser')) {
-            return;
-        }
+    async function run() {
         const version = await request.getVersion();
         if(!window.PANCAKE_VERSION || version === window.PANCAKE_VERSION) {
             return;
@@ -2922,18 +4104,599 @@ window.moduleRegistry.add('versionWarning', (events, request, toast) => {
 
 }
 );
-// itemStore
-window.moduleRegistry.add('itemStore', (request, Promise) => {
+// abstractStateStore
+window.moduleRegistry.add('abstractStateStore', (events, util) => {
 
-    const isReady = new Promise.Deferred();
+    const SOURCES = [
+        'inventory',
+        'equipment-equipment',
+        'equipment-runes',
+        'equipment-tomes',
+        'structures',
+        'enhancements',
+        'structures-guild'
+    ];
+
+    const stateBySource = {};
+
+    function initialise() {
+        for(const source of SOURCES) {
+            stateBySource[source] = {};
+            events.register(`reader-${source}`, handleReader.bind(null, source));
+        }
+    }
+
+    function handleReader(source, event) {
+        let updated = false;
+        if(event.type === 'full' || event.type === 'cache') {
+            if(util.compareObjects(stateBySource[source], event.value)) {
+                return;
+            }
+            updated = true;
+            stateBySource[source] = event.value;
+        }
+        if(event.type === 'partial') {
+            for(const key of Object.keys(event.value)) {
+                if(stateBySource[source][key] === event.value[key]) {
+                    continue;
+                }
+                updated = true;
+                stateBySource[source][key] = event.value[key];
+            }
+        }
+        if(updated) {
+            events.emit(`state-${source}`, stateBySource[source]);
+        }
+    }
+
+    initialise();
+
+}
+);
+// expStateStore
+window.moduleRegistry.add('expStateStore', (events, util) => {
+
+    const emitEvent = events.emit.bind(null, 'state-exp');
+    const state = {};
+
+    function initialise() {
+        events.register('reader-exp', handleExpReader);
+    }
+
+    function handleExpReader(event) {
+        let updated = false;
+        for(const skill of event) {
+            if(!state[skill.id]) {
+                state[skill.id] = {
+                    id: skill.id,
+                    exp: 0,
+                    level: 1,
+                    virtualLevel: 1
+                };
+            }
+            if(skill.exp > state[skill.id].exp) {
+                updated = true;
+                state[skill.id].exp = skill.exp;
+                state[skill.id].level = util.expToLevel(skill.exp);
+                state[skill.id].virtualLevel = util.expToVirtualLevel(skill.exp);
+            }
+        }
+        if(updated) {
+            emitEvent(state);
+        }
+    }
+
+    initialise();
+
+}
+);
+// localConfigurationStore
+window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
 
     const exports = {
-        ready: isReady.promise,
+        load,
+        save
+    };
+
+    const STORE_NAME = 'settings';
+
+    async function load() {
+        const entries = await localDatabase.getAllEntries(STORE_NAME);
+        const configurations = {};
+        for(const entry of entries) {
+            configurations[entry.key] = entry.value;
+        }
+        return configurations;
+    }
+
+    async function save(key, value) {
+        await localDatabase.saveEntry(STORE_NAME, {key, value});
+    }
+
+    return exports;
+
+}
+);
+// statsStore
+window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, structuresCache, statNameCache) => {
+
+    const emitEvent = events.emit.bind(null, 'state-stats');
+
+    const exports = {
+        get,
+        getLevel,
+        getInventoryItem,
+        getEquipmentItem,
+        getManyEquipmentItems,
+        getAttackStyle,
+        update
+    };
+
+    let exp = {};
+    let inventory = {};
+    let tomes = {};
+    let equipment = {};
+    let runes = {};
+    let structures = {};
+    let enhancements = {};
+    let guildStructures = {};
+
+    let stats;
+
+    function initialise() {
+        let _update = util.debounce(update, 200);
+        events.register('state-exp', event => (exp = event, _update()));
+        events.register('state-inventory', event => (inventory = event, _update()));
+        events.register('state-equipment-tomes', event => (tomes = event, _update()));
+        events.register('state-equipment-equipment', event => (equipment = event, _update()));
+        events.register('state-equipment-runes', event => (runes = event, _update()));
+        events.register('state-structures', event => (structures = event, _update()));
+        events.register('state-enhancements', event => (enhancements = event, _update()));
+        events.register('state-structures-guild', event => (guildStructures = event, _update()));
+    }
+
+    function get(stat, skill) {
+        if(!stat) {
+            return stats;
+        }
+        statNameCache.validate(stat);
+        let value = 0;
+        if(stats && stats.global[stat]) {
+            value += stats.global[stat] || 0;
+        }
+        if(stats && stats.bySkill[stat] && stats.bySkill[stat][skill]) {
+            value += stats.bySkill[stat][skill];
+        }
+        return value;
+    }
+
+    function getLevel(skillId) {
+        return exp[skillId] || {
+            id: skillId,
+            exp: 0,
+            level: 1,
+            virtualLevel: 1
+        };
+    }
+
+    function getInventoryItem(itemId) {
+        return inventory[itemId] || 0;
+    }
+
+    function getEquipmentItem(itemId) {
+        return equipment[itemId] || tomes[itemId] || runes[itemId] || 0;
+    }
+
+    function getManyEquipmentItems(ids) {
+        return ids.map(id => ({
+            id,
+            amount: getEquipmentItem(id)
+        })).filter(a => a.amount);
+    }
+
+    function getAttackStyle() {
+        return stats.attackStyle;
+    }
+
+    function update(excludedItemIds) {
+        reset();
+        processExp();
+        processTomes();
+        processEquipment(excludedItemIds);
+        processRunes();
+        processStructures();
+        processEnhancements();
+        processGuildStructures();
+        cleanup();
+        if(!excludedItemIds) {
+            emitEvent(stats);
+        }
+    }
+
+    function reset() {
+        stats = {
+            attackStyle: null,
+            bySkill: {},
+            global: {}
+        };
+    }
+
+    function processExp() {
+        for(const id in exp) {
+            const skill = skillCache.byId[id];
+            addStats({
+                bySkill: {
+                    EFFICIENCY : {
+                        [skill.technicalName]: 0.25
+                    }
+                }
+            }, exp[id].level);
+            if(skill.displayName === 'Ranged') {
+                addStats({
+                    global: {
+                        AMMO_PRESERVATION_CHANCE : 0.25
+                    }
+                }, exp[id].level);
+            }
+        }
+    }
+
+    // first tomes, then equipments
+    // because we need to know the potion effect multiplier first
+    function processTomes() {
+        for(const id in tomes) {
+            const item = itemCache.byId[id];
+            if(!item) {
+                continue;
+            }
+            addStats(item.stats);
+        }
+    }
+
+    function processEquipment(excludedItemIds) {
+        let arrow;
+        let bow;
+        const potionMultiplier = get('INCREASED_POTION_EFFECT');
+        for(const id in equipment) {
+            if(equipment[id] <= 0) {
+                continue;
+            }
+            if(excludedItemIds && excludedItemIds.has(+id)) {
+                continue;
+            }
+            const item = itemCache.byId[id];
+            if(!item) {
+                continue;
+            }
+            if(item.stats.global.ATTACK_SPEED) {
+                stats.attackStyle = item.skill;
+            }
+            if(item.name.endsWith('Arrow')) {
+                arrow = item;
+                continue;
+            }
+            if(item.name.endsWith('Bow')) {
+                bow = item;
+            }
+            let multiplier = 1;
+            let accuracy = 2;
+            if(potionMultiplier && item.name.endsWith('Potion')) {
+                multiplier = 1 + potionMultiplier / 100;
+                accuracy = 10;
+            }
+            if(item.name.endsWith('Rune')) {
+                multiplier = equipment[id];
+                accuracy = 10;
+            }
+            addStats(item.stats, multiplier, accuracy);
+        }
+        if(bow && arrow) {
+            addStats(arrow.stats);
+        }
+    }
+    function processRunes() {
+        for(const id in runes) {
+            const item = itemCache.byId[id];
+            if(!item) {
+                continue;
+            }
+            addStats(item.stats, runes[id]);
+        }
+    }
+
+    function processStructures() {
+        for(const name in structures) {
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                continue;
+            }
+            addStats(structure.regular, structures[name] + 2/3);
+        }
+    }
+
+    function processEnhancements() {
+        for(const name in enhancements) {
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                continue;
+            }
+            addStats(structure.enhance, enhancements[name]);
+        }
+    }
+
+    function processGuildStructures() {
+        for(const name in guildStructures) {
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                continue;
+            }
+            addStats(structure.regular, guildStructures[name]);
+        }
+    }
+
+    function cleanup() {
+        // base
+        addStats({
+            global: {
+                HEALTH: 10,
+                AMMO_PRESERVATION_CHANCE : 55
+            }
+        });
+        // fallback
+        if(!stats.attackStyle) {
+            stats.attackStyle = 'OneHanded';
+        }
+        if(!stats.global.ATTACK_SPEED) {
+            stats.global.ATTACK_SPEED = 3;
+            stats.attackStyle = '';
+        }
+        // health percent
+        const healthPercent = get('HEALTH_PERCENT');
+        if(healthPercent) {
+            const health = get('HEALTH');
+            addStats({
+                global: {
+                    HEALTH : Math.floor(healthPercent * health / 100)
+                }
+            })
+        }
+        // damage percent
+        const damagePercent = get('DAMAGE_PERCENT');
+        if(damagePercent) {
+            const damage = get('DAMAGE');
+            addStats({
+                global: {
+                    DAMAGE : Math.floor(damagePercent * damage / 100)
+                }
+            })
+        }
+        // bonus level efficiency
+        if(stats.bySkill['BONUS_LEVEL']) {
+            for(const skill in stats.bySkill['BONUS_LEVEL']) {
+                addStats({
+                    bySkill: {
+                        EFFICIENCY: {
+                            [skill]: 0.25
+                        }
+                    }
+                }, Math.round(stats.bySkill['BONUS_LEVEL'][skill]), 4);
+            }
+        }
+    }
+
+    function addStats(newStats, multiplier = 1, accuracy = 1) {
+        if(newStats.global) {
+            for(const stat in newStats.global) {
+                if(!stats.global[stat]) {
+                    stats.global[stat] = 0;
+                }
+                stats.global[stat] += Math.round(accuracy * multiplier * newStats.global[stat]) / accuracy;
+            }
+        }
+        if(newStats.bySkill) {
+            for(const stat in newStats.bySkill) {
+                if(!stats.bySkill[stat]) {
+                    stats.bySkill[stat] = {};
+                }
+                for(const skill in newStats.bySkill[stat]) {
+                    if(!stats.bySkill[stat][skill]) {
+                        stats.bySkill[stat][skill] = 0;
+                    }
+                    stats.bySkill[stat][skill] += Math.round(accuracy * multiplier * newStats.bySkill[stat][skill]) / accuracy;
+                }
+            }
+        }
+    }
+
+    initialise();
+
+    return exports;
+
+}
+);
+// actionCache
+window.moduleRegistry.add('actionCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000);
+
+    const exports = {
+        list: [],
+        byId: null,
+        byName: null
+    };
+
+    async function initialise() {
+        const actions = await request.listActions();
+        exports.byId = {};
+        exports.byName = {};
+        for(const action of actions) {
+            exports.list.push(action);
+            exports.byId[action.id] = action;
+            exports.byName[action.name] = action;
+        }
+        initialised.resolve(exports);
+    }
+
+    initialise();
+
+    return initialised;
+
+}
+);
+// dropCache
+window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache, skillCache) => {
+
+    const initialised = new Promise.Expiring(2000);
+
+    const exports = {
+        list: [],
+        byAction: null,
+        byItem: null,
+        boneCarveMappings: null,
+        lowerGatherMappings: null
+    };
+
+    Object.defineProperty(Array.prototype, '_groupBy', {
+        enumerable: false,
+        value: function(selector) {
+            return Object.values(this.reduce(function(rv, x) {
+                (rv[selector(x)] = rv[selector(x)] || []).push(x);
+                return rv;
+            }, {}));
+        }
+    });
+
+    Object.defineProperty(Array.prototype, '_distinct', {
+        enumerable: false,
+        value: function(selector) {
+            return [...new Set(this)];
+        }
+    });
+
+    async function initialise() {
+        const drops = await request.listDrops();
+        exports.byAction = {};
+        exports.byItem = {};
+        for(const drop of drops) {
+            exports.list.push(drop);
+            if(!exports.byAction[drop.action]) {
+                exports.byAction[drop.action] = [];
+            }
+            exports.byAction[drop.action].push(drop);
+            if(!exports.byItem[drop.item]) {
+                exports.byItem[drop.item] = [];
+            }
+            exports.byItem[drop.item].push(drop);
+        }
+        extractBoneCarvings();
+        extractLowerGathers();
+        initialised.resolve(exports);
+    }
+
+    // I'm sorry for what follows
+    function extractBoneCarvings() {
+        let name;
+        exports.boneCarveMappings = exports.list
+            // filtering
+            .filter(drop => drop.type === 'GUARANTEED')
+            .filter(drop => (name = itemCache.byId[drop.item].name, name.endsWith('Bone') || name.endsWith('Fang')))
+            .filter(drop => actionCache.byId[drop.action].skill === 'Combat')
+            // sort
+            .sort((a,b) => actionCache.byId[a.action].level - actionCache.byId[b.action].level)
+            // per level
+            ._groupBy(drop => actionCache.byId[drop.action].level)
+            .map(a => a[0].item)
+            .map((item,i,all) => ({
+                from: item,
+                to: [].concat([all[i-1]]).concat([all[i-2]]).filter(a => a)
+            }))
+            .reduce((a,b) => (a[b.from] = b.to, a), {});
+    }
+
+    function extractLowerGathers() {
+        exports.lowerGatherMappings = exports.list
+            // filtering
+            .filter(drop => drop.type === 'REGULAR')
+            .filter(drop => skillCache.byName[actionCache.byId[drop.action].skill].type === 'Gathering')
+            // sort
+            .sort((a,b) => actionCache.byId[a.action].level - actionCache.byId[b.action].level)
+            // per action, the highest chance drop
+            ._groupBy(drop => drop.action)
+            .map(a => a.reduce((a,b) => a.chance >= b.chance ? a : b))
+            // per skill
+            ._groupBy(drop => actionCache.byId[drop.action].skill)
+            .flatMap(a => a
+                ._groupBy(drop => actionCache.byId[drop.action].level)
+                .map(b => b.map(drop => drop.item)._distinct())
+                .flatMap((b,i,all) => b.map(item => ({
+                    from: item,
+                    to: [].concat(all[i-1]).concat(all[i-2]).filter(a => a)
+                })))
+            )
+            .reduce((a,b) => (a[b.from] = b.to, a), {});
+    }
+
+    initialise();
+
+    return initialised;
+
+}
+);
+// ingredientCache
+window.moduleRegistry.add('ingredientCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000);
+
+    const exports = {
+        list: [],
+        byAction: null,
+        byItem: null
+    };
+
+    async function initialise() {
+        const ingredients = await request.listIngredients();
+        exports.byAction = {};
+        exports.byItem = {};
+        for(const ingredient of ingredients) {
+            if(!exports.byAction[ingredient.action]) {
+                exports.byAction[ingredient.action] = [];
+            }
+            exports.byAction[ingredient.action].push(ingredient);
+            if(!exports.byItem[ingredient.item]) {
+                exports.byItem[ingredient.item] = [];
+            }
+            exports.byItem[ingredient.item].push(ingredient);
+        }
+        initialised.resolve(exports);
+    }
+
+    initialise();
+
+    return initialised;
+
+}
+);
+// itemCache
+window.moduleRegistry.add('itemCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000);
+
+    const exports = {
         list: [],
         byId: null,
         byName: null,
         byImage: null,
-        attributes: null
+        attributes: null,
+        specialIds: {
+            coins: null,
+            food: null,
+            arrow: null,
+            map: null,
+            runeGathering: null,
+            potionCombat: null,
+            potionGathering: null,
+            potionCrafting: null,
+        }
     };
 
     async function initialise() {
@@ -2962,8 +4725,17 @@ window.moduleRegistry.add('itemStore', (request, Promise) => {
             if(item.compost) {
                 item.attributes.COMPOST = item.compost;
             }
-            if(item.speed) {
-                item.attributes.SPEED = item.speed;
+            if(item.attributes.ATTACK_SPEED) {
+                item.attributes.ATTACK_SPEED /= 2;
+            }
+            for(const stat in item.stats.bySkill) {
+                if(item.stats.bySkill[stat].All) {
+                    item.stats.global[stat] = item.stats.bySkill[stat].All;
+                    delete item.stats.bySkill[stat].All;
+                    if(!Object.keys(item.stats.bySkill[stat]).length) {
+                        delete item.stats.bySkill[stat];
+                    }
+                }
             }
         }
         for(const image of Object.keys(exports.byImage)) {
@@ -2981,317 +4753,196 @@ window.moduleRegistry.add('itemStore', (request, Promise) => {
             name: 'Compost',
             image: '/assets/misc/compost.png'
         });
-        isReady.resolve();
+        exports.specialIds.coins = exports.byName['Coins'].id;
+        exports.specialIds.food = exports.list.filter(a => /^Cooked|Pie$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.arrow = exports.list.filter(a => /Arrow$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.map = exports.list.filter(a => /Map \d+$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.potionCombat = exports.list.filter(a => /(Combat|Health).*Potion$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.potionGathering = exports.list.filter(a => /Gather.*Potion$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.potionCrafting = exports.list.filter(a => /(Craft|Preservation).*Potion$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.runeGathering = exports.list.filter(a => /(Woodcutting|Mining|Farming|Fishing) Rune$/.exec(a.name)).map(a => a.id);
+        initialised.resolve(exports);
     }
 
     initialise();
 
-    return exports;
+    return initialised;
 
 }
 );
-// localConfigurationStore
-window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
+// monsterCache
+window.moduleRegistry.add('monsterCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000);
 
     const exports = {
-        load,
-        save
+        list: [],
+        byId: null,
+        byName: null
     };
 
-    const databaseName = 'PancakeScripts';
-    const storeName = 'settings';
-    let database;
-
-    async function load() {
-        const entries = await localDatabase.getAllEntries(storeName);
-        const configurations = {};
-        for(const entry of entries) {
-            configurations[entry.key] = entry.value;
+    async function initialise() {
+        const monsters = await request.listMonsters();
+        exports.byId = {};
+        exports.byName = {};
+        for(const monster of monsters) {
+            exports.list.push(monster);
+            exports.byId[monster.id] = monster;
+            exports.byName[monster.name] = monster;
         }
-        return configurations;
+        initialised.resolve(exports);
     }
 
-    async function save(key, value) {
-        await localDatabase.saveEntry(storeName, {key, value});
-    }
+    initialise();
 
-    return exports;
+    return initialised;
 
 }
 );
-// skillStore
-window.moduleRegistry.add('skillStore', (request, Promise) => {
+// recipeCache
+window.moduleRegistry.add('recipeCache', (request, Promise) => {
 
-    const isReady = new Promise.Deferred();
+    const initialised = new Promise.Expiring(2000);
 
     const exports = {
-        ready: isReady.promise,
+        list: [],
+        byName: null,
+        byImage: null
+    };
+
+    async function initialise() {
+        const recipes = await request.listRecipes();
+        exports.byName = {};
+        exports.byImage = {};
+        for(const recipe of recipes) {
+            if(!exports.byName[recipe.name]) {
+                exports.byName[recipe.name] = recipe;
+            }
+            const lastPart = recipe.image.split('/').at(-1);
+            if(!exports.byImage[lastPart]) {
+                exports.byImage[lastPart] = recipe;
+            }
+        }
+        initialised.resolve(exports);
+    }
+
+    initialise();
+
+    return initialised;
+
+}
+);
+// skillCache
+window.moduleRegistry.add('skillCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000);
+
+    const exports = {
         list: [],
         byId: null,
         byName: null,
+        byTechnicalName: null,
     };
 
     async function initialise() {
         const skills = await request.listSkills();
         exports.byId = {};
         exports.byName = {};
+        exports.byTechnicalName = {};
         for(const skill of skills) {
             exports.list.push(skill);
             exports.byId[skill.id] = skill;
-            exports.byName[skill.name] = skill;
+            exports.byName[skill.displayName] = skill;
+            exports.byTechnicalName[skill.technicalName] = skill;
         }
-        isReady.resolve();
+        initialised.resolve(exports);
     }
 
     initialise();
 
-    return exports;
+    return initialised;
 
 }
 );
-// userStore
-window.moduleRegistry.add('userStore', (events, itemStore, Promise, util) => {
-
-    const registerPageHandler = events.register.bind(null, 'page');
-    const registerXhrHandler = events.register.bind(null, 'xhr');
-    const emitEvent = events.emit.bind(null, 'userStore');
-    const isReady = new Promise.Deferred();
-
-    const exp = {};
-    const inventory = {};
-    const equipment = {};
-    const action = {
-        actionId: null,
-        skillId: null,
-        amount: null,
-        maxAmount: null
-    };
-    const automations = {};
-    let currentPage = null;
+// statNameCache
+window.moduleRegistry.add('statNameCache', () => {
 
     const exports = {
-        ready: isReady.promise,
-        name: null,
-        exp,
-        inventory,
-        equipment,
-        action,
-        automations
+        validate
     };
 
-    function initialise() {
-        registerPageHandler(handlePage);
-        registerXhrHandler(handleXhr);
+    const statNames = new Set([
+        // ITEM_STAT_ATTRIBUTE
+        'AMMO_PRESERVATION_CHANCE',
+        'ATTACK_SPEED',
+        'BONUS_LEVEL',
+        'COIN_SNATCH',
+        'COMBAT_EXP',
+        'DOUBLE_EXP',
+        'DOUBLE_DROP',
+        'EFFICIENCY',
+        'LOWER_TIER_CHANCE',
+        'MERCHANT_SELL_CHANCE',
+        'PRESERVATION',
+        'SKILL_SPEED',
+        // ITEM_ATTRIBUTE
+        'ARMOUR',
+        'BLEED_CHANCE',
+        'BLOCK_CHANCE',
+        'CARVE_CHANCE',
+        'COIN_SNATCH',
+        'COMBAT_EXP',
+        'CRIT_CHANCE',
+        'DAMAGE',
+        'DAMAGE_PERCENT',
+        'DAMAGE_RANGE',
+        'DECREASED_POTION_DURATION',
+        'DUNGEON_DAMAGE',
+        'FOOD_EFFECT',
+        'FOOD_PRESERVATION_CHANCE',
+        'HEAL',
+        'HEALTH',
+        'HEALTH_PERCENT',
+        'INCREASED_POTION_EFFECT',
+        'MAP_FIND_CHANCE',
+        'PARRY_CHANCE',
+        'PASSIVE_FOOD_CONSUMPTION',
+        'REVIVE_TIME',
+        'STUN_CHANCE'
+    ]);
 
-        window.setInterval(update, 1000);
-    }
-
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
-    async function handleXhr(xhr) {
-        if(xhr.url.endsWith('/getUser')) {
-            await handleGetUser(xhr.response);
-            isReady.resolve();
-        }
-        if(xhr.url.endsWith('/startAction')) {
-            handleStartAction(xhr.response);
-        }
-        if(xhr.url.endsWith('/stopAction')) {
-            handleStopAction();
-        }
-        if(xhr.url.endsWith('/startAutomation')) {
-            handleStartAutomation(xhr.response);
-        }
-    }
-
-    async function handleGetUser(response) {
-        await itemStore.ready;
-        // name
-        exports.name = response.user.displayName;
-        // exp
-        const newExp = Object.entries(response.user.skills)
-                .map(a => ({id:a[0],exp:a[1].exp}))
-                .reduce((a,v) => Object.assign(a,{[v.id]:v.exp}), {});
-        Object.assign(exp, newExp);
-        // inventory
-        const newInventory = Object.values(response.user.inventory)
-            .reduce((a,v) => Object.assign(a,{[v.id]:v.amount}), {});
-        newInventory[-1] = response.user.compost;
-        newInventory[2] = response.user.charcoal;
-        Object.assign(inventory, newInventory);
-        // equipment
-        const newEquipment = Object.values(response.user.equipment)
-            .filter(a => a)
-            .map(a => {
-                if(a.uses) {
-                    const duration = itemStore.byId[a.id]?.attributes?.DURATION || 1;
-                    a.amount += a.uses / duration;
-                }
-                return a;
-            })
-            .reduce((a,v) => Object.assign(a,{[v.id]:v.amount}), {});
-        Object.assign(equipment, newEquipment);
-        // action
-        if(!response.user.action) {
-            action.actionId = null;
-            action.skillId = null;
-            action.amount = null;
-        } else {
-            action.actionId = +response.user.action.actionId;
-            action.skillId = +response.user.action.skillId;
-            action.amount = 0;
+    function validate(name) {
+        if(!statNames.has(name)) {
+            throw `Unsupported stat usage : ${name}`;
         }
     }
 
-    function handleStartAction(response) {
-        action.actionId = +response.actionId;
-        action.skillId = +response.skillId;
-        action.amount = 0;
-        action.maxAmount = response.amount;
-    }
+    return exports;
 
-    function handleStopAction() {
-        action.actionId = null;
-        action.skillId = null;
-        action.amount = null;
-        action.maxAmount = null;
-    }
+});
+// structuresCache
+window.moduleRegistry.add('structuresCache', (request, Promise) => {
 
-    function handleStartAutomation(response) {
-        automations[+response.automationId] = {
-            amount: 0,
-            maxAmount: response.amount
-        }
-    }
+    const initialised = new Promise.Expiring(2000);
 
-    async function update() {
-        await itemStore.ready;
-        if(!currentPage) {
-            return;
-        }
-        let updated = false;
-        if(currentPage.type === 'action') {
-            updated |= updateAction(); // bitwise OR because of lazy evaluation
-        }
-        if(currentPage.type === 'equipment') {
-            updated |= updateEquipment(); // bitwise OR because of lazy evaluation
-        }
-        if(currentPage.type === 'automation') {
-            updated |= updateAutomation(); // bitwise OR because of lazy evaluation
-        }
-        if(updated) {
-            emitEvent();
-        }
-    }
+    const exports = {
+        list: [],
+        byName: null
+    };
 
-    function updateAction() {
-        let updated = false;
-        $('skill-page .card').each((i,element) => {
-            const header = $(element).find('.header').text();
-            if(header === 'Materials') {
-                $(element).find('.row').each((j,row) => {
-                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
-                });
-            } else if(header === 'Consumables') {
-                $(element).find('.row').each((j,row) => {
-                    updated |= extractItem(row, equipment); // bitwise OR because of lazy evaluation
-                });
-            } else if(header === 'Stats') {
-                $(element).find('.row').each((j,row) => {
-                    const text = $(row).find('.name').text();
-                    if(text.startsWith('Total ') && text.endsWith(' XP')) {
-                        let expValue = $(row).find('.value').text().split(' ')[0];
-                        expValue = util.parseNumber(expValue);
-                        updated |= exp[currentPage.skill] !== expValue; // bitwise OR because of lazy evaluation
-                        exp[currentPage.skill] = expValue;
-                    }
-                });
-            } else if(header.startsWith('Loot')) {
-                const amount = $(element).find('.header .amount').text();
-                let newActionAmountValue = null;
-                let newActionMaxAmountValue = null;
-                if(amount) {
-                    newActionAmountValue = util.parseNumber(amount.split(' / ')[0]);
-                    newActionMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
-                }
-                updated |= action.amount !== newActionAmountValue; // bitwise OR because of lazy evaluation
-                updated |= action.maxAmount !== newActionMaxAmountValue; // bitwise OR because of lazy evaluation
-                action.amount = newActionAmountValue;
-                action.maxAmount = newActionMaxAmountValue;
-            }
-        });
-        return updated;
-    }
-
-    function updateEquipment() {
-        let updated = false;
-        $('equipment-component .card:nth-child(4) .item').each((i,element) => {
-            updated |= extractItem(element, equipment); // bitwise OR because of lazy evaluation
-        });
-        return updated;
-    }
-
-    function updateAutomation() {
-        let updated = false;
-        $('produce-component .card').each((i,element) => {
-            const header = $(element).find('.header').text();
-            if(header === 'Materials') {
-                $(element).find('.row').each((j,row) => {
-                    updated |= extractItem(row, inventory); // bitwise OR because of lazy evaluation
-                });
-            } else if(header.startsWith('Loot')) {
-                const amount = $(element).find('.header .amount').text();
-                let newAutomationAmountValue = null;
-                let newAutomationMaxAmountValue = null;
-                if(amount) {
-                    newAutomationAmountValue = util.parseNumber(amount.split(' / ')[0]);
-                    newAutomationMaxAmountValue = util.parseNumber(amount.split(' / ')[1]);
-                }
-                updated |= automations[currentPage.action]?.amount !== newAutomationAmountValue; // bitwise OR because of lazy evaluation
-                updated |= automations[currentPage.action]?.maxAmount !== newAutomationMaxAmountValue; // bitwise OR because of lazy evaluation
-                automations[currentPage.action] = {
-                    amount: newAutomationAmountValue,
-                    maxAmount: newAutomationMaxAmountValue
-                }
-            }
-        });
-        return updated;
-    }
-
-    function extractItem(element, target) {
-        element = $(element);
-        const name = element.find('.name').text();
-        if(!name) {
-            return false;
+    async function initialise() {
+        const enrichedStructures = await request.listStructures();
+        exports.byName = {};
+        for(const enrichedStructure of enrichedStructures) {
+            exports.list.push(enrichedStructure);
+            exports.byName[enrichedStructure.name] = enrichedStructure;
         }
-        const item = itemStore.byName[name];
-        if(!item) {
-            console.warn(`Could not find item with name [${name}]`);
-            return false;
-        }
-        let amount = element.find('.amount, .value').text();
-        if(!amount) {
-            return false;
-        }
-        if(amount.includes(' / ')) {
-            amount = amount.split(' / ')[0];
-        }
-        amount = util.parseNumber(amount);
-        let uses = element.find('.uses, .use').text();
-        if(uses) {
-            amount += util.parseNumber(uses);
-        }
-        const updated = target[item.id] !== amount;
-        target[item.id] = amount;
-        return updated;
+        initialised.resolve(exports);
     }
 
     initialise();
 
-    return exports;
+    return initialised;
 
 }
 );

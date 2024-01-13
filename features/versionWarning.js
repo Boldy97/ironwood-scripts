@@ -1,13 +1,10 @@
-(events, request, toast) => {
+(request, toast) => {
 
     function initialise() {
-        events.register('xhr', handleXhr);
+        setInterval(run, 1000 * 60 * 5);
     }
 
-    async function handleXhr(xhr) {
-        if(!xhr.url.endsWith('/getUser')) {
-            return;
-        }
+    async function run() {
         const version = await request.getVersion();
         if(!window.PANCAKE_VERSION || version === window.PANCAKE_VERSION) {
             return;

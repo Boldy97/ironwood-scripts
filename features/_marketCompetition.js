@@ -1,4 +1,4 @@
-(configuration, events, userStore, itemStore, colorMapper, util, elementCreator, Promise) => {
+(configuration, events, userStore, itemCache, colorMapper, util, elementCreator, Promise) => {
 
     const isReady = new Promise.Deferred();
     let enabled = false;
@@ -21,26 +21,24 @@
         enabled = state;
     }
 
-    async function handleXhr(xhr) {
+    function handleXhr(xhr) {
         if(!enabled || !xhr.url.endsWith('getMarketItems')) {
             return;
         }
-        await itemStore.ready;
         const listings = xhr.response.listings;
-        await processListings(listings, '1', (a,b) => a < b); // sell
-        await processListings(listings, '2', (a,b) => a > b); // buy
+        processListings(listings, '1', (a,b) => a < b); // sell
+        processListings(listings, '2', (a,b) => a > b); // buy
         markedListings = listings
             .filter(a => a.color)
             .map(a => ({
                 color: a.color,
                 competitors: a.competitors,
-                key: `${itemStore.byId[a.itemId].name}-${a.cost}`
+                key: `${itemCache.byId[a.itemId].name}-${a.cost}`
             }));
         isReady.resolve();
     }
 
-    async function processListings(listings, type, comparator) {
-        await userStore.ready;
+    function processListings(listings, type, comparator) {
         const ownedListings = listings
             .filter(a => a.name === userStore.name)
             .filter(a => a.type === type);
@@ -67,7 +65,7 @@
             return;
         }
         $('.market-competition').remove();
-        await isReady.promise;
+        await isReady;
         const elements = $('market-listings-component .search ~ button').map(function(index,reference) {
             reference = $(reference);
             return {

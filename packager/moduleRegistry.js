@@ -14,16 +14,15 @@
 
     function add(name, initialiser) {
         modules[name] = createModule(name, initialiser);
-        buildModule(modules[name], true);
     }
 
     function get(name) {
         return modules[name] || null;
     }
 
-    function build() {
+    async function build() {
         for(const module of Object.values(modules)) {
-            buildModule(module);
+            await buildModule(module);
         }
     }
 
@@ -49,7 +48,7 @@
         return module;
     }
 
-    function buildModule(module, partial, chain) {
+    async function buildModule(module, partial, chain) {
         if(module.built) {
             return true;
         }
@@ -71,14 +70,19 @@
                 }
                 throw `Unresolved dependency : ${dependency.name}`;
             }
-            const built = buildModule(dependency.module, partial, chain);
+            const built = await buildModule(dependency.module, partial, chain);
             if(!built) {
                 return false;
             }
         }
 
         const parameters = module.dependencies.map(a => a.module?.reference);
-        module.reference = module.initialiser.apply(null, parameters);
+        try {
+            module.reference = await module.initialiser.apply(null, parameters);
+        } catch(e) {
+            console.error(`Failed building ${module.name}`, e);
+            return false;
+        }
         module.built = true;
 
         chain.pop();

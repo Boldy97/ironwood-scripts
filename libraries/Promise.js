@@ -1,23 +1,34 @@
 () => {
 
     class Deferred {
-        promise;
+        #promise;
         resolve;
         reject;
-        isResolved = false;
         constructor() {
-            this.promise = new Promise((resolve, reject)=> {
+            this.#promise = new Promise((resolve, reject) => {
                 this.resolve = resolve;
                 this.reject = reject;
-            }).then(result => {
-                this.isResolved = true;
-                return result;
             }).catch(error => {
                 if(error) {
                     console.warn(error);
                 }
                 throw error;
             });
+        }
+
+        then() {
+            this.#promise.then.apply(this.#promise, arguments);
+            return this;
+        }
+
+        catch() {
+            this.#promise.catch.apply(this.#promise, arguments);
+            return this;
+        }
+
+        finally() {
+            this.#promise.finally.apply(this.#promise, arguments);
+            return this;
         }
     }
 
@@ -27,7 +38,7 @@
             const timeoutReference = window.setTimeout(() => {
                 this.resolve();
             }, timeout);
-            this.promise.finally(() => {
+            this.finally(() => {
                 window.clearTimeout(timeoutReference)
             });
         }
@@ -36,10 +47,13 @@
     class Expiring extends Deferred {
         constructor(timeout) {
             super();
+            if(timeout <= 0) {
+                return;
+            }
             const timeoutReference = window.setTimeout(() => {
                 this.reject(`Timed out after ${timeout} ms`);
             }, timeout);
-            this.promise.finally(() => {
+            this.finally(() => {
                 window.clearTimeout(timeoutReference)
             });
         }
@@ -52,7 +66,7 @@
             this.#checker = checker;
             this.#check();
             const intervalReference = window.setInterval(this.#check.bind(this), interval);
-            this.promise.finally(() => {
+            this.finally(() => {
                 window.clearInterval(intervalReference)
             });
         }

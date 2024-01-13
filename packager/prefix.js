@@ -13,4 +13,4 @@
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
-window.PANCAKE_VERSION = '3.0';
+window.PANCAKE_VERSION = '4.0';

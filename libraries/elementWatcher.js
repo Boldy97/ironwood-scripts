@@ -8,11 +8,14 @@
 
     const $ = window.$;
 
-    async function exists(selector) {
+    async function exists(selector, delay, timeout, inverted) {
+        delay = delay !== undefined ? delay : 10;
+        timeout = timeout !== undefined ? timeout : 5000;
         const promiseWrapper = new Promise.Checking(() => {
-            return $(selector)[0];
-        }, 10, 5000);
-        return promiseWrapper.promise;
+            let result = $(selector)[0];
+            return inverted ? !result : result;
+        }, delay, timeout);
+        return promiseWrapper;
     }
 
     async function childAdded(selector) {
@@ -33,7 +36,7 @@
             promiseWrapper.reject(error);
         }
 
-        return promiseWrapper.promise;
+        return promiseWrapper;
     }
 
     async function childAddedContinuous(selector, callback) {

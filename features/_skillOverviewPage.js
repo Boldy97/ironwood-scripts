@@ -1,4 +1,4 @@
-(pages, components, elementWatcher, skillStore, userStore, events, util, configuration) => {
+(pages, components, elementWatcher, skillCache, userStore, events, util, configuration) => {
 
     const registerUserStoreHandler = events.register.bind(null, 'userStore');
 
@@ -28,46 +28,42 @@
             default: true,
             handler: handleConfigStateChange
         });
-        await setupSkillProperties();
-
-        await userStore.ready;
-        await handleUserStore();
+        setupSkillProperties();
+        handleUserStore();
     }
 
-    async function setupSkillProperties() {
-        await skillStore.ready;
-        await userStore.ready;
+    function setupSkillProperties() {
         skillProperties = [];
         const skillIds = Object.keys(userStore.exp);
         for(const id of skillIds) {
-            if(!skillStore.byId[id]) {
+            if(!skillCache.byId[id]) {
                 continue;
             }
             skillProperties.push({
                 id: id,
-                name: skillStore.byId[id].name,
-                image: skillStore.byId[id].image,
-                color: skillStore.byId[id].color,
-                defaultActionId: skillStore.byId[id].defaultActionId,
+                name: skillCache.byId[id].name,
+                image: skillCache.byId[id].image,
+                color: skillCache.byId[id].color,
+                defaultActionId: skillCache.byId[id].defaultActionId,
                 maxLevel: MAX_LEVEL,
                 showExp: true,
                 showLevel: true
             });
         }
         skillProperties.push(skillTotalLevel = {
-            id: skillStore.byName['Total-level'].id,
+            id: skillCache.byName['Total-level'].id,
             name: 'Total Level',
-            image: skillStore.byName['Total-level'].image,
-            color: skillStore.byName['Total-level'].color,
+            image: skillCache.byName['Total-level'].image,
+            color: skillCache.byName['Total-level'].color,
             maxLevel: MAX_TOTAL_LEVEL,
             showExp: false,
             showLevel: true
         });
         skillProperties.push(skillTotalExp = {
-            id: skillStore.byName['Total-exp'].id,
+            id: skillCache.byName['Total-exp'].id,
             name: 'Total Exp',
-            image: skillStore.byName['Total-exp'].image,
-            color: skillStore.byName['Total-exp'].color,
+            image: skillCache.byName['Total-exp'].image,
+            color: skillCache.byName['Total-exp'].color,
             maxLevel: MAX_TOTAL_EXP,
             showExp: true,
             showLevel: false
@@ -82,11 +78,10 @@
         }
     }
 
-    async function handleUserStore() {
+    function handleUserStore() {
         if(!skillProperties) {
             return;
         }
-        await userStore.ready;
 
         let totalExp = 0;
         let totalLevel = 0;
@@ -116,7 +111,6 @@
         if(!skillProperties) {
             return;
         }
-        await elementWatcher.exists(componentBlueprint.dependsOn);
 
         let column = 0;
 
@@ -181,4 +175,5 @@
     };
 
     initialise();
+
 }

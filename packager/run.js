@@ -3,8 +3,10 @@ const path = require('path');
 
 const directories = [
     '../libraries',
+    '../readers',
     '../features',
-    '../stores'
+    '../stores',
+    '../caches'
 ];
 
 async function run() {
@@ -12,8 +14,11 @@ async function run() {
     result += await readFile('moduleRegistry.js');
     for(const directory of directories) {
         const files = await readDir(directory);
-        for(const file of files) {
-            result += await formatFile(directory, file);
+        for(const filename of files) {
+            if(filename.startsWith('_')) {
+                continue;
+            }
+            result += await formatFile(directory, filename);
         }
     }
     result += await readFile('suffix.js');

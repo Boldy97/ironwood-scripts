@@ -137,7 +137,7 @@
     }
 
     function createRow_Input(inputBlueprint) {
-        const parentRow = $('<div/>').addClass('customRow myItemInputRowAdjustment');
+        const parentRow = $('<div/>').addClass('customRow');
         if(inputBlueprint.text) {
             parentRow
                 .append(
@@ -173,7 +173,7 @@
     }
 
     function createRow_Button(buttonBlueprint) {
-        const parentRow = $('<div/>').addClass('customRow myItemInputRowAdjustment');
+        const parentRow = $('<div/>').addClass('customRow');
         for(const button of buttonBlueprint.buttons) {
             parentRow
                 .append(
@@ -189,7 +189,7 @@
     }
 
     function createRow_Select(selectBlueprint) {
-        const parentRow = $('<div/>').addClass('customRow myItemInputRowAdjustment');
+        const parentRow = $('<div/>').addClass('customRow');
         const select = $('<select/>')
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
@@ -433,10 +433,11 @@
             justify-content: center;
             align-items: center;
             border-top: 1px solid var(--border-color);
-            padding: 5px 12px 5px 6px;
+            /*padding: 5px 12px 5px 6px;*/
             min-height: 0px;
             min-width: 0px;
             gap: var(--margin);
+            padding: calc(var(--gap) / 2) var(--gap);
         }
         .myItemImage {
             position: relative;
@@ -475,9 +476,6 @@
             text-align: center;
             border-radius: 4px;
             border: 1px solid var(--border-color);
-        }
-        .myItemInputRowAdjustment {
-            padding-right: 6px !important;
         }
         .myItemSelect {
             height: 40px;

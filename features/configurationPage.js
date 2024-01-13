@@ -5,6 +5,7 @@
     async function initialise() {
         await pages.register({
             category: 'Misc',
+            after: 'Settings',
             name: PAGE_NAME,
             image: 'https://cdn-icons-png.flaticon.com/512/3953/3953226.png',
             columns: '2',
@@ -14,8 +15,7 @@
         pages.show(PAGE_NAME);
     }
 
-    async function generateBlueprint() {
-        await configuration.ready;
+    function generateBlueprint() {
         const categories = {};
         for(const item of configuration.items) {
             if(!categories[item.category]) {
@@ -109,8 +109,8 @@
         }]
     }
 
-    async function renderPage() {
-        const blueprints = await generateBlueprint();
+    function renderPage() {
+        const blueprints = generateBlueprint();
         for(const blueprint of blueprints) {
             components.addComponent(blueprint);
         }

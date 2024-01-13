@@ -1,4 +1,4 @@
-(elementWatcher, events, colorMapper, util, skillStore, elementCreator) => {
+(elementWatcher, events, colorMapper, util, skillCache, elementCreator) => {
 
     const registerPageHandler = events.register.bind(null, 'page');
     const getLastPage = events.getLast.bind(null, 'page');
@@ -7,7 +7,8 @@
         register,
         requestRender,
         show,
-        hide
+        hide,
+        open: visitPage
     }
 
     const pages = [];
@@ -115,7 +116,7 @@
                 .attr('type', 'button')
                 .addClass(`customMenuButton ${page.class}`)
                 .css('display', 'none')
-                .click(() => visitPage(page))
+                .click(() => visitPage(page.name))
                 .append(
                     $('<img/>')
                         .addClass('customMenuButtonImage')
@@ -130,7 +131,8 @@
         return menuButton;
     }
 
-    async function visitPage(page) {
+    async function visitPage(name) {
+        const page = pages.find(p => p.name === name);
         if($('custom-page').length) {
             $('custom-page').remove();
         } else {
@@ -187,11 +189,12 @@
         await elementWatcher.exists('nav-component > div.nav');
         let headerName = null;
         if(page.type === 'action') {
-            await skillStore.ready;
-            headerName = skillStore.byId[page.skill].name;
-        } else if(page.type === 'automation') {
-            headerName = 'House';
+            headerName = skillCache.byId[page.skill].name;
         } else if(page.type === 'structure') {
+            headerName = 'House';
+        } else if(page.type === 'enhancement') {
+            headerName = 'House';
+        } else if(page.type === 'automation') {
             headerName = 'House';
         } else {
             headerName = page.type;

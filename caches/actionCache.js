@@ -1,9 +1,8 @@
 (request, Promise) => {
 
-    const isReady = new Promise.Deferred();
+    const initialised = new Promise.Expiring(2000);
 
     const exports = {
-        ready: isReady.promise,
         list: [],
         byId: null,
         byName: null
@@ -18,11 +17,11 @@
             exports.byId[action.id] = action;
             exports.byName[action.name] = action;
         }
-        isReady.resolve();
+        initialised.resolve(exports);
     }
 
     initialise();
 
-    return exports;
+    return initialised;
 
 }

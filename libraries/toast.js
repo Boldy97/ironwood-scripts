@@ -12,7 +12,7 @@
     async function create(config) {
         config.time ||= 2000;
         config.image ||= 'https://ironwoodrpg.com/assets/misc/quests.png';
-        const notificationId = `customNotification_${Date.now()}`
+        const notificationId = `customNotification_${Math.floor(Date.now() * Math.random())}`
         const notificationDiv =
             $('<div/>')
                 .addClass('customNotification')

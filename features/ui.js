@@ -2,19 +2,19 @@
 
     const id = crypto.randomUUID();
     const sections = [
-        //'inventory-page',
-        'equipment-page',
-        'home-page',
-        'merchant-page',
-        'market-page',
-        'daily-quest-page',
-        'quest-shop-page',
-        'skill-page',
-        'upgrade-page',
-        'leaderboards-page',
+        'challenges-page',
         'changelog-page',
+        'daily-quest-page',
+        'equipment-page',
+        'guild-page',
+        'home-page',
+        'leaderboards-page',
+        'market-page',
+        'merchant-page',
+        'quests-page',
         'settings-page',
-        'guild-page'
+        'skill-page',
+        'upgrade-page'
     ].join(', ');
     const selector = `:is(${sections})`;
     let gap
@@ -51,7 +51,6 @@
                 ) {
                     padding: 2px 6px !important;
                     min-height: 0 !important;
-                    min-width: 0 !important;
                 }
 
                 ${selector} :not(.multi-row) > :is(
@@ -65,6 +64,11 @@
                     width: 32px !important;
                     min-height: 0 !important;
                     min-width: 0 !important;
+                }
+
+                ${selector} div.lock {
+                    height: unset !important;
+                    padding: 0 !important;
                 }
 
                 action-component div.body >  div.image,

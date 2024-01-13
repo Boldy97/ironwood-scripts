@@ -1,4 +1,4 @@
-(configuration, itemStore, util) => {
+(configuration, itemCache, util) => {
 
     let enabled = false;
     let entered = false;
@@ -8,7 +8,7 @@
         DURATION: a => util.secondsToDuration(a/10)
     }
 
-    async function initialise() {
+    function initialise() {
         configuration.registerCheckbox({
             category: 'UI Features',
             key: 'item-hover',
@@ -16,7 +16,7 @@
             default: true,
             handler: handleConfigStateChange
         });
-        await setup();
+        setup();
         $(document).on('mouseenter', 'div.image > img', handleMouseEnter);
         $(document).on('mouseleave', 'div.image > img', handleMouseLeave);
         $(document).on('click', 'div.image > img', handleMouseLeave);
@@ -27,26 +27,26 @@
     }
 
     function handleMouseEnter(event) {
-        if(!enabled || entered || !itemStore.byId) {
+        if(!enabled || entered || !itemCache.byId) {
             return;
         }
         entered = true;
         const name = $(event.relatedTarget).find('.name').text();
-        const nameMatch = itemStore.byName[name];
+        const nameMatch = itemCache.byName[name];
         if(nameMatch) {
             return show(nameMatch);
         }
 
         const parts = event.target.src.split('/');
         const lastPart = parts[parts.length-1];
-        const imageMatch = itemStore.byImage[lastPart];
+        const imageMatch = itemCache.byImage[lastPart];
         if(imageMatch) {
             return show(imageMatch);
         }
     }
 
     function handleMouseLeave(event) {
-        if(!enabled || !itemStore.byId) {
+        if(!enabled || !itemCache.byId) {
             return;
         }
         entered = false;
@@ -56,9 +56,9 @@
     function show(item) {
         element.find('.image').attr('src', `/assets/${item.image}`);
         element.find('.name').text(item.name);
-        for(const attribute of itemStore.attributes) {
+        for(const attribute of itemCache.attributes) {
             let value = item.attributes[attribute.technicalName];
-            if(converters[attribute.technicalName]) {
+            if(value && converters[attribute.technicalName]) {
                 value = converters[attribute.technicalName](value);
             }
             updateRow(attribute.technicalName, value);
@@ -79,9 +79,8 @@
         element.hide();
     }
 
-    async function setup() {
-        await itemStore.ready;
-        const attributesHtml = itemStore.attributes
+    function setup() {
+        const attributesHtml = itemCache.attributes
             .map(a => `<div class='${a.technicalName}-row'><img src='${a.image}'/><span>${a.name}</span><span class='${a.technicalName}'/></div>`)
             .join('');
         $('head').append(`
@@ -111,13 +110,17 @@
                 #custom-item-hover img {
                     width: 24px;
                     height: 24px;
+                    image-rendering: auto;
+                }
+                #custom-item-hover img.pixelated {
+                    image-rendering: pixelated;
                 }
             </style>
         `);
         element = $(`
             <div id='custom-item-hover' style='display:none'>
                 <div>
-                    <img class='image'/>
+                    <img class='image pixelated'/>
                     <span class='name'/>
                 </div>
                 ${attributesHtml}

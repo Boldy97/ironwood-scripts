@@ -37,7 +37,7 @@
     }
 
     async function renderPage() {
-        await loaded.promise;
+        await loaded;
         const header = components.search(componentBlueprint, 'header');
         const list = components.search(componentBlueprint, 'list');
         for(const index in changelogs) {
@@ -70,4 +70,5 @@
     };
 
     initialise();
+
 }

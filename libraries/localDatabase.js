@@ -5,30 +5,35 @@
         saveEntry
     }
 
-    const isReady = new Promise.Deferred();
+    const initialised = new Promise.Expiring(2000);
     let database = null;
 
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 1);
+        const request = window.indexedDB.open(databaseName, 2);
         request.onsuccess = function(event) {
             database = this.result;
-            isReady.resolve();
+            initialised.resolve(exports);
         };
         request.onerror = function(event) {
             console.error(`Failed creating IndexedDB : ${event.target.errorCode}`);
         };
         request.onupgradeneeded = function(event) {
-            console.debug('Creating IndexedDB');
             const db = event.target.result;
-            const objectStore = db.createObjectStore('settings', { keyPath: 'key' });
-            objectStore.createIndex('key', 'key', { unique: true });
+            if(event.oldVersion <= 0) {
+                console.debug('Creating IndexedDB');
+                const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
+                settingsStore.createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 1) {
+                const syncTrackingStore = db.createObjectStore('sync-tracking', { keyPath: 'key' });
+                syncTrackingStore.createIndex('key', 'key', { unique: true });
+            }
         };
     }
 
     async function getAllEntries(storeName) {
-        await isReady.promise;
         const result = new Promise.Expiring(1000);
         const entries = [];
         const store = database.transaction(storeName, 'readonly').objectStore(storeName);
@@ -45,11 +50,10 @@
         request.onerror = function(event) {
             result.reject(event.error);
         };
-        return result.promise;
+        return result;
     }
 
     async function saveEntry(storeName, entry) {
-        await isReady.promise;
         const result = new Promise.Expiring(1000);
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
@@ -59,12 +63,11 @@
         request.onerror = function(event) {
             result.reject(event.error);
         };
-        return result.promise;
-
+        return result;
     }
 
     initialise();
 
-    return exports;
+    return initialised;
 
 }
