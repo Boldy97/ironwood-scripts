@@ -2,6 +2,7 @@
 
     function initialise() {
         setInterval(run, 1000 * 60 * 5);
+        run();
     }
 
     async function run() {
