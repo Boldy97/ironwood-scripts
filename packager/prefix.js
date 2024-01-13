@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ironwood RPG - Pancake-Scripts
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      4.0
 // @description  A collection of scripts to enhance Ironwood RPG - https://github.com/Boldy97/ironwood-scripts
 // @author       Pancake
 // @match        https://ironwoodrpg.com/*
