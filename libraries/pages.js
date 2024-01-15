@@ -189,7 +189,7 @@
         await elementWatcher.exists('nav-component > div.nav');
         let headerName = null;
         if(page.type === 'action') {
-            headerName = skillCache.byId[page.skill].name;
+            headerName = skillCache.byId[page.skill].displayName;
         } else if(page.type === 'structure') {
             headerName = 'House';
         } else if(page.type === 'enhancement') {
