@@ -3976,7 +3976,7 @@ window.moduleRegistry.add('ui', (configuration) => {
             category: 'UI Features',
             key: 'ui-changes',
             name: 'UI changes',
-            default: false,
+            default: true,
             handler: handleConfigStateChange
         });
     }
