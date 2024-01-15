@@ -1,4 +1,4 @@
-(events) => {
+(events, elementWatcher) => {
 
     const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
@@ -7,7 +7,7 @@
         registerUrlHandler(handleUrl);
     }
 
-    function handleUrl(url) {
+    async function handleUrl(url) {
         let result = null;
         const parts = url.split('/');
         if(url.includes('/skill/') && url.includes('/action/')) {
@@ -37,6 +37,7 @@
                 type: parts.pop()
             };
         }
+        await elementWatcher.idle();
         emitEvent(result);
     }
 

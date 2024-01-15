@@ -3,7 +3,8 @@
     const exports = {
         exists,
         childAdded,
-        childAddedContinuous
+        childAddedContinuous,
+        idle
     }
 
     const $ = window.$;
@@ -49,6 +50,14 @@
             }
         });
         observer.observe(parent, { childList: true });
+    }
+
+    async function idle() {
+        const promise = new Promise.Expiring(1000);
+        window.requestIdleCallback(() => {
+            promise.resolve();
+        });
+        return promise;
     }
 
     return exports;

@@ -1116,7 +1116,8 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
     const exports = {
         exists,
         childAdded,
-        childAddedContinuous
+        childAddedContinuous,
+        idle
     }
 
     const $ = window.$;
@@ -1162,6 +1163,14 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
             }
         });
         observer.observe(parent, { childList: true });
+    }
+
+    async function idle() {
+        const promise = new Promise.Expiring(1000);
+        window.requestIdleCallback(() => {
+            promise.resolve();
+        });
+        return promise;
     }
 
     return exports;
@@ -1370,7 +1379,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
 }
 );
 // pageDetector
-window.moduleRegistry.add('pageDetector', (events) => {
+window.moduleRegistry.add('pageDetector', (events, elementWatcher) => {
 
     const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
@@ -1379,7 +1388,7 @@ window.moduleRegistry.add('pageDetector', (events) => {
         registerUrlHandler(handleUrl);
     }
 
-    function handleUrl(url) {
+    async function handleUrl(url) {
         let result = null;
         const parts = url.split('/');
         if(url.includes('/skill/') && url.includes('/action/')) {
@@ -1409,6 +1418,7 @@ window.moduleRegistry.add('pageDetector', (events) => {
                 type: parts.pop()
             };
         }
+        await elementWatcher.idle();
         emitEvent(result);
     }
 
