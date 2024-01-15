@@ -3703,9 +3703,9 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
 
     const STORE_NAME = 'sync-tracking';
     const PAGE_NAME = 'Sync State';
-    const TOAST_SUCCESS_TIME = 1000*60*5;
-    const TOAST_WARN_TIME = 1000*60*60*4;
-    const TOAST_REWARN_TIME = 1000*60*60;
+    const TOAST_SUCCESS_TIME = 1000*60*5; // 5 minutes
+    const TOAST_WARN_TIME = 1000*60*60*24*3; // 3 days
+    const TOAST_REWARN_TIME = 1000*60*60*4; // 4 hours
 
     const sources = {
         inventory: {
