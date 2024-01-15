@@ -41,6 +41,7 @@
                 type: 'OUTSKIRTS',
                 skill: skillId,
                 speed: activityEstimation.speed,
+                productionSpeed: activityEstimation.productionSpeed,
                 exp,
                 drops,
                 ingredients,

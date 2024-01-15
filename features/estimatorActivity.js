@@ -7,7 +7,7 @@
     function get(skillId, actionId) {
         const skill = skillCache.byId[skillId];
         const action = actionCache.byId[actionId];
-        const speed = getSpeed(skill, action);
+        const speed = getSpeed(skill.technicalName, action);
         const actionCount = estimatorAction.LOOPS_PER_HOUR / speed;
         const actualActionCount = actionCount * (1 + statsStore.get('EFFICIENCY', skill.technicalName) / 100);
         const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP', skill.technicalName) / 100);
@@ -42,6 +42,7 @@
             type: 'ACTIVITY',
             skill: skillId,
             speed,
+            productionSpeed: speed * actionCount / dropCount,
             exp,
             drops,
             ingredients,
@@ -49,8 +50,8 @@
         };
     }
 
-    function getSpeed(skill, action) {
-        const speedBonus = statsStore.get('SKILL_SPEED', skill.technicalName);
+    function getSpeed(skillName, action) {
+        const speedBonus = statsStore.get('SKILL_SPEED', skillName);
         return Math.round(action.speed * 1000 / (100 + speedBonus)) + 1;
     }
 

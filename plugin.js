@@ -2362,11 +2362,36 @@ window.moduleRegistry.add('structuresReader', (events, util) => {
 }
 );
 // variousReader
-window.moduleRegistry.add('variousReader', (events) => {
+window.moduleRegistry.add('variousReader', (events, util) => {
 
-    const emitEvent = events.emit.bind(null, 'reader-exp');
+    const emitEvent = events.emit.bind(null, 'reader-various');
 
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 1000);
+    }
 
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        const various = {};
+        if(page.type === 'action') {
+            readActionScreen(various, page.skill);
+        }
+        emitEvent(various);
+    }
+
+    function readActionScreen(various, skillId) {
+        const amountText = $('skill-page .header > .name:contains("Loot")').parent().find('.amount').text();
+        const amountValue = !amountText ? null : util.parseNumber(amountText.split(' / ')[1]) - util.parseNumber(amountText.split(' / ')[0]);
+        various.maxAmount = {
+            [skillId]: amountValue
+        };
+    }
+
+    initialise();
 
 }
 );
@@ -2646,11 +2671,17 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             stored: statsStore.getEquipmentItem(id),
             secondsLeft: statsStore.getEquipmentItem(id) * 3600 / amount
         })).reduce((a,b) => (a[b.id] = b, a), {});
+        let maxAmount = statsStore.get('MAX_AMOUNT', estimation.skill);
+        maxAmount = {
+            value: maxAmount,
+            secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
+        };
         const levelState = statsStore.getLevel(estimation.skill);
         estimation.timings = {
             inventory,
             equipment,
-            finished: Math.min(...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
+            maxAmount,
+            finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: levelState.level === 100 ? 0 : util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level === 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };
@@ -2719,6 +2750,15 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
         dropRows.rows = [];
         ingredientRows.rows = [];
         timeRows.rows = [];
+        if(estimation.timings.maxAmount.value) {
+            timeRows.rows.push({
+                type: 'item',
+                image: 'https://img.icons8.com/?size=48&id=1HQMXezy5LeT&format=png',
+                imageFilter: 'invert(100%)',
+                name: `Max amount [${util.formatNumber(estimation.timings.maxAmount.value)}]`,
+                value: util.secondsToDuration(estimation.timings.maxAmount.secondsLeft)
+            });
+        }
         for(const id in estimation.drops) {
             const item = itemCache.byId[id];
             dropRows.rows.push({
@@ -2997,7 +3037,7 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
     function get(skillId, actionId) {
         const skill = skillCache.byId[skillId];
         const action = actionCache.byId[actionId];
-        const speed = getSpeed(skill, action);
+        const speed = getSpeed(skill.technicalName, action);
         const actionCount = estimatorAction.LOOPS_PER_HOUR / speed;
         const actualActionCount = actionCount * (1 + statsStore.get('EFFICIENCY', skill.technicalName) / 100);
         const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP', skill.technicalName) / 100);
@@ -3032,6 +3072,7 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
             type: 'ACTIVITY',
             skill: skillId,
             speed,
+            productionSpeed: speed * actionCount / dropCount,
             exp,
             drops,
             ingredients,
@@ -3039,8 +3080,8 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
         };
     }
 
-    function getSpeed(skill, action) {
-        const speedBonus = statsStore.get('SKILL_SPEED', skill.technicalName);
+    function getSpeed(skillName, action) {
+        const speedBonus = statsStore.get('SKILL_SPEED', skillName);
         return Math.round(action.speed * 1000 / (100 + speedBonus)) + 1;
     }
 
@@ -3118,6 +3159,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             type: 'COMBAT',
             skill: skillId,
             speed: loopsPerKill,
+            productionSpeed: speed * actionCount / dropCount,
             exp,
             drops,
             ingredients: {},
@@ -3412,6 +3454,7 @@ window.moduleRegistry.add('estimatorOutskirts', (actionCache, itemCache, statsSt
                 type: 'OUTSKIRTS',
                 skill: skillId,
                 speed: activityEstimation.speed,
+                productionSpeed: activityEstimation.productionSpeed,
                 exp,
                 drops,
                 ingredients,
@@ -4213,6 +4256,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     let structures = {};
     let enhancements = {};
     let guildStructures = {};
+    let various = {};
 
     let stats;
 
@@ -4226,6 +4270,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         events.register('state-structures', event => (structures = event, _update()));
         events.register('state-enhancements', event => (enhancements = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
+        events.register('state-various', event => (various = event, _update()));
     }
 
     function get(stat, skill) {
@@ -4236,6 +4281,9 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         let value = 0;
         if(stats && stats.global[stat]) {
             value += stats.global[stat] || 0;
+        }
+        if(Number.isInteger(skill)) {
+            skill = skillCache.byId[skill]?.technicalName;
         }
         if(stats && stats.bySkill[stat] && stats.bySkill[stat][skill]) {
             value += stats.bySkill[stat][skill];
@@ -4280,6 +4328,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         processStructures();
         processEnhancements();
         processGuildStructures();
+        processVarious();
         cleanup();
         if(!excludedItemIds) {
             emitEvent(stats);
@@ -4407,6 +4456,23 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         }
     }
 
+    function processVarious() {
+        if(various.maxAmount) {
+            const stats = {
+                bySkill: {
+                    MAX_AMOUNT: {}
+                }
+            };
+            for(const skillId in various.maxAmount) {
+                const skill = skillCache.byId[skillId];
+                if(various.maxAmount[skillId]) {
+                    stats.bySkill.MAX_AMOUNT[skill.technicalName] = various.maxAmount[skillId];
+                }
+            }
+            addStats(stats);
+        }
+    }
+
     function cleanup() {
         // base
         addStats({
@@ -4484,6 +4550,48 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     initialise();
 
     return exports;
+
+}
+);
+// variousStateStore
+window.moduleRegistry.add('variousStateStore', (events, skillCache) => {
+
+    const emitEvent = events.emit.bind(null, 'state-various');
+    const state = {};
+
+    function initialise() {
+        events.register('reader-various', handleReader);
+    }
+
+    function handleReader(event) {
+        const updated = merge(state, event);
+        if(updated) {
+            emitEvent(state);
+        }
+    }
+
+    function merge(target, source) {
+        let updated = false;
+        for(const key in source) {
+            if(!(key in target)) {
+                target[key] = source[key];
+                updated = true;
+                continue;
+            }
+            if(typeof target[key] === 'object' && typeof source[key] === 'object') {
+                updated |= merge(target[key], source[key]);
+                continue;
+            }
+            if(target[key] !== source[key]) {
+                target[key] = source[key];
+                updated = true;
+                continue;
+            }
+        }
+        return updated;
+    }
+
+    initialise();
 
 }
 );

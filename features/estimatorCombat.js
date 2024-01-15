@@ -67,6 +67,7 @@
             type: 'COMBAT',
             skill: skillId,
             speed: loopsPerKill,
+            productionSpeed: speed * actionCount / dropCount,
             exp,
             drops,
             ingredients: {},

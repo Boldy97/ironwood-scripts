@@ -20,6 +20,7 @@
     let structures = {};
     let enhancements = {};
     let guildStructures = {};
+    let various = {};
 
     let stats;
 
@@ -33,6 +34,7 @@
         events.register('state-structures', event => (structures = event, _update()));
         events.register('state-enhancements', event => (enhancements = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
+        events.register('state-various', event => (various = event, _update()));
     }
 
     function get(stat, skill) {
@@ -43,6 +45,9 @@
         let value = 0;
         if(stats && stats.global[stat]) {
             value += stats.global[stat] || 0;
+        }
+        if(Number.isInteger(skill)) {
+            skill = skillCache.byId[skill]?.technicalName;
         }
         if(stats && stats.bySkill[stat] && stats.bySkill[stat][skill]) {
             value += stats.bySkill[stat][skill];
@@ -87,6 +92,7 @@
         processStructures();
         processEnhancements();
         processGuildStructures();
+        processVarious();
         cleanup();
         if(!excludedItemIds) {
             emitEvent(stats);
@@ -211,6 +217,23 @@
                 continue;
             }
             addStats(structure.regular, guildStructures[name]);
+        }
+    }
+
+    function processVarious() {
+        if(various.maxAmount) {
+            const stats = {
+                bySkill: {
+                    MAX_AMOUNT: {}
+                }
+            };
+            for(const skillId in various.maxAmount) {
+                const skill = skillCache.byId[skillId];
+                if(various.maxAmount[skillId]) {
+                    stats.bySkill.MAX_AMOUNT[skill.technicalName] = various.maxAmount[skillId];
+                }
+            }
+            addStats(stats);
         }
     }
 

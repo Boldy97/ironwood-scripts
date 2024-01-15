@@ -55,11 +55,17 @@
             stored: statsStore.getEquipmentItem(id),
             secondsLeft: statsStore.getEquipmentItem(id) * 3600 / amount
         })).reduce((a,b) => (a[b.id] = b, a), {});
+        let maxAmount = statsStore.get('MAX_AMOUNT', estimation.skill);
+        maxAmount = {
+            value: maxAmount,
+            secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
+        };
         const levelState = statsStore.getLevel(estimation.skill);
         estimation.timings = {
             inventory,
             equipment,
-            finished: Math.min(...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
+            maxAmount,
+            finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: levelState.level === 100 ? 0 : util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level === 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };
@@ -128,6 +134,15 @@
         dropRows.rows = [];
         ingredientRows.rows = [];
         timeRows.rows = [];
+        if(estimation.timings.maxAmount.value) {
+            timeRows.rows.push({
+                type: 'item',
+                image: 'https://img.icons8.com/?size=48&id=1HQMXezy5LeT&format=png',
+                imageFilter: 'invert(100%)',
+                name: `Max amount [${util.formatNumber(estimation.timings.maxAmount.value)}]`,
+                value: util.secondsToDuration(estimation.timings.maxAmount.secondsLeft)
+            });
+        }
         for(const id in estimation.drops) {
             const item = itemCache.byId[id];
             dropRows.rows.push({
