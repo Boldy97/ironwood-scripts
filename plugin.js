@@ -3169,7 +3169,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             type: 'COMBAT',
             skill: skillId,
             speed: loopsPerKill,
-            productionSpeed: speed * actionCount / dropCount,
+            productionSpeed: loopsPerKill * actionCount / dropCount,
             exp,
             drops,
             ingredients: {},
