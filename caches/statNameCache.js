@@ -41,7 +41,9 @@
         'PARRY_CHANCE',
         'PASSIVE_FOOD_CONSUMPTION',
         'REVIVE_TIME',
-        'STUN_CHANCE'
+        'STUN_CHANCE',
+        // FRONTEND ONLY
+        'MAX_AMOUNT'
     ]);
 
     function validate(name) {

@@ -2,23 +2,17 @@
 
     const emitEvent = events.emit.bind(null, 'reader-structures-guild');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'guild' && $('guild-page .tracker + div button.row-active').text() === 'Buildings') {
+        if(page.type === 'guild' && $('guild-page .tracker + div button.row-active').text() === 'Buildings') {
             readGuildStructuresScreen();
         }
     }

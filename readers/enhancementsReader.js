@@ -2,23 +2,17 @@
 
     const emitEvent = events.emit.bind(null, 'reader-enhancements');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
+        if(page.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
             readEnhancementsScreen();
         }
     }

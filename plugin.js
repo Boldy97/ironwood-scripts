@@ -2106,23 +2106,17 @@ window.moduleRegistry.add('enhancementsReader', (events, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-enhancements');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
+        if(page.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
             readEnhancementsScreen();
         }
     }
@@ -2148,26 +2142,20 @@ window.moduleRegistry.add('enhancementsReader', (events, util) => {
 // equipmentReader
 window.moduleRegistry.add('equipmentReader', (events, itemCache, util, itemUtil) => {
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'equipment') {
+        if(page.type === 'equipment') {
             readEquipmentScreen();
         }
-        if(currentPage.type === 'action') {
+        if(page.type === 'action') {
             readActionScreen();
         }
     }
@@ -2204,24 +2192,18 @@ window.moduleRegistry.add('expReader', (events, skillCache, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-exp');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'action') {
-            readActionScreen(currentPage.skill);
+        if(page.type === 'action') {
+            readActionScreen(page.skill);
         }
         readSidebar();
     }
@@ -2259,23 +2241,17 @@ window.moduleRegistry.add('guildStructuresReader', (events, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-structures-guild');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'guild' && $('guild-page .tracker + div button.row-active').text() === 'Buildings') {
+        if(page.type === 'guild' && $('guild-page .tracker + div button.row-active').text() === 'Buildings') {
             readGuildStructuresScreen();
         }
     }
@@ -2303,26 +2279,20 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
 
     const emitEvent = events.emit.bind(null, 'reader-inventory');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'inventory') {
+        if(page.type === 'inventory') {
             readInventoryScreen();
         }
-        if(currentPage.type === 'action') {
+        if(page.type === 'action') {
             readActionScreen();
         }
     }
@@ -2358,23 +2328,17 @@ window.moduleRegistry.add('structuresReader', (events, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-structures');
 
-    let currentPage;
-
     function initialise() {
-        events.register('page', handlePage);
+        events.register('page', update);
         window.setInterval(update, 1000);
     }
 
-    function handlePage(page) {
-        currentPage = page;
-        update();
-    }
-
     function update() {
-        if(!currentPage) {
+        const page = events.getLast('page');
+        if(!page) {
             return;
         }
-        if(currentPage.type === 'structure' && $('home-page .categories .category-active').text() === 'Build') {
+        if(page.type === 'structure' && $('home-page .categories .category-active').text() === 'Build') {
             readStructuresScreen();
         }
     }
@@ -2394,6 +2358,15 @@ window.moduleRegistry.add('structuresReader', (events, util) => {
     }
 
     initialise();
+
+}
+);
+// variousReader
+window.moduleRegistry.add('variousReader', (events) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-exp');
+
+
 
 }
 );
@@ -4908,7 +4881,9 @@ window.moduleRegistry.add('statNameCache', () => {
         'PARRY_CHANCE',
         'PASSIVE_FOOD_CONSUMPTION',
         'REVIVE_TIME',
-        'STUN_CHANCE'
+        'STUN_CHANCE',
+        // FRONTEND ONLY
+        'MAX_AMOUNT'
     ]);
 
     function validate(name) {
