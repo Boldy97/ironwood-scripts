@@ -38,6 +38,14 @@
             }
         })
         .filter(a => a)
+        .map(a => {
+            const mapFindChance = statsStore.get('MAP_FIND_CHANCE', skillId) / 100;
+            if(!mapFindChance || !itemCache.specialIds.map.includes(a.id)) {
+                return a;
+            }
+            a.amount *= 1 + mapFindChance;
+            return a;
+        })
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
     }
 

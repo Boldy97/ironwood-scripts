@@ -1989,7 +1989,14 @@ window.moduleRegistry.add('util', () => {
     }
 
     function formatNumber(number) {
-        return number.toLocaleString(undefined, {maximumFractionDigits:2});
+        let digits = 2;
+        if(number < .1 && number > -.1) {
+            digits = 3;
+        }
+        if(number < .01 && number > -.01) {
+            digits = 4;
+        }
+        return number.toLocaleString(undefined, {maximumFractionDigits:digits});
     }
 
     function parseNumber(text) {
@@ -2964,6 +2971,14 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
             }
         })
         .filter(a => a)
+        .map(a => {
+            const mapFindChance = statsStore.get('MAP_FIND_CHANCE', skillId) / 100;
+            if(!mapFindChance || !itemCache.specialIds.map.includes(a.id)) {
+                return a;
+            }
+            a.amount *= 1 + mapFindChance;
+            return a;
+        })
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
     }
 

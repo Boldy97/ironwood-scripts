@@ -56,7 +56,14 @@
     }
 
     function formatNumber(number) {
-        return number.toLocaleString(undefined, {maximumFractionDigits:2});
+        let digits = 2;
+        if(number < .1 && number > -.1) {
+            digits = 3;
+        }
+        if(number < .01 && number > -.01) {
+            digits = 4;
+        }
+        return number.toLocaleString(undefined, {maximumFractionDigits:digits});
     }
 
     function parseNumber(text) {
