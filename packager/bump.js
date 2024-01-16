@@ -3,9 +3,13 @@ const semverInc = require('semver/functions/inc');
 const path = require('path');
 
 async function run() {
-    const content = await readFile('prefix.js');
+    let content = await readFile('prefix.js');
     const from = /@version\W+(.*)/.exec(content)[1];
     const to = semverInc(from, process.argv[2]);
+    content = content
+        .split('[\r\n]+')
+        .map(line => !line.toLowerCase().includes('version') ? line : line.replaceAll(from, to))
+        .join('\n');
     writeFile('prefix.js', content.replaceAll(from, to));
     process.stdout.write(to);
 }
