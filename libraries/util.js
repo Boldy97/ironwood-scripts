@@ -166,10 +166,10 @@
 
     function debounce(callback, delay) {
         let timer;
-        return function() {
+        return function(...args) {
             clearTimeout(timer);
             timer = setTimeout(() => {
-                callback();
+                callback(...args);
             }, delay);
         }
     }

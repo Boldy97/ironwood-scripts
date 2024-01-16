@@ -1,10 +1,10 @@
-(events, elementWatcher) => {
+(events, elementWatcher, util) => {
 
     const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
 
     async function initialise() {
-        registerUrlHandler(handleUrl);
+        registerUrlHandler(util.debounce(handleUrl, 200));
     }
 
     async function handleUrl(url) {

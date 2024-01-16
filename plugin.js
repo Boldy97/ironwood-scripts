@@ -1379,13 +1379,13 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
 }
 );
 // pageDetector
-window.moduleRegistry.add('pageDetector', (events, elementWatcher) => {
+window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
 
     const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
 
     async function initialise() {
-        registerUrlHandler(handleUrl);
+        registerUrlHandler(util.debounce(handleUrl, 200));
     }
 
     async function handleUrl(url) {
@@ -2099,10 +2099,10 @@ window.moduleRegistry.add('util', () => {
 
     function debounce(callback, delay) {
         let timer;
-        return function() {
+        return function(...args) {
             clearTimeout(timer);
             timer = setTimeout(() => {
-                callback();
+                callback(...args);
             }, delay);
         }
     }
