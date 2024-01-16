@@ -3796,7 +3796,7 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
         const entries = await localDatabase.getAllEntries(STORE_NAME);
         for(const entry of entries) {
             if(!sources[entry.key]) {
-                sources[entry.key] = {};
+                continue;
             }
             sources[entry.key].lastSeen = entry.value.time;
             events.emit(`reader-${entry.key}`, {
