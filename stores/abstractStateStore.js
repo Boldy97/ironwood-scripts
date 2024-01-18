@@ -2,7 +2,6 @@
 
     const SOURCES = [
         'inventory',
-        'equipment-equipment',
         'equipment-runes',
         'equipment-tomes',
         'structures',
