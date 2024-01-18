@@ -2666,6 +2666,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
         });
         events.register('page', update);
         events.register('state-stats', update);
+        $(document).on('click', '.close', update);
     }
 
     function handleConfigStateChange(state) {
