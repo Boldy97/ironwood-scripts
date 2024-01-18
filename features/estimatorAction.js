@@ -110,7 +110,7 @@
         if(statsStore.get('PASSIVE_FOOD_CONSUMPTION') && statsStore.get('HEAL')) {
             // passive food
             statsStore.getManyEquipmentItems(itemCache.specialIds.food)
-                .forEach(a => result[a.id] = statsStore.get('PASSIVE_FOOD_CONSUMPTION')* 3600 / 5 / statsStore.get('HEAL'));
+                .forEach(a => result[a.id] = (result[a.id] || 0) + statsStore.get('PASSIVE_FOOD_CONSUMPTION') * 3600 / 5 / statsStore.get('HEAL'));
         }
         return result;
     }
