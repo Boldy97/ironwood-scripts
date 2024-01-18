@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ironwood RPG - Pancake-Scripts
 // @namespace    http://tampermonkey.net/
-// @version      4.0.6
+// @version      4.0.7
 // @description  A collection of scripts to enhance Ironwood RPG - https://github.com/Boldy97/ironwood-scripts
 // @author       Pancake
 // @match        https://ironwoodrpg.com/*
@@ -12,7 +12,7 @@
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
-window.PANCAKE_VERSION = '4.0.6';
+window.PANCAKE_VERSION = '4.0.7';
 (() => {
 
     if(window.moduleRegistry) {
@@ -1295,7 +1295,8 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
 
     const exports = {
         getAllEntries,
-        saveEntry
+        saveEntry,
+        removeEntry
     }
 
     const initialised = new Promise.Expiring(2000);
@@ -1304,7 +1305,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 2);
+        const request = window.indexedDB.open(databaseName, 3);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -1316,12 +1317,19 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
             const db = event.target.result;
             if(event.oldVersion <= 0) {
                 console.debug('Creating IndexedDB');
-                const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
-                settingsStore.createIndex('key', 'key', { unique: true });
+                db
+                    .createObjectStore('settings', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
             }
             if(event.oldVersion <= 1) {
-                const syncTrackingStore = db.createObjectStore('sync-tracking', { keyPath: 'key' });
-                syncTrackingStore.createIndex('key', 'key', { unique: true });
+                db
+                    .createObjectStore('sync-tracking', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 2) {
+                db
+                    .createObjectStore('market-filters', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
             }
         };
     }
@@ -1350,6 +1358,19 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         const result = new Promise.Expiring(1000);
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
+        request.onsuccess = function(event) {
+            result.resolve();
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result;
+    }
+
+    async function removeEntry(storeName, key) {
+        const result = new Promise.Expiring(1000);
+        const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
+        const request = store.delete(key);
         request.onsuccess = function(event) {
             result.resolve();
         };
@@ -2703,6 +2724,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
         });
         events.register('page', update);
         events.register('state-stats', update);
+        $(document).on('click', '.close', update);
     }
 
     function handleConfigStateChange(state) {
@@ -3101,7 +3123,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         if(statsStore.get('PASSIVE_FOOD_CONSUMPTION') && statsStore.get('HEAL')) {
             // passive food
             statsStore.getManyEquipmentItems(itemCache.specialIds.food)
-                .forEach(a => result[a.id] = statsStore.get('PASSIVE_FOOD_CONSUMPTION')* 3600 / 5 / statsStore.get('HEAL'));
+                .forEach(a => result[a.id] = (result[a.id] || 0) + statsStore.get('PASSIVE_FOOD_CONSUMPTION') * 3600 / 5 / statsStore.get('HEAL'));
         }
         return result;
     }
@@ -3292,7 +3314,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             parryChance: 0,
             bleedChance: 0,
             damageRange: 0.75,
-            dungeonDamage: 0,
+            dungeonDamage: 1,
             attackLevel: monster.level,
             defenseLevel: monster.level
         };
@@ -4559,7 +4581,6 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
 
     const SOURCES = [
         'inventory',
-        'equipment-equipment',
         'equipment-runes',
         'equipment-tomes',
         'structures',
@@ -4636,6 +4657,51 @@ window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStor
     initialise();
 
     return initialised;
+
+}
+);
+// equipmentStateStore
+window.moduleRegistry.add('equipmentStateStore', (events, util, itemCache) => {
+
+    let state = {};
+
+    function initialise() {
+        events.register('reader-equipment-equipment', handleEquipmentReader);
+    }
+
+    function handleEquipmentReader(event) {
+        let updated = false;
+        if(event.type === 'full' || event.type === 'cache') {
+            if(util.compareObjects(state, event.value)) {
+                return;
+            }
+            updated = true;
+            state = event.value;
+        }
+        if(event.type === 'partial') {
+            for(const key of Object.keys(event.value)) {
+                if(state[key] === event.value[key]) {
+                    continue;
+                }
+                updated = true;
+                // remove items of similar type
+                for(const itemType in itemCache.specialIds) {
+                    if(Array.isArray(itemCache.specialIds[itemType]) && itemCache.specialIds[itemType].includes(+key)) {
+                        console.log(`Matched ${key} to ${itemType}`);
+                        for(const itemId of itemCache.specialIds[itemType]) {
+                            delete state[itemId];
+                        }
+                    }
+                }
+                state[key] = event.value[key];
+            }
+        }
+        if(updated) {
+            events.emit('state-equipment-equipment', state);
+        }
+    }
+
+    initialise();
 
 }
 );

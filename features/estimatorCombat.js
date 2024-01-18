@@ -117,7 +117,7 @@
             parryChance: 0,
             bleedChance: 0,
             damageRange: 0.75,
-            dungeonDamage: 0,
+            dungeonDamage: 1,
             attackLevel: monster.level,
             defenseLevel: monster.level
         };

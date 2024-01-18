@@ -2,7 +2,8 @@
 
     const exports = {
         getAllEntries,
-        saveEntry
+        saveEntry,
+        removeEntry
     }
 
     const initialised = new Promise.Expiring(2000);
@@ -11,7 +12,7 @@
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 2);
+        const request = window.indexedDB.open(databaseName, 3);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -23,12 +24,19 @@
             const db = event.target.result;
             if(event.oldVersion <= 0) {
                 console.debug('Creating IndexedDB');
-                const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
-                settingsStore.createIndex('key', 'key', { unique: true });
+                db
+                    .createObjectStore('settings', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
             }
             if(event.oldVersion <= 1) {
-                const syncTrackingStore = db.createObjectStore('sync-tracking', { keyPath: 'key' });
-                syncTrackingStore.createIndex('key', 'key', { unique: true });
+                db
+                    .createObjectStore('sync-tracking', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 2) {
+                db
+                    .createObjectStore('market-filters', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
             }
         };
     }
@@ -57,6 +65,19 @@
         const result = new Promise.Expiring(1000);
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
+        request.onsuccess = function(event) {
+            result.resolve();
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result;
+    }
+
+    async function removeEntry(storeName, key) {
+        const result = new Promise.Expiring(1000);
+        const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
+        const request = store.delete(key);
         request.onsuccess = function(event) {
             result.resolve();
         };

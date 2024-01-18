@@ -12,6 +12,7 @@
         });
         events.register('page', update);
         events.register('state-stats', update);
+        $(document).on('click', '.close', update);
     }
 
     function handleConfigStateChange(state) {
