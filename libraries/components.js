@@ -160,7 +160,9 @@
                     .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
                     .keyup(inputDelay(function(e) {
                         inputBlueprint.value = e.target.value;
-                        inputBlueprint.action(inputBlueprint.value);
+                        if(inputBlueprint.action) {
+                            inputBlueprint.action(inputBlueprint.value);
+                        }
                     }, inputBlueprint.delay || 0))
             )
         return parentRow;
@@ -197,7 +199,9 @@
                 for(const option of selectBlueprint.options) {
                     option.selected = this.value === option.value;
                 }
-                selectBlueprint.action(this.value);
+                if(selectBlueprint.action) {
+                    selectBlueprint.action(this.value);
+                }
             }, selectBlueprint.delay || 0));
         for(const option of selectBlueprint.options) {
             select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''}>${option.text}</option>`);
@@ -263,7 +267,9 @@
                             .html(buttonInnerHTML)
                             .click(() => {
                                 checkboxBlueprint.checked = !checkboxBlueprint.checked;
-                                checkboxBlueprint.action(checkboxBlueprint.checked);
+                                if(checkboxBlueprint.action) {
+                                    checkboxBlueprint.action(checkboxBlueprint.checked);
+                                }
                             })
                     )
 
