@@ -1317,7 +1317,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 2);
+        const request = window.indexedDB.open(databaseName, 3);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -3234,7 +3234,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             parryChance: 0,
             bleedChance: 0,
             damageRange: 0.75,
-            dungeonDamage: 0,
+            dungeonDamage: 1,
             attackLevel: monster.level,
             defenseLevel: monster.level
         };
