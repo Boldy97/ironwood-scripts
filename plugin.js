@@ -812,12 +812,13 @@ window.moduleRegistry.add('configuration', (Promise, configurationStore) => {
                 save(item, value);
             }
         }
+        let initialValue;
         if(item.key in configs) {
-            value = configs[item.key];
+            initialValue = configs[item.key];
         } else {
-            value = item.default;
+            initialValue = item.default;
         }
-        item.handler(value, true);
+        item.handler(initialValue, true);
         exports.items.push(item);
         return item;
     }
@@ -3841,8 +3842,6 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
                     return $('.saveFilterHover').removeClass('greenOutline');
             }
         });
-
-        syncCustomView();
     }
 
     function handleConfigStateChange(state) {
@@ -4687,7 +4686,6 @@ window.moduleRegistry.add('equipmentStateStore', (events, util, itemCache) => {
                 // remove items of similar type
                 for(const itemType in itemCache.specialIds) {
                     if(Array.isArray(itemCache.specialIds[itemType]) && itemCache.specialIds[itemType].includes(+key)) {
-                        console.log(`Matched ${key} to ${itemType}`);
                         for(const itemId of itemCache.specialIds[itemType]) {
                             delete state[itemId];
                         }
@@ -5242,8 +5240,16 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
             // per action, the highest chance drop
             ._groupBy(drop => drop.action)
             .map(a => a.reduce((a,b) => a.chance >= b.chance ? a : b))
-            // per skill
-            ._groupBy(drop => actionCache.byId[drop.action].skill)
+            // per skill, and for farming,
+            ._groupBy(drop => {
+                const action = actionCache.byId[drop.action];
+                let skill = action.skill
+                if(skill === 'Farming') {
+                    // add flower or vegetable suffix
+                    skill += `-${action.image.split('/')[1].split('-')[0]}`;
+                }
+                return skill;
+            })
             .flatMap(a => a
                 ._groupBy(drop => actionCache.byId[drop.action].level)
                 .map(b => b.map(drop => drop.item)._distinct())
@@ -5256,6 +5262,7 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
     }
 
     function extractConversions() {
+        window.list = exports.list;
         exports.conversionMappings = exports.list
             .filter(a => actionCache.byId[a.action].type === 'CONVERSION')
             .map(drop => ({

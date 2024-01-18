@@ -69,8 +69,6 @@
                     return $('.saveFilterHover').removeClass('greenOutline');
             }
         });
-
-        syncCustomView();
     }
 
     function handleConfigStateChange(state) {
