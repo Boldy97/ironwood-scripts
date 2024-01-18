@@ -1,7 +1,4 @@
-(Promise, localConfigurationStore, _remoteConfigurationStore) => {
-
-    const loaded = new Promise.Deferred();
-    const configurationStore = _remoteConfigurationStore || localConfigurationStore;
+(Promise, configurationStore) => {
 
     const exports = {
         registerCheckbox,
@@ -11,10 +8,7 @@
         items: []
     };
 
-    async function initialise() {
-        const configs = await configurationStore.load();
-        loaded.resolve(configs);
-    }
+    const configs = configurationStore.getConfigs();
 
     const CHECKBOX_KEYS = ['category', 'key', 'name', 'default', 'handler'];
     function registerCheckbox(item) {
@@ -57,15 +51,12 @@
                 save(item, value);
             }
         }
-        loaded.then(configs => {
-            let value;
-            if(item.key in configs) {
-                value = JSON.parse(configs[item.key]);
-            } else {
-                value = item.default;
-            }
-            item.handler(value, true);
-        });
+        if(item.key in configs) {
+            value = configs[item.key];
+        } else {
+            value = item.default;
+        }
+        item.handler(value, true);
         exports.items.push(item);
         return item;
     }
@@ -87,8 +78,6 @@
             }
         }
     }
-
-    initialise();
 
     return exports;
 

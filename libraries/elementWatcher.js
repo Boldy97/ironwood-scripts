@@ -43,10 +43,8 @@
     async function childAddedContinuous(selector, callback) {
         const parent = await exists(selector);
         const observer = new MutationObserver(function(mutations, observer) {
-            for(const mutation of mutations) {
-                if(mutation.addedNodes?.length) {
-                    callback();
-                }
+            if(mutations.find(a => a.addedNodes?.length)) {
+                callback();
             }
         });
         observer.observe(parent, { childList: true });

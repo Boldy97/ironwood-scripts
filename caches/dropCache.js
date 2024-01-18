@@ -1,4 +1,4 @@
-(request, Promise, itemCache, actionCache, skillCache) => {
+(request, Promise, itemCache, actionCache, skillCache, ingredientCache) => {
 
     const initialised = new Promise.Expiring(2000);
 
@@ -7,7 +7,8 @@
         byAction: null,
         byItem: null,
         boneCarveMappings: null,
-        lowerGatherMappings: null
+        lowerGatherMappings: null,
+        conversionMappings: null
     };
 
     Object.defineProperty(Array.prototype, '_groupBy', {
@@ -44,6 +45,7 @@
         }
         extractBoneCarvings();
         extractLowerGathers();
+        extractConversions();
         initialised.resolve(exports);
     }
 
@@ -88,6 +90,18 @@
                 })))
             )
             .reduce((a,b) => (a[b.from] = b.to, a), {});
+    }
+
+    function extractConversions() {
+        exports.conversionMappings = exports.list
+            .filter(a => actionCache.byId[a.action].type === 'CONVERSION')
+            .map(drop => ({
+                from: ingredientCache.byAction[drop.action][0].item,
+                to: drop.item,
+                amount: drop.amount
+            }))
+            ._groupBy(a => a.to)
+            .reduce((a,b) => (a[b[0].to] = b, a), {});
     }
 
     initialise();

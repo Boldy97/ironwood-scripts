@@ -759,10 +759,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 }
 );
 // configuration
-window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _remoteConfigurationStore) => {
-
-    const loaded = new Promise.Deferred();
-    const configurationStore = _remoteConfigurationStore || localConfigurationStore;
+window.moduleRegistry.add('configuration', (Promise, configurationStore) => {
 
     const exports = {
         registerCheckbox,
@@ -772,10 +769,7 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
         items: []
     };
 
-    async function initialise() {
-        const configs = await configurationStore.load();
-        loaded.resolve(configs);
-    }
+    const configs = configurationStore.getConfigs();
 
     const CHECKBOX_KEYS = ['category', 'key', 'name', 'default', 'handler'];
     function registerCheckbox(item) {
@@ -818,15 +812,12 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
                 save(item, value);
             }
         }
-        loaded.then(configs => {
-            let value;
-            if(item.key in configs) {
-                value = JSON.parse(configs[item.key]);
-            } else {
-                value = item.default;
-            }
-            item.handler(value, true);
-        });
+        if(item.key in configs) {
+            value = configs[item.key];
+        } else {
+            value = item.default;
+        }
+        item.handler(value, true);
         exports.items.push(item);
         return item;
     }
@@ -848,8 +839,6 @@ window.moduleRegistry.add('configuration', (Promise, localConfigurationStore, _r
             }
         }
     }
-
-    initialise();
 
     return exports;
 
@@ -1156,10 +1145,8 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
     async function childAddedContinuous(selector, callback) {
         const parent = await exists(selector);
         const observer = new MutationObserver(function(mutations, observer) {
-            for(const mutation of mutations) {
-                if(mutation.addedNodes?.length) {
-                    callback();
-                }
+            if(mutations.find(a => a.addedNodes?.length)) {
+                callback();
             }
         });
         observer.observe(parent, { childList: true });
@@ -1845,8 +1832,6 @@ window.moduleRegistry.add('request', () => {
     request.listSkills = () => request('public/list/skill');
     request.listStructures = () => request('public/list/structure');
 
-    request.getMarketConversion = () => request('public/market/conversions');
-
     request.getChangelogs = () => request('public/settings/changelog');
     request.getVersion = () => request('public/settings/version');
 
@@ -2337,6 +2322,79 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
     }
 
     initialise();
+
+}
+);
+// marketReader
+window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, util) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-market');
+    let inProgress = false;
+
+    const exports = {
+        trigger: update
+    };
+
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 10000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        if(page.type === 'market') {
+            readMarketScreen();
+        }
+    }
+
+    async function readMarketScreen() {
+        if(inProgress) {
+            return;
+        }
+        try {
+            inProgress = true;
+            const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
+            const type = selectedTab === 'buy' ? 'SELL' : selectedTab === 'orders' ? 'BUY' : 'OWN';
+            await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
+            if($('market-listings-component .search > input').val()) {
+                return;
+            }
+            const listings = [];
+            $('market-listings-component .search ~ button').each((i,element) => {
+                element = $(element);
+                const name = element.find('.name').text();
+                const item = itemCache.byName[name];
+                if(!item) {
+                    return;
+                }
+                const amount = util.parseNumber(element.find('.amount').text());
+                const price = util.parseNumber(element.find('.cost').text());
+                const listingType = type !== 'OWN' ? type : element.find('.tag').length ? 'BUY' : 'SELL';
+                listings.push({
+                    type: listingType,
+                    item: item.id,
+                    amount,
+                    price,
+                    element
+                });
+            });
+            emitEvent({
+                type,
+                listings,
+            });
+        } catch(e) {
+            return;
+        } finally {
+            inProgress = false;
+        }
+    }
+
+    initialise();
+
+    return exports;
 
 }
 );
@@ -3689,6 +3747,357 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util) => {
 
 }
 );
+// marketFilter
+window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator) => {
+
+    const STORE_NAME = 'market-filters';
+    const TYPE_TO_ITEM = {
+        'Food': itemCache.byName['Health'].id,
+        'Charcoal': itemCache.byName['Charcoal'].id,
+        'Compost': itemCache.byName['Compost'].id,
+        'Arcane Powder': itemCache.byName['Arcane Powder'].id,
+    };
+    let savedFilters = [];
+    let enabled = false;
+    let currentFilter = {
+        type: 'None',
+        amount: 0,
+        key: 'SELL-None'
+    };
+    let pageInitialised = false;
+    let listingsUpdatePromise = null;
+
+    async function initialise() {
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'market-filter',
+            name: 'Market filter',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', update);
+        events.register('reader-market', update);
+
+        savedFilters = await localDatabase.getAllEntries(STORE_NAME);
+
+        // detect elements changing
+
+        // clear filters when searching yourself
+        $(document).on('input', 'market-listings-component .search > input', clearFilter);
+
+        // TODO combine all three into one?
+        // Buy tab -> trigger update
+        $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(1)', function() {
+            showComponent();
+            marketReader.trigger();
+        });
+        $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(2)', function() {
+            showComponent();
+            marketReader.trigger();
+        });
+        $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(3)', function() {
+            hideComponent();
+            marketReader.trigger();
+        });
+
+        elementCreator.addStyles(`
+            .greenOutline {
+                outline: 2px solid rgb(83, 189, 115) !important;
+            }
+        `);
+
+        // on save hover, highlight saved fields
+        $(document).on('mouseenter mouseleave click', '.saveFilterHoverTrigger', function(e) {
+            switch(e.type) {
+                case 'mouseenter':
+                    if(currentFilter.type === 'None') {
+                        return $('.saveFilterHover.search').addClass('greenOutline');
+                    }
+                    return $('.saveFilterHover:not(.search)').addClass('greenOutline');
+                case 'mouseleave':
+                case 'click':
+                    return $('.saveFilterHover').removeClass('greenOutline');
+            }
+        });
+
+        syncCustomView();
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function update() {
+        if(!enabled) {
+            return;
+        }
+        if(events.getLast('page')?.type !== 'market') {
+            pageInitialised = false;
+            return;
+        }
+        initialisePage();
+        $('market-listings-component .search').addClass('saveFilterHover');
+        syncListingsView();
+    }
+
+    async function initialisePage() {
+        if(pageInitialised) {
+            return;
+        }
+        clearFilter();
+        try {
+            await elementWatcher.childAddedContinuous('market-listings-component .card', () => {
+                if(listingsUpdatePromise) {
+                    listingsUpdatePromise.resolve();
+                    listingsUpdatePromise = null;
+                }
+            });
+            pageInitialised = true;
+        } catch(error) {
+            console.warn(`Could probably not detect the market listing component, cause : ${error}`);
+        }
+    }
+
+    async function clearFilter() {
+        await applyFilter({
+            type: 'None',
+            amount: 0
+        });
+        syncCustomView();
+    }
+
+    async function applyFilter(filter) {
+        Object.assign(currentFilter, {search:null}, filter);
+        currentFilter.key = `${currentFilter.listingType}-${currentFilter.type}`;
+        if(currentFilter.type && currentFilter.type !== 'None') {
+            await clearSearch();
+        }
+        syncListingsView();
+    }
+
+    async function clearSearch() {
+        if(!$('market-listings-component .search > input').val()) {
+            return;
+        }
+        listingsUpdatePromise = new Promise.Expiring(5000);
+        $('market-listings-component .search > .clear-button').click();
+        await listingsUpdatePromise;
+        marketReader.trigger();
+    }
+
+    async function saveFilter() {
+        let filter = structuredClone(currentFilter);
+        if(currentFilter.type === 'None') {
+            filter.search = $('market-listings-component .search > input').val();
+            if(!filter.search) {
+                return;
+            }
+        }
+        if(filter.search) {
+            filter.key = `SEARCH-${filter.search}`;
+        } else {
+            filter.key = `${filter.type}-${filter.amount}`;
+        }
+        if(!savedFilters.find(a => a.key === filter.key)) {
+            localDatabase.saveEntry(STORE_NAME, filter);
+            savedFilters.push(filter);
+        }
+        componentBlueprint.selectedTabIndex = 0;
+        syncCustomView();
+    }
+
+    async function removeFilter(filter) {
+        localDatabase.removeEntry(STORE_NAME, filter.key);
+        savedFilters = savedFilters.filter(a => a.key !== filter.key);
+        syncCustomView();
+    }
+
+    function syncListingsView() {
+        const marketData = events.getLast('reader-market');
+        if(!marketData) {
+            return;
+        }
+        // do nothing on own listings tab
+        if(marketData.type === 'OWN') {
+            return;
+        }
+        // search
+        if(currentFilter.search) {
+            for(const element of marketData.listings.map(a => a.element)) {
+                element.find('.ratio').remove();
+                element.show();
+            }
+            const searchReference = $('market-listings-component .search > input');
+            searchReference.val(currentFilter.search);
+            searchReference[0].dispatchEvent(new Event('input'));
+            return;
+        }
+        // no type
+        if(currentFilter.type === 'None') {
+            for(const element of marketData.listings.map(a => a.element)) {
+                element.show();
+                element.find('.ratio').remove();
+            }
+            return;
+        }
+        // type
+        const itemId = TYPE_TO_ITEM[currentFilter.type];
+        const conversionsByItem = dropCache.conversionMappings[itemId].reduce((a,b) => (a[b.from] = b, a), {});
+        let matchingListings = marketData.listings.filter(listing => listing.item in conversionsByItem);
+        for(const listing of matchingListings) {
+            listing.ratio = listing.price / conversionsByItem[listing.item].amount;
+        }
+        matchingListings.sort((a,b) => (a.type === 'BUY' ? 1 : -1) * (b.ratio - a.ratio));
+        if(currentFilter.amount) {
+            matchingListings = matchingListings.slice(0, currentFilter.amount);
+        }
+        for(const listing of marketData.listings) {
+            if(matchingListings.includes(listing)) {
+                listing.element.show();
+                if(!listing.element.find('.ratio').length) {
+                    listing.element.find('.amount').after(`<div class='ratio'>(${listing.ratio.toFixed(2)})</div>`);
+                }
+            } else {
+                listing.element.hide();
+            }
+        }
+    }
+
+    function syncCustomView() {
+        for(const option of components.search(componentBlueprint, 'filterDropdown').options) {
+            option.selected = option.value === currentFilter.type;
+        }
+        components.search(componentBlueprint, 'amountInput').value = currentFilter.amount;
+        components.search(componentBlueprint, 'savedFiltersTab').hidden = !savedFilters.length;
+        if(!savedFilters.length) {
+            componentBlueprint.selectedTabIndex = 1;
+        }
+        const savedFiltersSegment = components.search(componentBlueprint, 'savedFiltersSegment');
+        savedFiltersSegment.rows = [];
+        for(const savedFilter of savedFilters) {
+            let text = `Type : ${savedFilter.type}`;
+            if(savedFilter.amount) {
+                text = `Type : ${savedFilter.amount} x ${savedFilter.type}`;
+            }
+            if(savedFilter.search) {
+                text = `Search : ${savedFilter.search}`;
+            }
+            savedFiltersSegment.rows.push({
+                type: 'buttons',
+                buttons: [{
+                    text: text,
+                    size: 3,
+                    color: 'primary',
+                    action: async function() {
+                        await applyFilter(savedFilter);
+                        syncCustomView();
+                    }
+                },{
+                    text: 'Remove',
+                    color: 'danger',
+                    action: removeFilter.bind(null,savedFilter)
+                }]
+            });
+        }
+        showComponent();
+    }
+
+    function hideComponent() {
+        components.removeComponent(componentBlueprint);
+    }
+
+    function showComponent() {
+        componentBlueprint.prepend = screen.width < 750;
+        components.addComponent(componentBlueprint);
+    }
+
+    const componentBlueprint = {
+        componentId : 'marketFilterComponent',
+        dependsOn: 'market-page',
+        parent : 'market-listings-component > .groups > :last-child',
+        prepend: false,
+        selectedTabIndex : 0,
+        tabs : [{
+            id: 'savedFiltersTab',
+            title : 'Saved filters',
+            hidden: true,
+            rows: [{
+                type: 'segment',
+                id: 'savedFiltersSegment',
+                rows: []
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'Clear filter',
+                    color: 'warning',
+                    action: async function() {
+                        await clearFilter();
+                        await clearSearch();
+                    }
+                }]
+            }]
+        }, {
+            title : 'Filter',
+            rows: [{
+                type: 'dropdown',
+                id: 'filterDropdown',
+                action: type => applyFilter({type}),
+                class: 'saveFilterHover',
+                options: [{
+                    text: 'None',
+                    value: 'None',
+                    selected: false
+                }, {
+                    text: 'Food',
+                    value: 'Food',
+                    selected: false
+                }, {
+                    text: 'Charcoal',
+                    value: 'Charcoal',
+                    selected: false
+                }, {
+                    text: 'Compost',
+                    value: 'Compost',
+                    selected: false
+                }, {
+                    text: 'Arcane Powder',
+                    value: 'Arcane Powder',
+                    selected: false
+                }]
+            }, {
+                type: 'input',
+                id: 'amountInput',
+                name: 'Amount',
+                value: '',
+                inputType: 'number',
+                action: amount => applyFilter({amount:+amount}),
+                class: 'saveFilterHover'
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'Save filter',
+                    action: saveFilter,
+                    color: 'success',
+                    class: 'saveFilterHoverTrigger'
+                }]
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'Clear filter',
+                    color: 'warning',
+                    action: async function() {
+                        await clearFilter();
+                        await clearSearch();
+                    }
+                }]
+            }]
+        }]
+    };
+
+    initialise();
+
+}
+);
 // recipeClickthrough
 window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, util) => {
 
@@ -4194,6 +4603,42 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
 
 }
 );
+// configurationStore
+window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStore, _remoteConfigurationStore) =>  {
+
+    const initialised = new Promise.Expiring(2000);
+    let configs = null;
+
+    const exports = {
+        save,
+        getConfigs
+    };
+
+    const configurationStore = _remoteConfigurationStore || localConfigurationStore;
+
+    async function initialise() {
+        configs = await configurationStore.load();
+        for(const key in configs) {
+            configs[key] = JSON.parse(configs[key]);
+        }
+        initialised.resolve(exports);
+    }
+
+    async function save(key, value) {
+        await configurationStore.save(key, value);
+        configs[key] = value;
+    }
+
+    function getConfigs() {
+        return configs;
+    }
+
+    initialise();
+
+    return initialised;
+
+}
+);
 // expStateStore
 window.moduleRegistry.add('expStateStore', (events, util) => {
 
@@ -4650,7 +5095,7 @@ window.moduleRegistry.add('actionCache', (request, Promise) => {
 }
 );
 // dropCache
-window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache, skillCache) => {
+window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache, skillCache, ingredientCache) => {
 
     const initialised = new Promise.Expiring(2000);
 
@@ -4659,7 +5104,8 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
         byAction: null,
         byItem: null,
         boneCarveMappings: null,
-        lowerGatherMappings: null
+        lowerGatherMappings: null,
+        conversionMappings: null
     };
 
     Object.defineProperty(Array.prototype, '_groupBy', {
@@ -4696,6 +5142,7 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
         }
         extractBoneCarvings();
         extractLowerGathers();
+        extractConversions();
         initialised.resolve(exports);
     }
 
@@ -4740,6 +5187,18 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
                 })))
             )
             .reduce((a,b) => (a[b.from] = b.to, a), {});
+    }
+
+    function extractConversions() {
+        exports.conversionMappings = exports.list
+            .filter(a => actionCache.byId[a.action].type === 'CONVERSION')
+            .map(drop => ({
+                from: ingredientCache.byAction[drop.action][0].item,
+                to: drop.item,
+                amount: drop.amount
+            }))
+            ._groupBy(a => a.to)
+            .reduce((a,b) => (a[b[0].to] = b, a), {});
     }
 
     initialise();

@@ -46,8 +46,6 @@
     request.listSkills = () => request('public/list/skill');
     request.listStructures = () => request('public/list/structure');
 
-    request.getMarketConversion = () => request('public/market/conversions');
-
     request.getChangelogs = () => request('public/settings/changelog');
     request.getVersion = () => request('public/settings/version');
 
