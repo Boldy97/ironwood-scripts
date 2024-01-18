@@ -24,7 +24,6 @@
                 // remove items of similar type
                 for(const itemType in itemCache.specialIds) {
                     if(Array.isArray(itemCache.specialIds[itemType]) && itemCache.specialIds[itemType].includes(+key)) {
-                        console.log(`Matched ${key} to ${itemType}`);
                         for(const itemId of itemCache.specialIds[itemType]) {
                             delete state[itemId];
                         }

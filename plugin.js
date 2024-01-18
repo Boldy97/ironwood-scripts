@@ -5262,7 +5262,6 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
     }
 
     function extractConversions() {
-        window.list = exports.list;
         exports.conversionMappings = exports.list
             .filter(a => actionCache.byId[a.action].type === 'CONVERSION')
             .map(drop => ({

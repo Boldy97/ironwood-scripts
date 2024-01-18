@@ -79,8 +79,16 @@
             // per action, the highest chance drop
             ._groupBy(drop => drop.action)
             .map(a => a.reduce((a,b) => a.chance >= b.chance ? a : b))
-            // per skill
-            ._groupBy(drop => actionCache.byId[drop.action].skill)
+            // per skill, and for farming,
+            ._groupBy(drop => {
+                const action = actionCache.byId[drop.action];
+                let skill = action.skill
+                if(skill === 'Farming') {
+                    // add flower or vegetable suffix
+                    skill += `-${action.image.split('/')[1].split('-')[0]}`;
+                }
+                return skill;
+            })
             .flatMap(a => a
                 ._groupBy(drop => actionCache.byId[drop.action].level)
                 .map(b => b.map(drop => drop.item)._distinct())

@@ -51,12 +51,13 @@
                 save(item, value);
             }
         }
+        let initialValue;
         if(item.key in configs) {
-            value = configs[item.key];
+            initialValue = configs[item.key];
         } else {
-            value = item.default;
+            initialValue = item.default;
         }
-        item.handler(value, true);
+        item.handler(initialValue, true);
         exports.items.push(item);
         return item;
     }
