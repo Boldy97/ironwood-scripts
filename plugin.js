@@ -138,15 +138,16 @@ window.moduleRegistry.add('colorMapper', () => {
 }
 );
 // components
-window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCreator) => {
+window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCreator, localDatabase, Promise) => {
 
     const exports = {
         addComponent,
         removeComponent,
         search
-    }
+    };
 
-    const $ = window.$;
+    const initialised = new Promise.Expiring(2000);
+    const STORE_NAME = 'component-tabs';
     const rowTypeMappings = {
         item: createRow_Item,
         input: createRow_Input,
@@ -160,9 +161,12 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         chart: createRow_Chart,
         list: createRow_List
     };
+    let selectedTabs = null;
 
-    function initialise() {
+    async function initialise() {
         elementCreator.addStyles(styles);
+        selectedTabs = await localDatabase.getAllEntries(STORE_NAME);
+        initialised.resolve(exports);
     }
 
     function removeComponent(blueprint) {
@@ -179,7 +183,6 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     function actualAddComponent(blueprint) {
-        $(`#${blueprint.componentId}`).remove();
         const component =
             $('<div/>')
                 .addClass('customComponent')
@@ -191,6 +194,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         }
 
         // TABS
+        const selectedTabMatch = selectedTabs.find(a => a.key === blueprint.componentId);
+        if(selectedTabMatch) {
+            blueprint.selectedTabIndex = selectedTabMatch.value;
+            selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
+        }
         const theTabs = createTab(blueprint);
         component.append(theTabs);
 
@@ -200,10 +208,13 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             component.append(createRow(rowBlueprint));
         });
 
-        if(blueprint.prepend) {
-            $(`${blueprint.parent}`).prepend(component);
+        const existing = $(`#${blueprint.componentId}`);
+        if(existing.length) {
+            existing.replaceWith(component);
+        } else if(blueprint.prepend) {
+            $(blueprint.parent).prepend(component);
         } else {
-            $(`${blueprint.parent}`).append(component);
+            $(blueprint.parent).append(component);
         }
     }
 
@@ -490,6 +501,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function changeTab(blueprint, index) {
         blueprint.selectedTabIndex = index;
+        localDatabase.saveEntry(STORE_NAME, {
+            key: blueprint.componentId,
+            value: index
+        });
+        selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
         addComponent(blueprint);
     }
 
@@ -761,7 +777,8 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     initialise();
 
-    return exports;
+    return initialised;
+
 }
 );
 // configuration
@@ -1304,7 +1321,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         getAllEntries,
         saveEntry,
         removeEntry
-    }
+    };
 
     const initialised = new Promise.Expiring(2000);
     let database = null;
@@ -1312,7 +1329,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 3);
+        const request = window.indexedDB.open(databaseName, 4);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -1336,6 +1353,11 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
             if(event.oldVersion <= 2) {
                 db
                     .createObjectStore('market-filters', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 3) {
+                db
+                    .createObjectStore('component-tabs', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });
             }
         };

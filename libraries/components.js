@@ -1,12 +1,13 @@
-(elementWatcher, colorMapper, elementCreator) => {
+(elementWatcher, colorMapper, elementCreator, localDatabase, Promise) => {
 
     const exports = {
         addComponent,
         removeComponent,
         search
-    }
+    };
 
-    const $ = window.$;
+    const initialised = new Promise.Expiring(2000);
+    const STORE_NAME = 'component-tabs';
     const rowTypeMappings = {
         item: createRow_Item,
         input: createRow_Input,
@@ -20,9 +21,12 @@
         chart: createRow_Chart,
         list: createRow_List
     };
+    let selectedTabs = null;
 
-    function initialise() {
+    async function initialise() {
         elementCreator.addStyles(styles);
+        selectedTabs = await localDatabase.getAllEntries(STORE_NAME);
+        initialised.resolve(exports);
     }
 
     function removeComponent(blueprint) {
@@ -39,7 +43,6 @@
     }
 
     function actualAddComponent(blueprint) {
-        $(`#${blueprint.componentId}`).remove();
         const component =
             $('<div/>')
                 .addClass('customComponent')
@@ -51,6 +54,11 @@
         }
 
         // TABS
+        const selectedTabMatch = selectedTabs.find(a => a.key === blueprint.componentId);
+        if(selectedTabMatch) {
+            blueprint.selectedTabIndex = selectedTabMatch.value;
+            selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
+        }
         const theTabs = createTab(blueprint);
         component.append(theTabs);
 
@@ -60,10 +68,13 @@
             component.append(createRow(rowBlueprint));
         });
 
-        if(blueprint.prepend) {
-            $(`${blueprint.parent}`).prepend(component);
+        const existing = $(`#${blueprint.componentId}`);
+        if(existing.length) {
+            existing.replaceWith(component);
+        } else if(blueprint.prepend) {
+            $(blueprint.parent).prepend(component);
         } else {
-            $(`${blueprint.parent}`).append(component);
+            $(blueprint.parent).append(component);
         }
     }
 
@@ -350,6 +361,11 @@
 
     function changeTab(blueprint, index) {
         blueprint.selectedTabIndex = index;
+        localDatabase.saveEntry(STORE_NAME, {
+            key: blueprint.componentId,
+            value: index
+        });
+        selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
         addComponent(blueprint);
     }
 
@@ -621,5 +637,6 @@
 
     initialise();
 
-    return exports;
+    return initialised;
+
 }

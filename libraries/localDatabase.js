@@ -4,7 +4,7 @@
         getAllEntries,
         saveEntry,
         removeEntry
-    }
+    };
 
     const initialised = new Promise.Expiring(2000);
     let database = null;
@@ -12,7 +12,7 @@
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 3);
+        const request = window.indexedDB.open(databaseName, 4);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -36,6 +36,11 @@
             if(event.oldVersion <= 2) {
                 db
                     .createObjectStore('market-filters', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 3) {
+                db
+                    .createObjectStore('component-tabs', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });
             }
         };
