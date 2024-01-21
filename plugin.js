@@ -3827,7 +3827,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             handler: handleConfigStateChange
         });
         events.register('page', update);
-        events.register('reader-market', update);
+        events.register('state-market', update);
 
         savedFilters = await localDatabase.getAllEntries(STORE_NAME);
 
@@ -3962,20 +3962,18 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
     }
 
     function syncListingsView() {
-        const marketData = events.getLast('reader-market');
+        const marketData = events.getLast('state-market');
         if(!marketData) {
             return;
         }
         // do nothing on own listings tab
-        if(marketData.type === 'OWN') {
+        if(marketData.lastType === 'OWN') {
+            resetListingsView(marketData);
             return;
         }
         // search
         if(currentFilter.search) {
-            for(const element of marketData.listings.map(a => a.element)) {
-                element.find('.ratio').remove();
-                element.show();
-            }
+            resetListingsView(marketData);
             const searchReference = $('market-listings-component .search > input');
             searchReference.val(currentFilter.search);
             searchReference[0].dispatchEvent(new Event('input'));
@@ -3983,16 +3981,13 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         }
         // no type
         if(currentFilter.type === 'None') {
-            for(const element of marketData.listings.map(a => a.element)) {
-                element.show();
-                element.find('.ratio').remove();
-            }
+            resetListingsView(marketData);
             return;
         }
         // type
         const itemId = TYPE_TO_ITEM[currentFilter.type];
         const conversionsByItem = dropCache.conversionMappings[itemId].reduce((a,b) => (a[b.from] = b, a), {});
-        let matchingListings = marketData.listings.filter(listing => listing.item in conversionsByItem);
+        let matchingListings = marketData.last.filter(listing => listing.item in conversionsByItem);
         for(const listing of matchingListings) {
             listing.ratio = listing.price / conversionsByItem[listing.item].amount;
         }
@@ -4000,7 +3995,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         if(currentFilter.amount) {
             matchingListings = matchingListings.slice(0, currentFilter.amount);
         }
-        for(const listing of marketData.listings) {
+        for(const listing of marketData.last) {
             if(matchingListings.includes(listing)) {
                 listing.element.show();
                 if(!listing.element.find('.ratio').length) {
@@ -4009,6 +4004,13 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             } else {
                 listing.element.hide();
             }
+        }
+    }
+
+    function resetListingsView(marketData) {
+        for(const element of marketData.last.map(a => a.element)) {
+            element.find('.ratio').remove();
+            element.show();
         }
     }
 
@@ -4792,6 +4794,27 @@ window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
     }
 
     return exports;
+
+}
+);
+// marketStore
+window.moduleRegistry.add('marketStore', (events) => {
+
+    const emitEvent = events.emit.bind(null, 'state-market');
+    const state = {};
+
+    function initialise() {
+        events.register('reader-market', handleMarketReader);
+    }
+
+    function handleMarketReader(event) {
+        state[event.type] = event.listings;
+        state.lastType = event.type;
+        state.last = event.listings;
+        emitEvent(state);
+    }
+
+    initialise();
 
 }
 );
