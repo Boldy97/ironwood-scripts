@@ -2407,7 +2407,7 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
         try {
             inProgress = true;
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
-            const type = selectedTab === 'buy' ? 'SELL' : selectedTab === 'orders' ? 'BUY' : 'OWN';
+            const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
             await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             if($('market-listings-component .search > input').val()) {
                 return;
@@ -2423,11 +2423,13 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
                 const amount = util.parseNumber(element.find('.amount').text());
                 const price = util.parseNumber(element.find('.cost').text());
                 const listingType = type !== 'OWN' ? type : element.find('.tag').length ? 'BUY' : 'SELL';
+                const isOwn = !!element.attr('disabled');
                 listings.push({
                     type: listingType,
                     item: item.id,
                     amount,
                     price,
+                    isOwn,
                     element
                 });
             });
@@ -2436,6 +2438,7 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
                 listings,
             });
         } catch(e) {
+            console.error('error in market reader', e);
             return;
         } finally {
             inProgress = false;
@@ -2745,7 +2748,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
 
     function initialise() {
         configuration.registerCheckbox({
-            category: 'Other',
+            category: 'Data',
             key: 'estimations',
             name: 'Estimations',
             default: true,
@@ -3798,6 +3801,95 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util) => {
 
 }
 );
+// marketCompetition
+window.moduleRegistry.add('marketCompetition', (configuration, events, toast, util, elementCreator, colorMapper) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Data',
+            key: 'market-competition',
+            name: 'Market competition indicator',
+            default: false,
+            handler: handleConfigStateChange
+        });
+        events.register('state-market', handleMarketData);
+        elementCreator.addStyles(styles);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function handleMarketData(marketData) {
+        if(!enabled || marketData.lastType !== 'OWN') {
+            return;
+        }
+        const page = events.getLast('page');
+        if(page.type !== 'market') {
+            return;
+        }
+        showToasts(marketData);
+        showCircles(marketData);
+    }
+
+    function showToasts(marketData) {
+        if(!marketData.SELL) {
+            toast.create({
+                text: 'Missing "Buy" listing data for the competition checker'
+            });
+        }
+        if(!marketData.BUY) {
+            toast.create({
+                text: 'Missing "Orders" listing data for the competition checker'
+            });
+        }
+    }
+
+    function showCircles(marketData) {
+        $('.market-competition').remove();
+        for(const listing of marketData.OWN) {
+            if(!marketData[listing.type]) {
+                continue;
+            }
+            const matching = marketData[listing.type].filter(a => !a.isOwn && a.item === listing.item);
+            const same = matching.filter(a => a.price === listing.price);
+            const better = matching.filter(a =>
+                (listing.type === 'SELL' && a.price < listing.price) ||
+                (listing.type === 'BUY' && a.price > listing.price)
+            );
+            if(!same.length && !better.length) {
+                continue;
+            }
+            const color = better.length ? 'danger' : 'warning';
+            const text = better.concat(same)
+                    .map(a => `${util.formatNumber(a.amount)} @ ${util.formatNumber(a.price)}`)
+                    .join(' / ');
+            listing.element.find('.cost').before(`<div class='market-competition market-competition-${color}' title='${text}'></div>`);
+        }
+    }
+
+    const styles = `
+        .market-competition {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .market-competition-warning {
+            background-color: ${colorMapper('warning')}
+        }
+
+        .market-competition-danger {
+            background-color: ${colorMapper('danger')}
+        }
+    `;
+
+    initialise();
+
+}
+);
 // marketFilter
 window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator) => {
 
@@ -3820,7 +3912,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 
     async function initialise() {
         configuration.registerCheckbox({
-            category: 'UI Features',
+            category: 'Data',
             key: 'market-filter',
             name: 'Market filter',
             default: true,
@@ -4801,10 +4893,17 @@ window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
 window.moduleRegistry.add('marketStore', (events) => {
 
     const emitEvent = events.emit.bind(null, 'state-market');
-    const state = {};
+    let state = {};
 
     function initialise() {
+        events.register('page', handlePage);
         events.register('reader-market', handleMarketReader);
+    }
+
+    function handlePage(event) {
+        if(event.type == 'market') {
+            state = {};
+        }
     }
 
     function handleMarketReader(event) {

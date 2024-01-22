@@ -1,10 +1,17 @@
 (events) => {
 
     const emitEvent = events.emit.bind(null, 'state-market');
-    const state = {};
+    let state = {};
 
     function initialise() {
+        events.register('page', handlePage);
         events.register('reader-market', handleMarketReader);
+    }
+
+    function handlePage(event) {
+        if(event.type == 'market') {
+            state = {};
+        }
     }
 
     function handleMarketReader(event) {

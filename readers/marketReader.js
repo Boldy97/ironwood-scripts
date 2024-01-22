@@ -29,7 +29,7 @@
         try {
             inProgress = true;
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
-            const type = selectedTab === 'buy' ? 'SELL' : selectedTab === 'orders' ? 'BUY' : 'OWN';
+            const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
             await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             if($('market-listings-component .search > input').val()) {
                 return;
@@ -45,11 +45,13 @@
                 const amount = util.parseNumber(element.find('.amount').text());
                 const price = util.parseNumber(element.find('.cost').text());
                 const listingType = type !== 'OWN' ? type : element.find('.tag').length ? 'BUY' : 'SELL';
+                const isOwn = !!element.attr('disabled');
                 listings.push({
                     type: listingType,
                     item: item.id,
                     amount,
                     price,
+                    isOwn,
                     element
                 });
             });
@@ -58,6 +60,7 @@
                 listings,
             });
         } catch(e) {
+            console.error('error in market reader', e);
             return;
         } finally {
             inProgress = false;

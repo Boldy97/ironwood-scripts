@@ -4,7 +4,7 @@
 
     function initialise() {
         configuration.registerCheckbox({
-            category: 'Other',
+            category: 'Data',
             key: 'estimations',
             name: 'Estimations',
             default: true,
