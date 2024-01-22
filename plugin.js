@@ -3126,7 +3126,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
             if(action.type === 'DUNGEON') {
                 // dungeon map
                 statsStore.getManyEquipmentItems(itemCache.specialIds.map)
-                    .forEach(a => result[a.id] = 3);
+                    .forEach(a => result[a.id] = 3 / 24);
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
                 // active food
