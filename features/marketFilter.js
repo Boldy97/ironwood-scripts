@@ -35,7 +35,6 @@
         // clear filters when searching yourself
         $(document).on('input', 'market-listings-component .search > input', clearFilter);
 
-        // TODO combine all three into one?
         // Buy tab -> trigger update
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(1)', function() {
             showComponent();

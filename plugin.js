@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ironwood RPG - Pancake-Scripts
 // @namespace    http://tampermonkey.net/
-// @version      4.0.7
+// @version      4.1.0
 // @description  A collection of scripts to enhance Ironwood RPG - https://github.com/Boldy97/ironwood-scripts
 // @author       Pancake
 // @match        https://ironwoodrpg.com/*
@@ -12,7 +12,7 @@
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
-window.PANCAKE_VERSION = '4.0.7';
+window.PANCAKE_VERSION = '4.1.0';
 (() => {
 
     if(window.moduleRegistry) {
@@ -3928,7 +3928,6 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         // clear filters when searching yourself
         $(document).on('input', 'market-listings-component .search > input', clearFilter);
 
-        // TODO combine all three into one?
         // Buy tab -> trigger update
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(1)', function() {
             showComponent();
