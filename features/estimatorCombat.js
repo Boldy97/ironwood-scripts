@@ -261,8 +261,8 @@
 
     function getAccuracy(attacker, defender) {
         let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel) / 2.0;
-        accuracy = Math.max(25, accuracy);
-        accuracy = Math.min(95, accuracy);
+        accuracy = Math.max(60, accuracy);
+        accuracy = Math.min(90, accuracy);
         return accuracy / 100;
     }
 

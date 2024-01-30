@@ -3490,8 +3490,8 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
 
     function getAccuracy(attacker, defender) {
         let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel) / 2.0;
-        accuracy = Math.max(25, accuracy);
-        accuracy = Math.min(95, accuracy);
+        accuracy = Math.max(60, accuracy);
+        accuracy = Math.min(90, accuracy);
         return accuracy / 100;
     }
 
@@ -3926,6 +3926,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         // detect elements changing
 
         // clear filters when searching yourself
+        $(document).on('click', 'market-listings-component .search > .clear-button', clearFilter);
         $(document).on('input', 'market-listings-component .search > input', clearFilter);
 
         // Buy tab -> trigger update
@@ -4020,9 +4021,15 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             return;
         }
         listingsUpdatePromise = new Promise.Expiring(5000);
-        $('market-listings-component .search > .clear-button').click();
+        setSearch('');
         await listingsUpdatePromise;
         marketReader.trigger();
+    }
+
+    function setSearch(value) {
+        const searchReference = $('market-listings-component .search > input');
+        searchReference.val(value);
+        searchReference[0].dispatchEvent(new Event('input'));
     }
 
     async function saveFilter() {
@@ -4065,9 +4072,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         // search
         if(currentFilter.search) {
             resetListingsView(marketData);
-            const searchReference = $('market-listings-component .search > input');
-            searchReference.val(currentFilter.search);
-            searchReference[0].dispatchEvent(new Event('input'));
+            setSearch(currentFilter.search);
             return;
         }
         // no type

@@ -33,6 +33,7 @@
         // detect elements changing
 
         // clear filters when searching yourself
+        $(document).on('click', 'market-listings-component .search > .clear-button', clearFilter);
         $(document).on('input', 'market-listings-component .search > input', clearFilter);
 
         // Buy tab -> trigger update
@@ -127,9 +128,15 @@
             return;
         }
         listingsUpdatePromise = new Promise.Expiring(5000);
-        $('market-listings-component .search > .clear-button').click();
+        setSearch('');
         await listingsUpdatePromise;
         marketReader.trigger();
+    }
+
+    function setSearch(value) {
+        const searchReference = $('market-listings-component .search > input');
+        searchReference.val(value);
+        searchReference[0].dispatchEvent(new Event('input'));
     }
 
     async function saveFilter() {
@@ -172,9 +179,7 @@
         // search
         if(currentFilter.search) {
             resetListingsView(marketData);
-            const searchReference = $('market-listings-component .search > input');
-            searchReference.val(currentFilter.search);
-            searchReference[0].dispatchEvent(new Event('input'));
+            setSearch(currentFilter.search);
             return;
         }
         // no type
