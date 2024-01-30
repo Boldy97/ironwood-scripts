@@ -22,7 +22,6 @@
                 updated = true;
                 state[skill.id].exp = skill.exp;
                 state[skill.id].level = util.expToLevel(skill.exp);
-                state[skill.id].virtualLevel = util.expToVirtualLevel(skill.exp);
             }
         }
         if(updated) {

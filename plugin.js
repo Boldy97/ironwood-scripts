@@ -1971,7 +1971,6 @@ window.moduleRegistry.add('util', () => {
     const exports = {
         levelToExp,
         expToLevel,
-        expToVirtualLevel,
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
@@ -1994,10 +1993,6 @@ window.moduleRegistry.add('util', () => {
     }
 
     function expToLevel(exp) {
-        return Math.min(100, expToVirtualLevel(exp));
-    }
-
-    function expToVirtualLevel(exp) {
         let level = Math.pow((exp + 1) * 5 / 6, 1 / 3.5);
         level = Math.floor(level);
         level = Math.max(1, level);
@@ -2811,7 +2806,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             equipment,
             maxAmount,
             finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
-            level: levelState.level === 100 ? 0 : util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
+            level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level === 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };
     }
@@ -4854,7 +4849,6 @@ window.moduleRegistry.add('expStateStore', (events, util) => {
                 updated = true;
                 state[skill.id].exp = skill.exp;
                 state[skill.id].level = util.expToLevel(skill.exp);
-                state[skill.id].virtualLevel = util.expToVirtualLevel(skill.exp);
             }
         }
         if(updated) {

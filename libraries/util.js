@@ -3,7 +3,6 @@
     const exports = {
         levelToExp,
         expToLevel,
-        expToVirtualLevel,
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
@@ -26,10 +25,6 @@
     }
 
     function expToLevel(exp) {
-        return Math.min(100, expToVirtualLevel(exp));
-    }
-
-    function expToVirtualLevel(exp) {
         let level = Math.pow((exp + 1) * 5 / 6, 1 / 3.5);
         level = Math.floor(level);
         level = Math.max(1, level);
