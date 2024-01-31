@@ -1974,6 +1974,7 @@ window.moduleRegistry.add('util', () => {
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
+        tierToLevel,
         formatNumber,
         parseNumber,
         secondsToDuration,
@@ -2016,6 +2017,13 @@ window.moduleRegistry.add('util', () => {
             target += 15;
         }
         return levelToExp(target) - exp;
+    }
+
+    function tierToLevel(tier) {
+        if(tier <= 1) {
+            return tier;
+        }
+        return tier * 15 - 20;
     }
 
     function formatNumber(number) {
@@ -5041,9 +5049,9 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             if(skill.displayName === 'Ranged') {
                 addStats({
                     global: {
-                        AMMO_PRESERVATION_CHANCE : 0.25
+                        AMMO_PRESERVATION_CHANCE : 0.5
                     }
-                }, exp[id].level);
+                }, exp[id].level, 2);
             }
         }
     }
@@ -5080,6 +5088,11 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             }
             if(item.name.endsWith('Arrow')) {
                 arrow = item;
+                addStats({
+                    global: {
+                        AMMO_PRESERVATION_CHANCE : -0.5
+                    }
+                }, util.tierToLevel(item.tier), 2);
                 continue;
             }
             if(item.name.endsWith('Bow')) {
@@ -5163,7 +5176,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         addStats({
             global: {
                 HEALTH: 10,
-                AMMO_PRESERVATION_CHANCE : 55
+                AMMO_PRESERVATION_CHANCE : 65
             }
         });
         // fallback
@@ -5205,6 +5218,13 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
                     }
                 }, Math.round(stats.bySkill['BONUS_LEVEL'][skill]), 4);
             }
+        }
+        // clamping
+        if(stats.global['AMMO_PRESERVATION_CHANCE'] < 65) {
+            stats.global['AMMO_PRESERVATION_CHANCE'] = 65;
+        }
+        if(stats.global['AMMO_PRESERVATION_CHANCE'] > 80) {
+            stats.global['AMMO_PRESERVATION_CHANCE'] = 80;
         }
     }
 

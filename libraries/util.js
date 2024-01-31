@@ -6,6 +6,7 @@
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
+        tierToLevel,
         formatNumber,
         parseNumber,
         secondsToDuration,
@@ -48,6 +49,13 @@
             target += 15;
         }
         return levelToExp(target) - exp;
+    }
+
+    function tierToLevel(tier) {
+        if(tier <= 1) {
+            return tier;
+        }
+        return tier * 15 - 20;
     }
 
     function formatNumber(number) {

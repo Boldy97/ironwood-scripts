@@ -120,9 +120,9 @@
             if(skill.displayName === 'Ranged') {
                 addStats({
                     global: {
-                        AMMO_PRESERVATION_CHANCE : 0.25
+                        AMMO_PRESERVATION_CHANCE : 0.5
                     }
-                }, exp[id].level);
+                }, exp[id].level, 2);
             }
         }
     }
@@ -159,6 +159,11 @@
             }
             if(item.name.endsWith('Arrow')) {
                 arrow = item;
+                addStats({
+                    global: {
+                        AMMO_PRESERVATION_CHANCE : -0.5
+                    }
+                }, util.tierToLevel(item.tier), 2);
                 continue;
             }
             if(item.name.endsWith('Bow')) {
@@ -242,7 +247,7 @@
         addStats({
             global: {
                 HEALTH: 10,
-                AMMO_PRESERVATION_CHANCE : 55
+                AMMO_PRESERVATION_CHANCE : 65
             }
         });
         // fallback
@@ -284,6 +289,13 @@
                     }
                 }, Math.round(stats.bySkill['BONUS_LEVEL'][skill]), 4);
             }
+        }
+        // clamping
+        if(stats.global['AMMO_PRESERVATION_CHANCE'] < 65) {
+            stats.global['AMMO_PRESERVATION_CHANCE'] = 65;
+        }
+        if(stats.global['AMMO_PRESERVATION_CHANCE'] > 80) {
+            stats.global['AMMO_PRESERVATION_CHANCE'] = 80;
         }
     }
 
