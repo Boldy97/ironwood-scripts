@@ -22,14 +22,20 @@
         if(level === 1) {
             return 0;
         }
-        return Math.floor(Math.pow(level, 3.5) * 6 / 5);
+        if(level <= 100) {
+            return Math.floor(Math.pow(level, 3.5) * 6 / 5);
+        }
+        return Math.floor(12_000_000 + 829_554 * Math.pow(level - 100, 1.5379561415));
     }
 
     function expToLevel(exp) {
-        let level = Math.pow((exp + 1) * 5 / 6, 1 / 3.5);
-        level = Math.floor(level);
-        level = Math.max(1, level);
-        return level;
+        if(exp <= 0) {
+            return 1;
+        }
+        if(exp <= 12_000_000) {
+            return Math.floor(Math.pow((exp + 1) / 1.2, 1 / 3.5));
+        }
+        return 100 + Math.floor(Math.pow((exp + 1 - 12_000_000) / 829554, 1 / 1.5379561415));
     }
 
     function expToCurrentExp(exp) {
