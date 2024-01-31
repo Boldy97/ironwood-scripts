@@ -116,7 +116,7 @@
                         [skill.technicalName]: 0.25
                     }
                 }
-            }, exp[id].level);
+            }, exp[id].level, 4);
             if(skill.displayName === 'Ranged') {
                 addStats({
                     global: {
