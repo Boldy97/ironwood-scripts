@@ -14,8 +14,7 @@
                 state[skill.id] = {
                     id: skill.id,
                     exp: 0,
-                    level: 1,
-                    virtualLevel: 1
+                    level: 1
                 };
             }
             if(skill.exp > state[skill.id].exp) {

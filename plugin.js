@@ -4858,8 +4858,7 @@ window.moduleRegistry.add('expStateStore', (events, util) => {
                 state[skill.id] = {
                     id: skill.id,
                     exp: 0,
-                    level: 1,
-                    virtualLevel: 1
+                    level: 1
                 };
             }
             if(skill.exp > state[skill.id].exp) {
@@ -4994,8 +4993,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         return exp[skillId] || {
             id: skillId,
             exp: 0,
-            level: 1,
-            virtualLevel: 1
+            level: 1
         };
     }
 
