@@ -170,7 +170,7 @@
             }
             let multiplier = 1;
             let accuracy = 2;
-            if(potionMultiplier && item.name.endsWith('Potion')) {
+            if(potionMultiplier && /(Potion|Mix)$/.exec(item.name)) {
                 multiplier = 1 + potionMultiplier / 100;
                 accuracy = 10;
             }

@@ -5104,7 +5104,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             }
             let multiplier = 1;
             let accuracy = 2;
-            if(potionMultiplier && item.name.endsWith('Potion')) {
+            if(potionMultiplier && /(Potion|Mix)$/.exec(item.name)) {
                 multiplier = 1 + potionMultiplier / 100;
                 accuracy = 10;
             }
@@ -5569,9 +5569,10 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         exports.specialIds.food = exports.list.filter(a => /^Cooked|Pie$/.exec(a.name)).map(a => a.id);
         exports.specialIds.arrow = exports.list.filter(a => /Arrow$/.exec(a.name)).map(a => a.id);
         exports.specialIds.map = exports.list.filter(a => /Map \d+$/.exec(a.name)).map(a => a.id);
-        exports.specialIds.potionCombat = exports.list.filter(a => /(Combat|Health).*Potion$/.exec(a.name)).map(a => a.id);
-        exports.specialIds.potionGathering = exports.list.filter(a => /Gather.*Potion$/.exec(a.name)).map(a => a.id);
-        exports.specialIds.potionCrafting = exports.list.filter(a => /(Craft|Preservation).*Potion$/.exec(a.name)).map(a => a.id);
+        const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
+        exports.specialIds.potionCombat = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.potionGathering = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
+        exports.specialIds.potionCrafting = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.runeGathering = exports.list.filter(a => /(Woodcutting|Mining|Farming|Fishing) Rune$/.exec(a.name)).map(a => a.id);
         initialised.resolve(exports);
     }
