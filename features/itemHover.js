@@ -61,7 +61,7 @@
             if(value && converters[attribute.technicalName]) {
                 value = converters[attribute.technicalName](value);
             }
-            if(Number.isInteger(value)) {
+            if(value && Number.isInteger(value)) {
                 value = util.formatNumber(value);
             }
             updateRow(attribute.technicalName, value);
