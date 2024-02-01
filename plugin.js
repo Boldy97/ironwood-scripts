@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ironwood RPG - Pancake-Scripts
 // @namespace    http://tampermonkey.net/
-// @version      4.2.0
+// @version      4.2.1
 // @description  A collection of scripts to enhance Ironwood RPG - https://github.com/Boldy97/ironwood-scripts
 // @author       Pancake
 // @match        https://ironwoodrpg.com/*
@@ -12,7 +12,7 @@
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
-window.PANCAKE_VERSION = '4.2.0';
+window.PANCAKE_VERSION = '4.2.1';
 (() => {
 
     if(window.moduleRegistry) {
@@ -4736,6 +4736,7 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
 
     function handleReader(source, event) {
         let updated = false;
+        console.log(`Received ${event.type} data for ${source}`);
         if(event.type === 'full' || event.type === 'cache') {
             if(util.compareObjects(stateBySource[source], event.value)) {
                 return;

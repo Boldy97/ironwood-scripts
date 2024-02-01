@@ -20,6 +20,7 @@
 
     function handleReader(source, event) {
         let updated = false;
+        console.log(`Received ${event.type} data for ${source}`);
         if(event.type === 'full' || event.type === 'cache') {
             if(util.compareObjects(stateBySource[source], event.value)) {
                 return;
