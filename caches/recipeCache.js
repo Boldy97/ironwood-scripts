@@ -4,15 +4,23 @@
 
     const exports = {
         list: [],
+        byId: null,
         byName: null,
         byImage: null
     };
 
     async function initialise() {
-        const recipes = await request.listRecipes();
+        exports.list = await request.listRecipes();
+        exports.byId = {};
         exports.byName = {};
         exports.byImage = {};
-        for(const recipe of recipes) {
+        for(const recipe of exports.list) {
+            if(!exports.byId[recipe.id]) {
+                exports.byId[recipe.id] = recipe;
+            }
+            if(!exports.byName[recipe.name]) {
+                exports.byName[recipe.name] = recipe;
+            }
             if(!exports.byName[recipe.name]) {
                 exports.byName[recipe.name] = recipe;
             }

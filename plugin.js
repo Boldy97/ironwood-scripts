@@ -2751,7 +2751,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
 }
 );
 // estimator
-window.moduleRegistry.add('estimator', (configuration, events, skillCache, actionCache, itemCache, estimatorActivity, estimatorCombat, estimatorOutskirts, components, util, statsStore) => {
+window.moduleRegistry.add('estimator', (configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
 
     let enabled = false;
 
@@ -2781,20 +2781,23 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
         if(!page || !stats || page.type !== 'action') {
             return;
         }
-        const skill = skillCache.byId[page.skill];
-        const action = actionCache.byId[page.action];
-        let estimation;
-        if(action.type === 'OUTSKIRTS') {
-            estimation = estimatorOutskirts.get(page.skill, page.action);
-        } else if(skill.type === 'Gathering' || skill.type === 'Crafting') {
-            estimation = estimatorActivity.get(page.skill, page.action);
-        } else if(skill.type === 'Combat') {
-            estimation = estimatorCombat.get(page.skill, page.action);
-        }
+        const estimation = get(page.skill, page.action);
         if(estimation) {
             enrichTimings(estimation);
             enrichValues(estimation);
             render(estimation);
+        }
+    }
+
+    function get(skillId, actionId) {
+        const skill = skillCache.byId[skillId];
+        const action = actionCache.byId[actionId];
+        if(action.type === 'OUTSKIRTS') {
+            return estimatorOutskirts.get(skillId, actionId);
+        } else if(skill.type === 'Gathering' || skill.type === 'Crafting') {
+            return estimatorActivity.get(skillId, actionId);
+        } else if(skill.type === 'Combat') {
+            return estimatorCombat.get(skillId, actionId);
         }
     }
 
@@ -4736,7 +4739,6 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
 
     function handleReader(source, event) {
         let updated = false;
-        console.log(`Received ${event.type} data for ${source}`);
         if(event.type === 'full' || event.type === 'cache') {
             if(util.compareObjects(stateBySource[source], event.value)) {
                 return;
@@ -5620,15 +5622,23 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
 
     const exports = {
         list: [],
+        byId: null,
         byName: null,
         byImage: null
     };
 
     async function initialise() {
-        const recipes = await request.listRecipes();
+        exports.list = await request.listRecipes();
+        exports.byId = {};
         exports.byName = {};
         exports.byImage = {};
-        for(const recipe of recipes) {
+        for(const recipe of exports.list) {
+            if(!exports.byId[recipe.id]) {
+                exports.byId[recipe.id] = recipe;
+            }
+            if(!exports.byName[recipe.name]) {
+                exports.byName[recipe.name] = recipe;
+            }
             if(!exports.byName[recipe.name]) {
                 exports.byName[recipe.name] = recipe;
             }
