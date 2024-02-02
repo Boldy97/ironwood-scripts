@@ -1,6 +1,10 @@
-(configuration, events, skillCache, actionCache, itemCache, estimatorActivity, estimatorCombat, estimatorOutskirts, components, util, statsStore) => {
+(configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
 
     let enabled = false;
+
+    const exports = {
+        get
+    }
 
     function initialise() {
         configuration.registerCheckbox({
@@ -28,20 +32,23 @@
         if(!page || !stats || page.type !== 'action') {
             return;
         }
-        const skill = skillCache.byId[page.skill];
-        const action = actionCache.byId[page.action];
-        let estimation;
-        if(action.type === 'OUTSKIRTS') {
-            estimation = estimatorOutskirts.get(page.skill, page.action);
-        } else if(skill.type === 'Gathering' || skill.type === 'Crafting') {
-            estimation = estimatorActivity.get(page.skill, page.action);
-        } else if(skill.type === 'Combat') {
-            estimation = estimatorCombat.get(page.skill, page.action);
-        }
+        const estimation = get(page.skill, page.action);
         if(estimation) {
             enrichTimings(estimation);
             enrichValues(estimation);
             render(estimation);
+        }
+    }
+
+    function get(skillId, actionId) {
+        const skill = skillCache.byId[skillId];
+        const action = actionCache.byId[actionId];
+        if(action.type === 'OUTSKIRTS') {
+            return estimatorOutskirts.get(skillId, actionId);
+        } else if(skill.type === 'Gathering' || skill.type === 'Crafting') {
+            return estimatorActivity.get(skillId, actionId);
+        } else if(skill.type === 'Combat') {
+            return estimatorCombat.get(skillId, actionId);
         }
     }
 
@@ -295,5 +302,7 @@
     };
 
     initialise();
+
+    return exports;
 
 }

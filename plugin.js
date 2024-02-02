@@ -2755,6 +2755,10 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
 
     let enabled = false;
 
+    const exports = {
+        get
+    }
+
     function initialise() {
         configuration.registerCheckbox({
             category: 'Data',
@@ -3051,6 +3055,8 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
     };
 
     initialise();
+
+    return exports;
 
 }
 );
