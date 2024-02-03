@@ -35,7 +35,7 @@
         if(exp <= 12_000_000) {
             return Math.floor(Math.pow((exp + 1) / 1.2, 1 / 3.5));
         }
-        return 100 + Math.round(Math.log(exp / 12_000_000) / Math.log(Math.pow(3500, .01)));
+        return 100 + Math.floor(Math.log((exp + 1) / 12_000_000) / Math.log(Math.pow(3500, .01)));
     }
 
     function expToCurrentExp(exp) {
