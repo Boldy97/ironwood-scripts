@@ -25,7 +25,7 @@
         if(level <= 100) {
             return Math.floor(Math.pow(level, 3.5) * 6 / 5);
         }
-        return Math.floor(12_000_000 + 829_554 * Math.pow(level - 100, 1.5379561415));
+        return Math.round(12_000_000 * Math.pow(Math.pow(3500, .01), level - 100));
     }
 
     function expToLevel(exp) {
@@ -35,7 +35,7 @@
         if(exp <= 12_000_000) {
             return Math.floor(Math.pow((exp + 1) / 1.2, 1 / 3.5));
         }
-        return 100 + Math.floor(Math.pow((exp + 1 - 12_000_000) / 829554, 1 / 1.5379561415));
+        return 100 + Math.round(Math.log(exp / 12_000_000) / Math.log(Math.pow(3500, .01)));
     }
 
     function expToCurrentExp(exp) {
