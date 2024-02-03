@@ -1,4 +1,4 @@
-(events, util) => {
+(events, util, structuresCache) => {
 
     const emitEvent = events.emit.bind(null, 'reader-structures-guild');
 
@@ -22,8 +22,12 @@
         $('guild-page .card').first().find('button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                return;
+            }
             const level = util.parseNumber(element.find('.amount').text());
-            structures[name] = level;
+            structures[structure.id] = level;
         });
         emitEvent({
             type: 'full',

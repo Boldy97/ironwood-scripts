@@ -1,4 +1,4 @@
-(events, util) => {
+(events, util, structuresCache) => {
 
     const emitEvent = events.emit.bind(null, 'reader-enhancements');
 
@@ -22,8 +22,12 @@
         $('home-page .categories + .card button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                return;
+            }
             const level = util.parseNumber(element.find('.level').text());
-            enhancements[name] = level;
+            enhancements[structure.id] = level;
         });
         emitEvent({
             type: 'full',

@@ -2163,7 +2163,7 @@ window.moduleRegistry.add('util', () => {
 }
 );
 // enhancementsReader
-window.moduleRegistry.add('enhancementsReader', (events, util) => {
+window.moduleRegistry.add('enhancementsReader', (events, util, structuresCache) => {
 
     const emitEvent = events.emit.bind(null, 'reader-enhancements');
 
@@ -2187,8 +2187,12 @@ window.moduleRegistry.add('enhancementsReader', (events, util) => {
         $('home-page .categories + .card button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                return;
+            }
             const level = util.parseNumber(element.find('.level').text());
-            enhancements[name] = level;
+            enhancements[structure.id] = level;
         });
         emitEvent({
             type: 'full',
@@ -2298,7 +2302,7 @@ window.moduleRegistry.add('expReader', (events, skillCache, util) => {
 }
 );
 // guildStructuresReader
-window.moduleRegistry.add('guildStructuresReader', (events, util) => {
+window.moduleRegistry.add('guildStructuresReader', (events, util, structuresCache) => {
 
     const emitEvent = events.emit.bind(null, 'reader-structures-guild');
 
@@ -2322,8 +2326,12 @@ window.moduleRegistry.add('guildStructuresReader', (events, util) => {
         $('guild-page .card').first().find('button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                return;
+            }
             const level = util.parseNumber(element.find('.amount').text());
-            structures[name] = level;
+            structures[structure.id] = level;
         });
         emitEvent({
             type: 'full',
@@ -2461,7 +2469,7 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
 }
 );
 // structuresReader
-window.moduleRegistry.add('structuresReader', (events, util) => {
+window.moduleRegistry.add('structuresReader', (events, util, structuresCache) => {
 
     const emitEvent = events.emit.bind(null, 'reader-structures');
 
@@ -2485,8 +2493,12 @@ window.moduleRegistry.add('structuresReader', (events, util) => {
         $('home-page .categories + .card button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
+            const structure = structuresCache.byName[name];
+            if(!structure) {
+                return;
+            }
             const level = util.parseNumber(element.find('.level').text());
-            structures[name] = level;
+            structures[structure.id] = level;
         });
         emitEvent({
             type: 'full',
@@ -5138,32 +5150,32 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     }
 
     function processStructures() {
-        for(const name in structures) {
-            const structure = structuresCache.byName[name];
+        for(const id in structures) {
+            const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.regular, structures[name] + 2/3);
+            addStats(structure.regular, structures[id] + 2/3);
         }
     }
 
     function processEnhancements() {
-        for(const name in enhancements) {
-            const structure = structuresCache.byName[name];
+        for(const id in enhancements) {
+            const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.enhance, enhancements[name]);
+            addStats(structure.enhance, enhancements[id]);
         }
     }
 
     function processGuildStructures() {
-        for(const name in guildStructures) {
-            const structure = structuresCache.byName[name];
+        for(const id in guildStructures) {
+            const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.regular, guildStructures[name]);
+            addStats(structure.regular, guildStructures[id]);
         }
     }
 
@@ -5759,15 +5771,18 @@ window.moduleRegistry.add('structuresCache', (request, Promise) => {
 
     const exports = {
         list: [],
+        byId: null,
         byName: null
     };
 
     async function initialise() {
-        const enrichedStructures = await request.listStructures();
+        const structures = await request.listStructures();
+        exports.byId = {};
         exports.byName = {};
-        for(const enrichedStructure of enrichedStructures) {
-            exports.list.push(enrichedStructure);
-            exports.byName[enrichedStructure.name] = enrichedStructure;
+        for(const structure of structures) {
+            exports.list.push(structure);
+            exports.byId[structure.id] = structure;
+            exports.byName[structure.name] = structure;
         }
         initialised.resolve(exports);
     }

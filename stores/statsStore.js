@@ -195,32 +195,32 @@
     }
 
     function processStructures() {
-        for(const name in structures) {
-            const structure = structuresCache.byName[name];
+        for(const id in structures) {
+            const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.regular, structures[name] + 2/3);
+            addStats(structure.regular, structures[id] + 2/3);
         }
     }
 
     function processEnhancements() {
-        for(const name in enhancements) {
-            const structure = structuresCache.byName[name];
+        for(const id in enhancements) {
+            const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.enhance, enhancements[name]);
+            addStats(structure.enhance, enhancements[id]);
         }
     }
 
     function processGuildStructures() {
-        for(const name in guildStructures) {
-            const structure = structuresCache.byName[name];
+        for(const id in guildStructures) {
+            const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.regular, guildStructures[name]);
+            addStats(structure.regular, guildStructures[id]);
         }
     }
 

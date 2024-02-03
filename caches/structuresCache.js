@@ -4,15 +4,18 @@
 
     const exports = {
         list: [],
+        byId: null,
         byName: null
     };
 
     async function initialise() {
-        const enrichedStructures = await request.listStructures();
+        const structures = await request.listStructures();
+        exports.byId = {};
         exports.byName = {};
-        for(const enrichedStructure of enrichedStructures) {
-            exports.list.push(enrichedStructure);
-            exports.byName[enrichedStructure.name] = enrichedStructure;
+        for(const structure of structures) {
+            exports.list.push(structure);
+            exports.byId[structure.id] = structure;
+            exports.byName[structure.name] = structure;
         }
         initialised.resolve(exports);
     }
