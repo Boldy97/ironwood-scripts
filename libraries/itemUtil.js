@@ -23,20 +23,28 @@
         }
         let amount = 1;
         let amountElements = element.find('.amount, .value');
+        let uses = 0;
         if(amountElements.length) {
-            amount = amountElements.text();
-            if(!amount) {
+            amountText = amountElements.text();
+            if(!amountText) {
                 return false;
             }
-            if(amount.includes(' / ')) {
-                amount = amount.split(' / ')[0];
+            if(amountText.includes(' / ')) {
+                amountText = amountText.split(' / ')[0];
             }
-            amount = util.parseNumber(amount);
+            amount = util.parseNumber(amountText);
+            if(amountText.includes('&')) {
+                const usesText = amountText.split('&')[1];
+                uses = util.parseNumber(usesText);
+            }
         }
-        let uses = element.find('.uses, .use').text();
-        if(uses && !uses.endsWith('HP')) {
-            amount += util.parseNumber(uses);
+        if(!uses) {
+            const usesText = element.find('.uses, .use').text();
+            if(usesText && !usesText.endsWith('HP')) {
+                uses = util.parseNumber(usesText);
+            }
         }
+        amount += uses;
         target[item.id] = (target[item.id] || 0) + amount;
         return item;
     }

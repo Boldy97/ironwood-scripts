@@ -79,12 +79,16 @@
         if(!text) {
             return 0;
         }
+        if(text.includes('Empty')) {
+            return 0;
+        }
         const regexMatch = /\d+.*/.exec(text);
         if(!regexMatch) {
             return 0;
         }
         text = regexMatch[0];
         text = text.replaceAll(/,/g, '');
+        text = text.replaceAll(/&.*$/g, '');
         let multiplier = 1;
         if(text.endsWith('%')) {
             multiplier = 1 / 100;

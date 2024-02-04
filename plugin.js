@@ -1470,20 +1470,28 @@ window.moduleRegistry.add('itemUtil', (util, itemCache) => {
         }
         let amount = 1;
         let amountElements = element.find('.amount, .value');
+        let uses = 0;
         if(amountElements.length) {
-            amount = amountElements.text();
-            if(!amount) {
+            amountText = amountElements.text();
+            if(!amountText) {
                 return false;
             }
-            if(amount.includes(' / ')) {
-                amount = amount.split(' / ')[0];
+            if(amountText.includes(' / ')) {
+                amountText = amountText.split(' / ')[0];
             }
-            amount = util.parseNumber(amount);
+            amount = util.parseNumber(amountText);
+            if(amountText.includes('&')) {
+                const usesText = amountText.split('&')[1];
+                uses = util.parseNumber(usesText);
+            }
         }
-        let uses = element.find('.uses, .use').text();
-        if(uses && !uses.endsWith('HP')) {
-            amount += util.parseNumber(uses);
+        if(!uses) {
+            const usesText = element.find('.uses, .use').text();
+            if(usesText && !usesText.endsWith('HP')) {
+                uses = util.parseNumber(usesText);
+            }
         }
+        amount += uses;
         target[item.id] = (target[item.id] || 0) + amount;
         return item;
     }
@@ -2225,12 +2233,16 @@ window.moduleRegistry.add('util', () => {
         if(!text) {
             return 0;
         }
+        if(text.includes('Empty')) {
+            return 0;
+        }
         const regexMatch = /\d+.*/.exec(text);
         if(!regexMatch) {
             return 0;
         }
         text = regexMatch[0];
         text = text.replaceAll(/,/g, '');
+        text = text.replaceAll(/&.*$/g, '');
         let multiplier = 1;
         if(text.endsWith('%')) {
             multiplier = 1 / 100;
