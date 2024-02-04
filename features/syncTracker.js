@@ -1,4 +1,4 @@
-(events, localDatabase, pages, components, util, toast, elementWatcher) => {
+(events, localDatabase, pages, components, util, toast, elementWatcher, EstimationGenerator) => {
 
     const STORE_NAME = 'sync-tracking';
     const PAGE_NAME = 'Sync State';
@@ -167,6 +167,15 @@
         }
     }
 
+    function exportToClipboard() {
+        const state = (new EstimationGenerator()).export();
+        navigator.clipboard.writeText(JSON.stringify(state));
+        toast.create({
+            text: 'Exported to clipboard',
+            image: 'https://img.icons8.com/?size=48&id=22244'
+        });
+    }
+
     function renderPage() {
         components.addComponent(autoVisitBlueprint);
         const header = components.search(sourceBlueprint, 'header');
@@ -202,6 +211,11 @@
                                 text: 'Auto sync',
                                 color: 'primary',
                                 action: startAutoVisiting
+                            },
+                            {
+                                text: 'Export to clipboard',
+                                color: 'primary',
+                                action: exportToClipboard
                             }
                         ]
                     }
