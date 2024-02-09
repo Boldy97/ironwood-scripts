@@ -1,6 +1,6 @@
 (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'recipeCache');
 
     const exports = {
         list: [],
@@ -8,6 +8,15 @@
         byName: null,
         byImage: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         exports.list = await request.listRecipes();
@@ -29,10 +38,9 @@
                 exports.byImage[lastPart] = recipe;
             }
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

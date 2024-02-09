@@ -1,6 +1,6 @@
 (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'skillCache');
 
     const exports = {
         list: [],
@@ -8,6 +8,15 @@
         byName: null,
         byTechnicalName: null,
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const skills = await request.listSkills();
@@ -20,10 +29,9 @@
             exports.byName[skill.displayName] = skill;
             exports.byTechnicalName[skill.technicalName] = skill;
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

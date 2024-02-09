@@ -6,7 +6,7 @@
         search
     };
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'components');
     const STORE_NAME = 'component-tabs';
     const rowTypeMappings = {
         item: createRow_Item,

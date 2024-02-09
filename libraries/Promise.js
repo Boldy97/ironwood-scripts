@@ -1,16 +1,19 @@
-() => {
+(logService) => {
 
     class Deferred {
+        #name;
         #promise;
         resolve;
         reject;
-        constructor() {
+        constructor(name) {
+            this.#name = name;
             this.#promise = new Promise((resolve, reject) => {
                 this.resolve = resolve;
                 this.reject = reject;
             }).catch(error => {
                 if(error) {
                     console.warn(error);
+                    logService.error(`error in ${this.constructor.name} (${this.#name})`, error);
                 }
                 throw error;
             });
@@ -33,8 +36,8 @@
     }
 
     class Delayed extends Deferred {
-        constructor(timeout) {
-            super();
+        constructor(timeout, name) {
+            super(name);
             const timeoutReference = window.setTimeout(() => {
                 this.resolve();
             }, timeout);
@@ -45,8 +48,8 @@
     }
 
     class Expiring extends Deferred {
-        constructor(timeout) {
-            super();
+        constructor(timeout, name) {
+            super(name);
             if(timeout <= 0) {
                 return;
             }
@@ -61,8 +64,8 @@
 
     class Checking extends Expiring {
         #checker;
-        constructor(checker, interval, timeout) {
-            super(timeout);
+        constructor(checker, interval, timeout, name) {
+            super(timeout, name);
             this.#checker = checker;
             this.#check();
             const intervalReference = window.setInterval(this.#check.bind(this), interval);

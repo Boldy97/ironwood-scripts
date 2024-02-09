@@ -1,6 +1,6 @@
 (request, Promise, itemCache, actionCache, skillCache, ingredientCache) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'dropCache');
 
     const exports = {
         list: [],
@@ -28,6 +28,15 @@
         }
     });
 
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
+
     async function initialise() {
         const drops = await request.listDrops();
         exports.byAction = {};
@@ -46,7 +55,6 @@
         extractBoneCarvings();
         extractLowerGathers();
         extractConversions();
-        initialised.resolve(exports);
     }
 
     // I'm sorry for what follows
@@ -112,7 +120,7 @@
             .reduce((a,b) => (a[b[0].to] = b, a), {});
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

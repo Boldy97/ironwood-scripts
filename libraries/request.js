@@ -13,7 +13,8 @@
             const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
             if(fetchResponse.status !== 200) {
                 console.error(await fetchResponse.text());
-                return;
+                console.log('response', fetchResponse);
+                throw fetchResponse;
             }
             try {
                 const contentType = fetchResponse.headers.get('Content-Type');
@@ -30,7 +31,8 @@
                 }
             }
         } catch(e) {
-            console.error(e);
+            console.log('error', e);
+            throw `Failed fetching ${url} : ${e}`;
         }
     }
 
@@ -45,6 +47,8 @@
     request.listRecipes = () => request('public/list/recipe');
     request.listSkills = () => request('public/list/skill');
     request.listStructures = () => request('public/list/structure');
+
+    request.report = (data) => request('public/report', data);
 
     request.getChangelogs = () => request('public/settings/changelog');
     request.getVersion = () => request('public/settings/version');

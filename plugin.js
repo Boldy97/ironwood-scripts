@@ -146,7 +146,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         search
     };
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'components');
     const STORE_NAME = 'component-tabs';
     const rowTypeMappings = {
         item: createRow_Item,
@@ -1141,12 +1141,12 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
         const promiseWrapper = new Promise.Checking(() => {
             let result = $(selector)[0];
             return inverted ? !result : result;
-        }, delay, timeout);
+        }, delay, timeout, `elementWatcher - exists - ${selector}`);
         return promiseWrapper;
     }
 
     async function childAdded(selector) {
-        const promiseWrapper = new Promise.Expiring(5000);
+        const promiseWrapper = new Promise.Expiring(5000, `elementWatcher - childAdded - ${selector}`);
 
         try {
             const parent = await exists(selector);
@@ -1177,7 +1177,7 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
     }
 
     async function idle() {
-        const promise = new Promise.Expiring(1000);
+        const promise = new Promise.Expiring(1000, 'elementWatcher - idle');
         window.requestIdleCallback(() => {
             promise.resolve();
         });
@@ -1511,7 +1511,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         removeEntry
     };
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'localDatabase');
     let database = null;
 
     const databaseName = 'PancakeScripts';
@@ -1552,7 +1552,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     }
 
     async function getAllEntries(storeName) {
-        const result = new Promise.Expiring(1000);
+        const result = new Promise.Expiring(1000, 'localDatabase - getAllEntries');
         const entries = [];
         const store = database.transaction(storeName, 'readonly').objectStore(storeName);
         const request = store.openCursor();
@@ -1572,7 +1572,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     }
 
     async function saveEntry(storeName, entry) {
-        const result = new Promise.Expiring(1000);
+        const result = new Promise.Expiring(1000, 'localDatabase - saveEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
         request.onsuccess = function(event) {
@@ -1585,7 +1585,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     }
 
     async function removeEntry(storeName, key) {
-        const result = new Promise.Expiring(1000);
+        const result = new Promise.Expiring(1000, 'localDatabase - removeEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.delete(key);
         request.onsuccess = function(event) {
@@ -1603,6 +1603,30 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
 
 }
 );
+// logService
+window.moduleRegistry.add('logService', () => {
+
+    const exports = {
+        error,
+        get
+    };
+
+    const errors = [];
+
+    function error() {
+        errors.push({
+            time: Date.now(),
+            value: [...arguments]
+        });
+    }
+
+    function get() {
+        return errors;
+    }
+
+    return exports;
+
+});
 // pageDetector
 window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
 
@@ -1931,19 +1955,22 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
 }
 );
 // Promise
-window.moduleRegistry.add('Promise', () => {
+window.moduleRegistry.add('Promise', (logService) => {
 
     class Deferred {
+        #name;
         #promise;
         resolve;
         reject;
-        constructor() {
+        constructor(name) {
+            this.#name = name;
             this.#promise = new Promise((resolve, reject) => {
                 this.resolve = resolve;
                 this.reject = reject;
             }).catch(error => {
                 if(error) {
                     console.warn(error);
+                    logService.error(`error in ${this.constructor.name} (${this.#name})`, error);
                 }
                 throw error;
             });
@@ -1966,8 +1993,8 @@ window.moduleRegistry.add('Promise', () => {
     }
 
     class Delayed extends Deferred {
-        constructor(timeout) {
-            super();
+        constructor(timeout, name) {
+            super(name);
             const timeoutReference = window.setTimeout(() => {
                 this.resolve();
             }, timeout);
@@ -1978,8 +2005,8 @@ window.moduleRegistry.add('Promise', () => {
     }
 
     class Expiring extends Deferred {
-        constructor(timeout) {
-            super();
+        constructor(timeout, name) {
+            super(name);
             if(timeout <= 0) {
                 return;
             }
@@ -1994,8 +2021,8 @@ window.moduleRegistry.add('Promise', () => {
 
     class Checking extends Expiring {
         #checker;
-        constructor(checker, interval, timeout) {
-            super(timeout);
+        constructor(checker, interval, timeout, name) {
+            super(timeout, name);
             this.#checker = checker;
             this.#check();
             const intervalReference = window.setInterval(this.#check.bind(this), interval);
@@ -2037,7 +2064,8 @@ window.moduleRegistry.add('request', () => {
             const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
             if(fetchResponse.status !== 200) {
                 console.error(await fetchResponse.text());
-                return;
+                console.log('response', fetchResponse);
+                throw fetchResponse;
             }
             try {
                 const contentType = fetchResponse.headers.get('Content-Type');
@@ -2054,7 +2082,8 @@ window.moduleRegistry.add('request', () => {
                 }
             }
         } catch(e) {
-            console.error(e);
+            console.log('error', e);
+            throw `Failed fetching ${url} : ${e}`;
         }
     }
 
@@ -2069,6 +2098,8 @@ window.moduleRegistry.add('request', () => {
     request.listRecipes = () => request('public/list/recipe');
     request.listSkills = () => request('public/list/skill');
     request.listStructures = () => request('public/list/structure');
+
+    request.report = (data) => request('public/report', data);
 
     request.getChangelogs = () => request('public/settings/changelog');
     request.getVersion = () => request('public/settings/version');
@@ -2767,7 +2798,7 @@ window.moduleRegistry.add('authToast', (toast) => {
 window.moduleRegistry.add('changelog', (Promise, pages, components, request, util, configuration) => {
 
     const PAGE_NAME = 'Plugin changelog';
-    const loaded = new Promise.Deferred();
+    const loaded = new Promise.Deferred('changelog');
 
     let changelogs = null;
 
@@ -2967,6 +2998,50 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
     initialise();
 }
 );
+// debugService
+window.moduleRegistry.add('debugService', (request, toast, statsStore, EstimationGenerator, logService, events) => {
+
+    const exports = {
+        submit
+    };
+
+    async function submit() {
+        const data = get();
+        try {
+            await forward(data);
+        } catch(e) {
+            exportToClipboard(data);
+        }
+    }
+
+    function get() {
+        return {
+            stats: statsStore.get(),
+            state: (new EstimationGenerator()).export(),
+            logs: logService.get()
+            // TODO all last events
+        };
+    }
+
+    async function forward(data) {
+        await request.report(data);
+        toast.create({
+            text: 'Forwarded debug data',
+            image: 'https://img.icons8.com/?size=48&id=13809'
+        });
+    }
+
+    function exportToClipboard(data) {
+        navigator.clipboard.writeText(JSON.stringify(data));
+        toast.create({
+            text: 'Failed to forward, exported to clipboard instead',
+            image: 'https://img.icons8.com/?size=48&id=22244'
+        });
+    }
+
+    return exports;
+
+});
 // estimator
 window.moduleRegistry.add('estimator', (configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
 
@@ -4258,7 +4333,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         if(!$('market-listings-component .search > input').val()) {
             return;
         }
-        listingsUpdatePromise = new Promise.Expiring(5000);
+        listingsUpdatePromise = new Promise.Expiring(5000, 'marketFilter - clearSearch');
         setSearch('');
         await listingsUpdatePromise;
         marketReader.trigger();
@@ -4534,7 +4609,7 @@ window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, uti
 }
 );
 // syncTracker
-window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, components, util, toast, elementWatcher, EstimationGenerator) => {
+window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, components, util, toast, elementWatcher, debugService) => {
 
     const STORE_NAME = 'sync-tracking';
     const PAGE_NAME = 'Sync State';
@@ -4703,15 +4778,6 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
         }
     }
 
-    function exportToClipboard() {
-        const state = (new EstimationGenerator()).export();
-        navigator.clipboard.writeText(JSON.stringify(state));
-        toast.create({
-            text: 'Exported to clipboard',
-            image: 'https://img.icons8.com/?size=48&id=22244'
-        });
-    }
-
     function renderPage() {
         components.addComponent(autoVisitBlueprint);
         const header = components.search(sourceBlueprint, 'header');
@@ -4747,11 +4813,16 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
                                 text: 'Auto sync',
                                 color: 'primary',
                                 action: startAutoVisiting
-                            },
+                            }
+                        ]
+                    },
+                    {
+                        type: 'buttons',
+                        buttons: [
                             {
-                                text: 'Export to clipboard',
+                                text: 'Submit debug info',
                                 color: 'primary',
-                                action: exportToClipboard
+                                action: debugService.submit
                             }
                         ]
                     }
@@ -5004,7 +5075,7 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
 // configurationStore
 window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStore, _remoteConfigurationStore) =>  {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'configurationStore');
     let configs = null;
 
     const exports = {
@@ -5547,13 +5618,22 @@ window.moduleRegistry.add('variousStateStore', (events, skillCache) => {
 // actionCache
 window.moduleRegistry.add('actionCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'actionCache');
 
     const exports = {
         list: [],
         byId: null,
         byName: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const actions = await request.listActions();
@@ -5564,10 +5644,9 @@ window.moduleRegistry.add('actionCache', (request, Promise) => {
             exports.byId[action.id] = action;
             exports.byName[action.name] = action;
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -5576,7 +5655,7 @@ window.moduleRegistry.add('actionCache', (request, Promise) => {
 // dropCache
 window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache, skillCache, ingredientCache) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'dropCache');
 
     const exports = {
         list: [],
@@ -5604,6 +5683,15 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
         }
     });
 
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
+
     async function initialise() {
         const drops = await request.listDrops();
         exports.byAction = {};
@@ -5622,7 +5710,6 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
         extractBoneCarvings();
         extractLowerGathers();
         extractConversions();
-        initialised.resolve(exports);
     }
 
     // I'm sorry for what follows
@@ -5688,7 +5775,7 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
             .reduce((a,b) => (a[b[0].to] = b, a), {});
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -5697,13 +5784,22 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
 // ingredientCache
 window.moduleRegistry.add('ingredientCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'ingredientCache');
 
     const exports = {
         list: [],
         byAction: null,
         byItem: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const ingredients = await request.listIngredients();
@@ -5719,10 +5815,9 @@ window.moduleRegistry.add('ingredientCache', (request, Promise) => {
             }
             exports.byItem[ingredient.item].push(ingredient);
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -5731,7 +5826,7 @@ window.moduleRegistry.add('ingredientCache', (request, Promise) => {
 // itemCache
 window.moduleRegistry.add('itemCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'itemCache');
 
     const exports = {
         list: [],
@@ -5780,6 +5875,15 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             potentConcoctionTome: null,
         }
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const enrichedItems = await request.listItems();
@@ -5881,7 +5985,6 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         exports.specialIds.eternalLifeTome = getAllIdsStarting('Eternal Life Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
-        initialised.resolve(exports);
     }
 
     function getAllIdsEnding() {
@@ -5894,7 +5997,7 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         return exports.list.filter(a => new RegExp(`^(${prefixes.join('|')})`).exec(a.name)).map(a => a.id);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -5903,13 +6006,22 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
 // monsterCache
 window.moduleRegistry.add('monsterCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'monsterCache');
 
     const exports = {
         list: [],
         byId: null,
         byName: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const monsters = await request.listMonsters();
@@ -5920,10 +6032,9 @@ window.moduleRegistry.add('monsterCache', (request, Promise) => {
             exports.byId[monster.id] = monster;
             exports.byName[monster.name] = monster;
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -5932,7 +6043,7 @@ window.moduleRegistry.add('monsterCache', (request, Promise) => {
 // recipeCache
 window.moduleRegistry.add('recipeCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'recipeCache');
 
     const exports = {
         list: [],
@@ -5940,6 +6051,15 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
         byName: null,
         byImage: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         exports.list = await request.listRecipes();
@@ -5961,10 +6081,9 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
                 exports.byImage[lastPart] = recipe;
             }
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -5973,7 +6092,7 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
 // skillCache
 window.moduleRegistry.add('skillCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'skillCache');
 
     const exports = {
         list: [],
@@ -5981,6 +6100,15 @@ window.moduleRegistry.add('skillCache', (request, Promise) => {
         byName: null,
         byTechnicalName: null,
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const skills = await request.listSkills();
@@ -5993,10 +6121,9 @@ window.moduleRegistry.add('skillCache', (request, Promise) => {
             exports.byName[skill.displayName] = skill;
             exports.byTechnicalName[skill.technicalName] = skill;
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 
@@ -6063,13 +6190,22 @@ window.moduleRegistry.add('statNameCache', () => {
 // structuresCache
 window.moduleRegistry.add('structuresCache', (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'structuresCache');
 
     const exports = {
         list: [],
         byId: null,
         byName: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const structures = await request.listStructures();
@@ -6080,10 +6216,9 @@ window.moduleRegistry.add('structuresCache', (request, Promise) => {
             exports.byId[structure.id] = structure;
             exports.byName[structure.name] = structure;
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

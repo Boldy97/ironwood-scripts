@@ -1,6 +1,6 @@
 (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'itemCache');
 
     const exports = {
         list: [],
@@ -49,6 +49,15 @@
             potentConcoctionTome: null,
         }
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const enrichedItems = await request.listItems();
@@ -150,7 +159,6 @@
         exports.specialIds.eternalLifeTome = getAllIdsStarting('Eternal Life Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
-        initialised.resolve(exports);
     }
 
     function getAllIdsEnding() {
@@ -163,7 +171,7 @@
         return exports.list.filter(a => new RegExp(`^(${prefixes.join('|')})`).exec(a.name)).map(a => a.id);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

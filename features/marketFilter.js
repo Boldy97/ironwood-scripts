@@ -127,7 +127,7 @@
         if(!$('market-listings-component .search > input').val()) {
             return;
         }
-        listingsUpdatePromise = new Promise.Expiring(5000);
+        listingsUpdatePromise = new Promise.Expiring(5000, 'marketFilter - clearSearch');
         setSearch('');
         await listingsUpdatePromise;
         marketReader.trigger();

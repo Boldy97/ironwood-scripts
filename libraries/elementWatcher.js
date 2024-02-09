@@ -15,12 +15,12 @@
         const promiseWrapper = new Promise.Checking(() => {
             let result = $(selector)[0];
             return inverted ? !result : result;
-        }, delay, timeout);
+        }, delay, timeout, `elementWatcher - exists - ${selector}`);
         return promiseWrapper;
     }
 
     async function childAdded(selector) {
-        const promiseWrapper = new Promise.Expiring(5000);
+        const promiseWrapper = new Promise.Expiring(5000, `elementWatcher - childAdded - ${selector}`);
 
         try {
             const parent = await exists(selector);
@@ -51,7 +51,7 @@
     }
 
     async function idle() {
-        const promise = new Promise.Expiring(1000);
+        const promise = new Promise.Expiring(1000, 'elementWatcher - idle');
         window.requestIdleCallback(() => {
             promise.resolve();
         });

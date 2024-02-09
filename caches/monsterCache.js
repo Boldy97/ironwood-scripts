@@ -1,12 +1,21 @@
 (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'monsterCache');
 
     const exports = {
         list: [],
         byId: null,
         byName: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const monsters = await request.listMonsters();
@@ -17,10 +26,9 @@
             exports.byId[monster.id] = monster;
             exports.byName[monster.name] = monster;
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

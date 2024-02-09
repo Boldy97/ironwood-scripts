@@ -1,12 +1,21 @@
 (request, Promise) => {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'ingredientCache');
 
     const exports = {
         list: [],
         byAction: null,
         byItem: null
     };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
 
     async function initialise() {
         const ingredients = await request.listIngredients();
@@ -22,10 +31,9 @@
             }
             exports.byItem[ingredient.item].push(ingredient);
         }
-        initialised.resolve(exports);
     }
 
-    initialise();
+    tryInitialise();
 
     return initialised;
 

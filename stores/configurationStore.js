@@ -1,6 +1,6 @@
 (Promise, localConfigurationStore, _remoteConfigurationStore) =>  {
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'configurationStore');
     let configs = null;
 
     const exports = {

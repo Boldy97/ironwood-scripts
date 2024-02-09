@@ -6,7 +6,7 @@
         removeEntry
     };
 
-    const initialised = new Promise.Expiring(2000);
+    const initialised = new Promise.Expiring(2000, 'localDatabase');
     let database = null;
 
     const databaseName = 'PancakeScripts';
@@ -47,7 +47,7 @@
     }
 
     async function getAllEntries(storeName) {
-        const result = new Promise.Expiring(1000);
+        const result = new Promise.Expiring(1000, 'localDatabase - getAllEntries');
         const entries = [];
         const store = database.transaction(storeName, 'readonly').objectStore(storeName);
         const request = store.openCursor();
@@ -67,7 +67,7 @@
     }
 
     async function saveEntry(storeName, entry) {
-        const result = new Promise.Expiring(1000);
+        const result = new Promise.Expiring(1000, 'localDatabase - saveEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
         request.onsuccess = function(event) {
@@ -80,7 +80,7 @@
     }
 
     async function removeEntry(storeName, key) {
-        const result = new Promise.Expiring(1000);
+        const result = new Promise.Expiring(1000, 'localDatabase - removeEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.delete(key);
         request.onsuccess = function(event) {
