@@ -17,8 +17,8 @@
         return {
             stats: statsStore.get(),
             state: (new EstimationGenerator()).export(),
-            logs: logService.get()
-            // TODO all last events
+            logs: logService.get(),
+            events: events.getLastCache()
         };
     }
 

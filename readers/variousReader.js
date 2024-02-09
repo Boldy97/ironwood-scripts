@@ -16,6 +16,9 @@
         if(page.type === 'action') {
             readActionScreen(various, page.skill);
         }
+        if(page.type === 'settings') {
+            readSettingsScreen(various);
+        }
         emitEvent(various);
     }
 
@@ -25,6 +28,13 @@
         various.maxAmount = {
             [skillId]: amountValue
         };
+    }
+
+    function readSettingsScreen(various) {
+        const username = $('settings-page .row:contains("Username") :last-child').text();
+        if(username) {
+            various.username = username;
+        }
     }
 
     initialise();

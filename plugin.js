@@ -1374,7 +1374,8 @@ window.moduleRegistry.add('events', () => {
     const exports = {
         register,
         emit,
-        getLast
+        getLast,
+        getLastCache
     };
 
     const handlers = {};
@@ -1413,6 +1414,10 @@ window.moduleRegistry.add('events', () => {
 
     function getLast(name) {
         return lastCache[name];
+    }
+
+    function getLastCache() {
+        return lastCache;
     }
 
     return exports;
@@ -2765,6 +2770,9 @@ window.moduleRegistry.add('variousReader', (events, util) => {
         if(page.type === 'action') {
             readActionScreen(various, page.skill);
         }
+        if(page.type === 'settings') {
+            readSettingsScreen(various);
+        }
         emitEvent(various);
     }
 
@@ -2774,6 +2782,13 @@ window.moduleRegistry.add('variousReader', (events, util) => {
         various.maxAmount = {
             [skillId]: amountValue
         };
+    }
+
+    function readSettingsScreen(various) {
+        const username = $('settings-page .row:contains("Username") :last-child').text();
+        if(username) {
+            various.username = username;
+        }
     }
 
     initialise();
@@ -3018,8 +3033,8 @@ window.moduleRegistry.add('debugService', (request, toast, statsStore, Estimatio
         return {
             stats: statsStore.get(),
             state: (new EstimationGenerator()).export(),
-            logs: logService.get()
-            // TODO all last events
+            logs: logService.get(),
+            events: events.getLastCache()
         };
     }
 

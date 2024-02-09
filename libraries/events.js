@@ -3,7 +3,8 @@
     const exports = {
         register,
         emit,
-        getLast
+        getLast,
+        getLastCache
     };
 
     const handlers = {};
@@ -42,6 +43,10 @@
 
     function getLast(name) {
         return lastCache[name];
+    }
+
+    function getLastCache() {
+        return lastCache;
     }
 
     return exports;
