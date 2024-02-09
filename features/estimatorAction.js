@@ -40,7 +40,7 @@
         .filter(a => a)
         .map(a => {
             const mapFindChance = statsStore.get('MAP_FIND_CHANCE', skillId) / 100;
-            if(!mapFindChance || !itemCache.specialIds.map.includes(a.id)) {
+            if(!mapFindChance || !itemCache.specialIds.dungeonMap.includes(a.id)) {
                 return a;
             }
             a.amount *= 1 + mapFindChance;
@@ -75,12 +75,12 @@
         if(isCombat) {
             if(action.type !== 'OUTSKIRTS') {
                 // combat potions
-                statsStore.getManyEquipmentItems(itemCache.specialIds.potionCombat)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.combatPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
             if(action.type === 'DUNGEON') {
                 // dungeon map
-                statsStore.getManyEquipmentItems(itemCache.specialIds.map)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonMap)
                     .forEach(a => result[a.id] = 3 / 24);
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
@@ -92,18 +92,18 @@
                 // ammo
                 const attacksPerHour = LOOPS_PER_HOUR / 5 / statsStore.get('ATTACK_SPEED');
                 const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);
-                statsStore.getManyEquipmentItems(itemCache.specialIds.arrow)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.ammo)
                     .forEach(a => result[a.id] = ammoPerHour);
             }
         } else {
             if(skill.type === 'Gathering') {
                 // gathering potions
-                statsStore.getManyEquipmentItems(itemCache.specialIds.potionGathering)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.gatheringPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
             if(skill.type === 'Crafting') {
                 // crafting potions
-                statsStore.getManyEquipmentItems(itemCache.specialIds.potionCrafting)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.craftingPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
         }

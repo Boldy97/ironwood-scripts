@@ -165,19 +165,32 @@
         await new Promise(r => window.setTimeout(r, millis));
     }
 
-    function compareObjects(object1, object2) {
+    function compareObjects(object1, object2, doLog) {
         const keys1 = Object.keys(object1);
         const keys2 = Object.keys(object2);
         if(keys1.length !== keys2.length) {
+            if(doLog) {
+                console.warn(`key length not matching`, object1, object2);
+            }
             return false;
         }
         keys1.sort();
         keys2.sort();
         for(let i=0;i<keys1.length;i++) {
             if(keys1[i] !== keys2[i]) {
+                if(doLog) {
+                    console.warn(`keys not matching`, keys1[i], keys2[i], object1, object2);
+                }
                 return false;
             }
-            if(object1[keys1[i]] !== object2[keys2[i]]) {
+            if(typeof object1[keys1[i]] === 'object' && typeof object2[keys2[i]] === 'object') {
+                if(!compareObjects(object1[keys1[i]], object2[keys2[i]], doLog)) {
+                    return false;
+                }
+            } else if(object1[keys1[i]] !== object2[keys2[i]]) {
+                if(doLog) {
+                    console.warn(`values not matching`, object1[keys1[i]], object2[keys2[i]], object1, object2);
+                }
                 return false;
             }
         }

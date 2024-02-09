@@ -7,7 +7,7 @@
     function get(skillId, actionId) {
         try {
             const action = actionCache.byId[actionId];
-            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.potionCombat);
+            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.combatPotion);
             statsStore.update(new Set(excludedItemIds));
 
             const activityEstimation = estimatorActivity.get(skillId, actionId);

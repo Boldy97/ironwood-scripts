@@ -1224,20 +1224,20 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
 
     class EstimationGenerator {
 
-        #snapshot;
-        #values;
+        #backup;
+        #state;
 
         constructor() {
-            this.#snapshot = {};
-            this.#values = this.#snapshot;
+            this.#backup = {};
+            this.#state = this.#backup;
             for(const name in EVENTS) {
-                this.#snapshot[name] = events.getLast(EVENTS[name].event);
+                this.#backup[name] = events.getLast(EVENTS[name].event);
             }
         }
 
         reset() {
             for(const name in EVENTS) {
-                this.#values[name] = structuredClone(EVENTS[name].default);
+                this.#state[name] = structuredClone(EVENTS[name].default);
             }
             return this;
         }
@@ -1246,23 +1246,23 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
             this.#sendCustomEvents();
             statsStore.update(new Set());
             const estimation = estimator.get(skillId, actionId);
-            this.#sendSnapshotEvents();
+            this.#sendBackupEvents();
             return estimation;
         }
 
         #sendCustomEvents() {
-            for(const name in this.#values) {
-                events.emit(EVENTS[name].event, this.#values[name]);
+            for(const name in this.#state) {
+                events.emit(EVENTS[name].event, this.#state[name]);
             }
         }
 
-        #sendSnapshotEvents() {
-            for(const name in this.#snapshot) {
-                events.emit(EVENTS[name].event, this.#snapshot[name]);
+        #sendBackupEvents() {
+            for(const name in this.#backup) {
+                events.emit(EVENTS[name].event, this.#backup[name]);
             }
         }
 
-        level(skill, level) {
+        level(skill, level, exp = 0) {
             if(typeof skill === 'string') {
                 const match = skillCache.byName[skill];
                 if(!match) {
@@ -1270,8 +1270,10 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
                 }
                 skill = match.id;
             }
-            const exp = util.levelToExp(level);
-            this.#values.exp[skill] = {
+            if(!exp) {
+                exp = util.levelToExp(level);
+            }
+            this.#state.exp[skill] = {
                 id: skill,
                 exp,
                 level
@@ -1279,27 +1281,15 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
             return this;
         }
 
-        tome(item) {
-            if(typeof item === 'string') {
-                const match = itemCache.byName[item];
-                if(!match) {
-                    throw `Could not find item ${skill}`;
-                }
-                item = match.id;
-            }
-            this.#values.tomes[item] = 1;
-            return this;
-        }
-
         equipment(item, amount = 1) {
             if(typeof item === 'string') {
                 const match = itemCache.byName[item];
                 if(!match) {
-                    throw `Could not find item ${skill}`;
+                    throw `Could not find item ${item}`;
                 }
                 item = match.id;
             }
-            this.#values.equipment[item] = amount;
+            this.#state.equipment[item] = amount;
             return this;
         }
 
@@ -1307,11 +1297,23 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
             if(typeof item === 'string') {
                 const match = itemCache.byName[item];
                 if(!match) {
-                    throw `Could not find item ${skill}`;
+                    throw `Could not find item ${item}`;
                 }
                 item = match.id;
             }
-            this.#values.runes[item] = amount;
+            this.#state.runes[item] = amount;
+            return this;
+        }
+
+        tome(item) {
+            if(typeof item === 'string') {
+                const match = itemCache.byName[item];
+                if(!match) {
+                    throw `Could not find item ${item}`;
+                }
+                item = match.id;
+            }
+            this.#state.tomes[item] = 1;
             return this;
         }
 
@@ -1323,7 +1325,7 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
                 }
                 structure = match.id;
             }
-            this.#values.structures[structure] = level;
+            this.#state.structures[structure] = level;
             return this;
         }
 
@@ -1335,7 +1337,7 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
                 }
                 structure = match.id;
             }
-            this.#values.enhancements[structure] = level;
+            this.#state.enhancements[structure] = level;
             return this;
         }
 
@@ -1347,16 +1349,16 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
                 }
                 structure = match.id;
             }
-            this.#values.guild[structure] = level;
+            this.#state.guild[structure] = level;
             return this;
         }
 
         export() {
-            return structuredClone(this.#values);
+            return structuredClone(this.#state);
         }
 
-        import(values) {
-            this.#values = structuredClone(values);
+        import(state) {
+            this.#state = structuredClone(state);
             return this;
         }
 
@@ -2319,19 +2321,32 @@ window.moduleRegistry.add('util', () => {
         await new Promise(r => window.setTimeout(r, millis));
     }
 
-    function compareObjects(object1, object2) {
+    function compareObjects(object1, object2, doLog) {
         const keys1 = Object.keys(object1);
         const keys2 = Object.keys(object2);
         if(keys1.length !== keys2.length) {
+            if(doLog) {
+                console.warn(`key length not matching`, object1, object2);
+            }
             return false;
         }
         keys1.sort();
         keys2.sort();
         for(let i=0;i<keys1.length;i++) {
             if(keys1[i] !== keys2[i]) {
+                if(doLog) {
+                    console.warn(`keys not matching`, keys1[i], keys2[i], object1, object2);
+                }
                 return false;
             }
-            if(object1[keys1[i]] !== object2[keys2[i]]) {
+            if(typeof object1[keys1[i]] === 'object' && typeof object2[keys2[i]] === 'object') {
+                if(!compareObjects(object1[keys1[i]], object2[keys2[i]], doLog)) {
+                    return false;
+                }
+            } else if(object1[keys1[i]] !== object2[keys2[i]]) {
+                if(doLog) {
+                    console.warn(`values not matching`, object1[keys1[i]], object2[keys2[i]], object1, object2);
+                }
                 return false;
             }
         }
@@ -3305,7 +3320,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         .filter(a => a)
         .map(a => {
             const mapFindChance = statsStore.get('MAP_FIND_CHANCE', skillId) / 100;
-            if(!mapFindChance || !itemCache.specialIds.map.includes(a.id)) {
+            if(!mapFindChance || !itemCache.specialIds.dungeonMap.includes(a.id)) {
                 return a;
             }
             a.amount *= 1 + mapFindChance;
@@ -3340,12 +3355,12 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         if(isCombat) {
             if(action.type !== 'OUTSKIRTS') {
                 // combat potions
-                statsStore.getManyEquipmentItems(itemCache.specialIds.potionCombat)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.combatPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
             if(action.type === 'DUNGEON') {
                 // dungeon map
-                statsStore.getManyEquipmentItems(itemCache.specialIds.map)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonMap)
                     .forEach(a => result[a.id] = 3 / 24);
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
@@ -3357,18 +3372,18 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
                 // ammo
                 const attacksPerHour = LOOPS_PER_HOUR / 5 / statsStore.get('ATTACK_SPEED');
                 const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);
-                statsStore.getManyEquipmentItems(itemCache.specialIds.arrow)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.ammo)
                     .forEach(a => result[a.id] = ammoPerHour);
             }
         } else {
             if(skill.type === 'Gathering') {
                 // gathering potions
-                statsStore.getManyEquipmentItems(itemCache.specialIds.potionGathering)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.gatheringPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
             if(skill.type === 'Crafting') {
                 // crafting potions
-                statsStore.getManyEquipmentItems(itemCache.specialIds.potionCrafting)
+                statsStore.getManyEquipmentItems(itemCache.specialIds.craftingPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
         }
@@ -3777,7 +3792,7 @@ window.moduleRegistry.add('estimatorOutskirts', (actionCache, itemCache, statsSt
     function get(skillId, actionId) {
         try {
             const action = actionCache.byId[actionId];
-            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.potionCombat);
+            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.combatPotion);
             statsStore.update(new Set(excludedItemIds));
 
             const activityEstimation = estimatorActivity.get(skillId, actionId);
@@ -5742,27 +5757,27 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             dagger: null,
             telescope: null,
             food: null,
-            arrow: null,
-            potionGathering: null,
-            potionCrafting: null,
-            potionCombat: null,
-            map: null,
-            runeWoodcutting: null,
-            runeMining: null,
-            runeFarming: null,
-            runeFishing: null,
-            runeGathering: null,
-            runeOneHanded: null,
-            runeTwoHanded: null,
-            runeRanged: null,
-            runeDefense: null,
-            runeUtility: null,
-            tomeSavageLooting: null,
-            tomeBountifulHarvest: null,
-            tomeOpulentCrafting: null,
-            tomeEternalLife: null,
-            tomeInsatiablePower: null,
-            tomePotentConcoction: null,
+            ammo: null,
+            gatheringPotion: null,
+            craftingPotion: null,
+            combatPotion: null,
+            dungeonMap: null,
+            woodcuttingRune: null,
+            miningRune: null,
+            farmingRune: null,
+            fishingRune: null,
+            gatheringRune: null,
+            oneHandedRune: null,
+            twoHandedRune: null,
+            rangedRune: null,
+            defenseRune: null,
+            utilityRune: null,
+            savageLootingTome: null,
+            bountifulHarvestTome: null,
+            opulentCraftingTome: null,
+            eternalLifeTome: null,
+            insatiablePowerTome: null,
+            potentConcoctionTome: null,
         }
     };
 
@@ -5840,32 +5855,32 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         // this does not cover vegetables
         exports.specialIds.food = exports.list.filter(a => /^Cooked|Pie$/.exec(a.name)).map(a => a.id);
-        exports.specialIds.arrow = getAllIdsEnding('Arrow');
-        exports.specialIds.potionGathering = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
-        exports.specialIds.potionCrafting = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
-        exports.specialIds.potionCombat = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
-        exports.specialIds.map = getAllIdsStarting('Dungeon Map');
-        exports.specialIds.runeWoodcutting = getAllIdsEnding('Woodcutting Rune');
-        exports.specialIds.runeMining = getAllIdsEnding('Mining Rune');
-        exports.specialIds.runeFarming = getAllIdsEnding('Farming Rune');
-        exports.specialIds.runeFishing = getAllIdsEnding('Fishing Rune');
-        exports.specialIds.runeGathering = [
-            ...exports.specialIds.runeWoodcutting,
-            ...exports.specialIds.runeMining,
-            ...exports.specialIds.runeFarming,
-            ...exports.specialIds.runeFishing
+        exports.specialIds.ammo = getAllIdsEnding('Arrow');
+        exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
+        exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.dungeonMap = getAllIdsStarting('Dungeon Map');
+        exports.specialIds.woodcuttingRune = getAllIdsEnding('Woodcutting Rune');
+        exports.specialIds.miningRune = getAllIdsEnding('Mining Rune');
+        exports.specialIds.farmingRune = getAllIdsEnding('Farming Rune');
+        exports.specialIds.fishingRune = getAllIdsEnding('Fishing Rune');
+        exports.specialIds.gatheringRune = [
+            ...exports.specialIds.woodcuttingRune,
+            ...exports.specialIds.miningRune,
+            ...exports.specialIds.farmingRune,
+            ...exports.specialIds.fishingRune
         ];
-        exports.specialIds.runeOneHanded = getAllIdsEnding('One-handed Rune');
-        exports.specialIds.runeTwoHanded = getAllIdsEnding('Two-handed Rune');
-        exports.specialIds.runeRanged = getAllIdsEnding('Ranged Rune');
-        exports.specialIds.runeDefense = getAllIdsEnding('Defense Rune');
-        exports.specialIds.runeUtility = getAllIdsEnding('Crit Rune', 'Damage Rune', 'Block Rune', 'Stun Rune', 'Bleed Rune', 'Parry Rune');
-        exports.specialIds.tomeSavageLooting = getAllIdsStarting('Savage Looting Tome');
-        exports.specialIds.tomeBountifulHarvest = getAllIdsStarting('Bountiful Harvest Tome');
-        exports.specialIds.tomeOpulentCrafting = getAllIdsStarting('Opulent Crafting Tome');
-        exports.specialIds.tomeEternalLife = getAllIdsStarting('Eternal Life Tome');
-        exports.specialIds.tomeInsatiablePower = getAllIdsStarting('Insatiable Power Tome');
-        exports.specialIds.tomePotentConcoction = getAllIdsStarting('Potent Concoction Tome');
+        exports.specialIds.oneHandedRune = getAllIdsEnding('One-handed Rune');
+        exports.specialIds.twoHandedRune = getAllIdsEnding('Two-handed Rune');
+        exports.specialIds.rangedRune = getAllIdsEnding('Ranged Rune');
+        exports.specialIds.defenseRune = getAllIdsEnding('Defense Rune');
+        exports.specialIds.utilityRune = getAllIdsEnding('Crit Rune', 'Damage Rune', 'Block Rune', 'Stun Rune', 'Bleed Rune', 'Parry Rune');
+        exports.specialIds.savageLootingTome = getAllIdsStarting('Savage Looting Tome');
+        exports.specialIds.bountifulHarvestTome = getAllIdsStarting('Bountiful Harvest Tome');
+        exports.specialIds.opulentCraftingTome = getAllIdsStarting('Opulent Crafting Tome');
+        exports.specialIds.eternalLifeTome = getAllIdsStarting('Eternal Life Tome');
+        exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
+        exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
         initialised.resolve(exports);
     }
 

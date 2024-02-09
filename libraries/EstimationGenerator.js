@@ -33,20 +33,20 @@
 
     class EstimationGenerator {
 
-        #snapshot;
-        #values;
+        #backup;
+        #state;
 
         constructor() {
-            this.#snapshot = {};
-            this.#values = this.#snapshot;
+            this.#backup = {};
+            this.#state = this.#backup;
             for(const name in EVENTS) {
-                this.#snapshot[name] = events.getLast(EVENTS[name].event);
+                this.#backup[name] = events.getLast(EVENTS[name].event);
             }
         }
 
         reset() {
             for(const name in EVENTS) {
-                this.#values[name] = structuredClone(EVENTS[name].default);
+                this.#state[name] = structuredClone(EVENTS[name].default);
             }
             return this;
         }
@@ -55,23 +55,23 @@
             this.#sendCustomEvents();
             statsStore.update(new Set());
             const estimation = estimator.get(skillId, actionId);
-            this.#sendSnapshotEvents();
+            this.#sendBackupEvents();
             return estimation;
         }
 
         #sendCustomEvents() {
-            for(const name in this.#values) {
-                events.emit(EVENTS[name].event, this.#values[name]);
+            for(const name in this.#state) {
+                events.emit(EVENTS[name].event, this.#state[name]);
             }
         }
 
-        #sendSnapshotEvents() {
-            for(const name in this.#snapshot) {
-                events.emit(EVENTS[name].event, this.#snapshot[name]);
+        #sendBackupEvents() {
+            for(const name in this.#backup) {
+                events.emit(EVENTS[name].event, this.#backup[name]);
             }
         }
 
-        level(skill, level) {
+        level(skill, level, exp = 0) {
             if(typeof skill === 'string') {
                 const match = skillCache.byName[skill];
                 if(!match) {
@@ -79,8 +79,10 @@
                 }
                 skill = match.id;
             }
-            const exp = util.levelToExp(level);
-            this.#values.exp[skill] = {
+            if(!exp) {
+                exp = util.levelToExp(level);
+            }
+            this.#state.exp[skill] = {
                 id: skill,
                 exp,
                 level
@@ -88,27 +90,15 @@
             return this;
         }
 
-        tome(item) {
-            if(typeof item === 'string') {
-                const match = itemCache.byName[item];
-                if(!match) {
-                    throw `Could not find item ${skill}`;
-                }
-                item = match.id;
-            }
-            this.#values.tomes[item] = 1;
-            return this;
-        }
-
         equipment(item, amount = 1) {
             if(typeof item === 'string') {
                 const match = itemCache.byName[item];
                 if(!match) {
-                    throw `Could not find item ${skill}`;
+                    throw `Could not find item ${item}`;
                 }
                 item = match.id;
             }
-            this.#values.equipment[item] = amount;
+            this.#state.equipment[item] = amount;
             return this;
         }
 
@@ -116,11 +106,23 @@
             if(typeof item === 'string') {
                 const match = itemCache.byName[item];
                 if(!match) {
-                    throw `Could not find item ${skill}`;
+                    throw `Could not find item ${item}`;
                 }
                 item = match.id;
             }
-            this.#values.runes[item] = amount;
+            this.#state.runes[item] = amount;
+            return this;
+        }
+
+        tome(item) {
+            if(typeof item === 'string') {
+                const match = itemCache.byName[item];
+                if(!match) {
+                    throw `Could not find item ${item}`;
+                }
+                item = match.id;
+            }
+            this.#state.tomes[item] = 1;
             return this;
         }
 
@@ -132,7 +134,7 @@
                 }
                 structure = match.id;
             }
-            this.#values.structures[structure] = level;
+            this.#state.structures[structure] = level;
             return this;
         }
 
@@ -144,7 +146,7 @@
                 }
                 structure = match.id;
             }
-            this.#values.enhancements[structure] = level;
+            this.#state.enhancements[structure] = level;
             return this;
         }
 
@@ -156,16 +158,16 @@
                 }
                 structure = match.id;
             }
-            this.#values.guild[structure] = level;
+            this.#state.guild[structure] = level;
             return this;
         }
 
         export() {
-            return structuredClone(this.#values);
+            return structuredClone(this.#state);
         }
 
-        import(values) {
-            this.#values = structuredClone(values);
+        import(state) {
+            this.#state = structuredClone(state);
             return this;
         }
 

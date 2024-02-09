@@ -26,27 +26,27 @@
             dagger: null,
             telescope: null,
             food: null,
-            arrow: null,
-            potionGathering: null,
-            potionCrafting: null,
-            potionCombat: null,
-            map: null,
-            runeWoodcutting: null,
-            runeMining: null,
-            runeFarming: null,
-            runeFishing: null,
-            runeGathering: null,
-            runeOneHanded: null,
-            runeTwoHanded: null,
-            runeRanged: null,
-            runeDefense: null,
-            runeUtility: null,
-            tomeSavageLooting: null,
-            tomeBountifulHarvest: null,
-            tomeOpulentCrafting: null,
-            tomeEternalLife: null,
-            tomeInsatiablePower: null,
-            tomePotentConcoction: null,
+            ammo: null,
+            gatheringPotion: null,
+            craftingPotion: null,
+            combatPotion: null,
+            dungeonMap: null,
+            woodcuttingRune: null,
+            miningRune: null,
+            farmingRune: null,
+            fishingRune: null,
+            gatheringRune: null,
+            oneHandedRune: null,
+            twoHandedRune: null,
+            rangedRune: null,
+            defenseRune: null,
+            utilityRune: null,
+            savageLootingTome: null,
+            bountifulHarvestTome: null,
+            opulentCraftingTome: null,
+            eternalLifeTome: null,
+            insatiablePowerTome: null,
+            potentConcoctionTome: null,
         }
     };
 
@@ -124,32 +124,32 @@
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         // this does not cover vegetables
         exports.specialIds.food = exports.list.filter(a => /^Cooked|Pie$/.exec(a.name)).map(a => a.id);
-        exports.specialIds.arrow = getAllIdsEnding('Arrow');
-        exports.specialIds.potionGathering = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
-        exports.specialIds.potionCrafting = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
-        exports.specialIds.potionCombat = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
-        exports.specialIds.map = getAllIdsStarting('Dungeon Map');
-        exports.specialIds.runeWoodcutting = getAllIdsEnding('Woodcutting Rune');
-        exports.specialIds.runeMining = getAllIdsEnding('Mining Rune');
-        exports.specialIds.runeFarming = getAllIdsEnding('Farming Rune');
-        exports.specialIds.runeFishing = getAllIdsEnding('Fishing Rune');
-        exports.specialIds.runeGathering = [
-            ...exports.specialIds.runeWoodcutting,
-            ...exports.specialIds.runeMining,
-            ...exports.specialIds.runeFarming,
-            ...exports.specialIds.runeFishing
+        exports.specialIds.ammo = getAllIdsEnding('Arrow');
+        exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
+        exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.dungeonMap = getAllIdsStarting('Dungeon Map');
+        exports.specialIds.woodcuttingRune = getAllIdsEnding('Woodcutting Rune');
+        exports.specialIds.miningRune = getAllIdsEnding('Mining Rune');
+        exports.specialIds.farmingRune = getAllIdsEnding('Farming Rune');
+        exports.specialIds.fishingRune = getAllIdsEnding('Fishing Rune');
+        exports.specialIds.gatheringRune = [
+            ...exports.specialIds.woodcuttingRune,
+            ...exports.specialIds.miningRune,
+            ...exports.specialIds.farmingRune,
+            ...exports.specialIds.fishingRune
         ];
-        exports.specialIds.runeOneHanded = getAllIdsEnding('One-handed Rune');
-        exports.specialIds.runeTwoHanded = getAllIdsEnding('Two-handed Rune');
-        exports.specialIds.runeRanged = getAllIdsEnding('Ranged Rune');
-        exports.specialIds.runeDefense = getAllIdsEnding('Defense Rune');
-        exports.specialIds.runeUtility = getAllIdsEnding('Crit Rune', 'Damage Rune', 'Block Rune', 'Stun Rune', 'Bleed Rune', 'Parry Rune');
-        exports.specialIds.tomeSavageLooting = getAllIdsStarting('Savage Looting Tome');
-        exports.specialIds.tomeBountifulHarvest = getAllIdsStarting('Bountiful Harvest Tome');
-        exports.specialIds.tomeOpulentCrafting = getAllIdsStarting('Opulent Crafting Tome');
-        exports.specialIds.tomeEternalLife = getAllIdsStarting('Eternal Life Tome');
-        exports.specialIds.tomeInsatiablePower = getAllIdsStarting('Insatiable Power Tome');
-        exports.specialIds.tomePotentConcoction = getAllIdsStarting('Potent Concoction Tome');
+        exports.specialIds.oneHandedRune = getAllIdsEnding('One-handed Rune');
+        exports.specialIds.twoHandedRune = getAllIdsEnding('Two-handed Rune');
+        exports.specialIds.rangedRune = getAllIdsEnding('Ranged Rune');
+        exports.specialIds.defenseRune = getAllIdsEnding('Defense Rune');
+        exports.specialIds.utilityRune = getAllIdsEnding('Crit Rune', 'Damage Rune', 'Block Rune', 'Stun Rune', 'Bleed Rune', 'Parry Rune');
+        exports.specialIds.savageLootingTome = getAllIdsStarting('Savage Looting Tome');
+        exports.specialIds.bountifulHarvestTome = getAllIdsStarting('Bountiful Harvest Tome');
+        exports.specialIds.opulentCraftingTome = getAllIdsStarting('Opulent Crafting Tome');
+        exports.specialIds.eternalLifeTome = getAllIdsStarting('Eternal Life Tome');
+        exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
+        exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
         initialised.resolve(exports);
     }
 
