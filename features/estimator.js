@@ -68,6 +68,10 @@
             value: maxAmount,
             secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
         };
+        const merchantSellChance = statsStore.get('MERCHANT_SELL_CHANCE', estimation.skill) / 100;
+        if(merchantSellChance) {
+            maxAmount.secondsLeft /= 1 - merchantSellChance;
+        }
         const levelState = statsStore.getLevel(estimation.skill);
         estimation.timings = {
             inventory,
