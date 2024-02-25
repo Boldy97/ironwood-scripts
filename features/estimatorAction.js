@@ -1,6 +1,7 @@
 (dropCache, actionCache, ingredientCache, skillCache, itemCache, statsStore) => {
 
-    const LOOPS_PER_HOUR = 10 * 60 * 60; // 1 second = 10 loops
+    const SECONDS_PER_HOUR = 60 * 60;
+    const LOOPS_PER_HOUR = 10 * SECONDS_PER_HOUR; // 1 second = 10 loops
     const LOOPS_PER_FOOD = 150;
 
     const exports = {
@@ -90,7 +91,7 @@
             }
             if(statsStore.getAttackStyle() === 'Ranged') {
                 // ammo
-                const attacksPerHour = LOOPS_PER_HOUR / 5 / statsStore.get('ATTACK_SPEED');
+                const attacksPerHour = SECONDS_PER_HOUR / statsStore.get('ATTACK_SPEED');
                 const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);
                 statsStore.getManyEquipmentItems(itemCache.specialIds.ammo)
                     .forEach(a => result[a.id] = ammoPerHour);

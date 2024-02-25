@@ -25,7 +25,7 @@
         let amountElements = element.find('.amount, .value');
         let uses = 0;
         if(amountElements.length) {
-            amountText = amountElements.text();
+            var amountText = amountElements.text();
             if(!amountText) {
                 return false;
             }
