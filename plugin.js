@@ -6174,8 +6174,7 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         exports.specialIds.rod = getAllIdsEnding('Rod');
         exports.specialIds.dagger = getAllIdsEnding('Dagger');
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
-        // this does not cover vegetables
-        exports.specialIds.food = exports.list.filter(a => /^Cooked|Pie$/.exec(a.name)).map(a => a.id);
+        exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
         exports.specialIds.ammo = getAllIdsEnding('Arrow');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
