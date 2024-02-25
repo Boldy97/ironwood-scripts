@@ -7,10 +7,10 @@
     function get(skillId, actionId) {
         try {
             const action = actionCache.byId[actionId];
-            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.combatPotion);
-            statsStore.update(new Set(excludedItemIds));
 
             const activityEstimation = estimatorActivity.get(skillId, actionId);
+            const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.combatPotion);
+            statsStore.update(new Set(excludedItemIds));
             const combatEstimation = estimatorCombat.get(skillId, actionId);
             const monsterChance = (1000 - action.outskirtsMonsterChance) / 1000;
 
