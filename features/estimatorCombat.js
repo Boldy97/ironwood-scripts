@@ -39,6 +39,7 @@
         exp *= efficiency;
         exp *= 1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100;
         exp *= 1 + statsStore.get('COMBAT_EXP', skill.technicalName) / 100;
+        exp *= getDamageTriangleModifier(playerStats, sampleMonsterStats) - 0.1;
         const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId, true, foodPerHour);
         const survivalChance = getSurvivalChance(playerStats, sampleMonsterStats, loopsPerKill);
