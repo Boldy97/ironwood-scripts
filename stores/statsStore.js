@@ -8,6 +8,7 @@
         getInventoryItem,
         getEquipmentItem,
         getManyEquipmentItems,
+        getWeapon,
         getAttackStyle,
         update
     };
@@ -78,6 +79,10 @@
         })).filter(a => a.amount);
     }
 
+    function getWeapon() {
+        return stats.weapon;
+    }
+
     function getAttackStyle() {
         return stats.attackStyle;
     }
@@ -100,6 +105,7 @@
 
     function reset() {
         stats = {
+            weapon: null,
             attackStyle: null,
             bySkill: {},
             global: {}
@@ -154,6 +160,7 @@
                 continue;
             }
             if(item.stats.global.ATTACK_SPEED) {
+                stats.weapon = item;
                 stats.attackStyle = item.skill;
             }
             if(item.name.endsWith('Arrow')) {
@@ -250,12 +257,10 @@
             }
         });
         // fallback
-        if(!stats.attackStyle) {
-            stats.attackStyle = 'OneHanded';
-        }
-        if(!stats.global.ATTACK_SPEED) {
-            stats.global.ATTACK_SPEED = 3;
+        if(!stats.weapon) {
+            stats.weapon = null;
             stats.attackStyle = '';
+            stats.global.ATTACK_SPEED = 3;
         }
         // health percent
         const healthPercent = get('HEALTH_PERCENT');

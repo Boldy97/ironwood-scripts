@@ -89,7 +89,7 @@
                 statsStore.getManyEquipmentItems(itemCache.specialIds.food)
                     .forEach(a => result[a.id] = foodPerHour);
             }
-            if(statsStore.getAttackStyle() === 'Ranged') {
+            if(statsStore.getWeapon()?.name?.endsWith('Bow')) {
                 // ammo
                 const attacksPerHour = SECONDS_PER_HOUR / statsStore.get('ATTACK_SPEED');
                 const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);

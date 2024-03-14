@@ -3463,7 +3463,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
                 statsStore.getManyEquipmentItems(itemCache.specialIds.food)
                     .forEach(a => result[a.id] = foodPerHour);
             }
-            if(statsStore.getAttackStyle() === 'Ranged') {
+            if(statsStore.getWeapon()?.name?.endsWith('Bow')) {
                 // ammo
                 const attacksPerHour = SECONDS_PER_HOUR / statsStore.get('ATTACK_SPEED');
                 const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);
@@ -5471,6 +5471,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         getInventoryItem,
         getEquipmentItem,
         getManyEquipmentItems,
+        getWeapon,
         getAttackStyle,
         update
     };
@@ -5541,6 +5542,10 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         })).filter(a => a.amount);
     }
 
+    function getWeapon() {
+        return stats.weapon;
+    }
+
     function getAttackStyle() {
         return stats.attackStyle;
     }
@@ -5563,6 +5568,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
 
     function reset() {
         stats = {
+            weapon: null,
             attackStyle: null,
             bySkill: {},
             global: {}
@@ -5617,6 +5623,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
                 continue;
             }
             if(item.stats.global.ATTACK_SPEED) {
+                stats.weapon = item;
                 stats.attackStyle = item.skill;
             }
             if(item.name.endsWith('Arrow')) {
@@ -5713,12 +5720,10 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             }
         });
         // fallback
-        if(!stats.attackStyle) {
-            stats.attackStyle = 'OneHanded';
-        }
-        if(!stats.global.ATTACK_SPEED) {
-            stats.global.ATTACK_SPEED = 3;
+        if(!stats.weapon) {
+            stats.weapon = null;
             stats.attackStyle = '';
+            stats.global.ATTACK_SPEED = 3;
         }
         // health percent
         const healthPercent = get('HEALTH_PERCENT');
