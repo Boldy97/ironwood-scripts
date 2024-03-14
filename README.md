@@ -35,10 +35,9 @@ Replace the last require with the path to the actual plugin.js
   * Go to chrome://extensions
   * Navigate to Tampermonkey > details
   * Scroll down, and enable "Allow access to file URLs"
-* You can now load the page, and the scripts should be there
 * run `npm run watch` in the packager folder
   * this will update the plugin.js in the root folder every time a change is made to the scripts
-* refresh the game/page to get the updated version
+* You can now load the page, and the scripts should be there
 
 # FAQ
 
@@ -88,7 +87,7 @@ If you feel like you need a new functionality, open an issue or find me on Disco
 
 ## Current issues
 
-* events are not taking into account
+* events are not taken into account
 
 ## Removed features
 

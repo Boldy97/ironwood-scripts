@@ -3161,8 +3161,8 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
     }
 
     function render(estimation) {
-        components.search(componentBlueprint, 'speed').value
-            = util.formatNumber(estimation.speed/10) + ' s';
+        components.search(componentBlueprint, 'actions').value
+            = util.formatNumber(estimatorAction.LOOPS_PER_HOUR / estimation.speed);
         components.search(componentBlueprint, 'exp').hidden
             = estimation.exp === 0;
         components.search(componentBlueprint, 'exp').value
@@ -3274,8 +3274,8 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             title: 'Overview',
             rows: [{
                 type: 'item',
-                id: 'speed',
-                name: 'Time per action',
+                id: 'actions',
+                name: 'Actions/hour',
                 image: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
                 value: ''
             },{
