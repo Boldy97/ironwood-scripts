@@ -3962,22 +3962,22 @@ window.moduleRegistry.add('guildSorts', (events, elementWatcher, util, elementCr
             handler: handleConfigStateChange
         });
         elementCreator.addStyles(styles);
-        events.register('page', handlePage);
+        events.register('page', setup);
     }
 
     function handleConfigStateChange(state) {
         enabled = state;
     }
 
-    async function handlePage(page) {
+    async function setup() {
         if(!enabled) {
-            return;
-        }
-        if(page.type !== 'guild') {
             return;
         }
         try {
             await elementWatcher.exists('.card > .row');
+            if(events.getLast('page').type !== 'guild') {
+                return;
+            }
             await addAdditionGuildSortButtons();
             setupGuildMenuButtons();
         } catch(e) {}
