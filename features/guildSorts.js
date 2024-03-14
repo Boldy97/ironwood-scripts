@@ -1,4 +1,4 @@
-(events, elementWatcher, util, elementCreator, configuration) => {
+(events, elementWatcher, util, elementCreator, configuration, colorMapper) => {
 
     let enabled = false;
 
@@ -178,7 +178,7 @@
             flex: none !important;
             text-align: center;
             justify-content: center;
-            background-color: #061a2e;
+            background-color: ${colorMapper('componentRegular')};
         }
         .customButtonGroupButton:not(:first-of-type) {
             border-left: 1px solid #263849;
@@ -187,7 +187,7 @@
             flex: none !important
         }
         .custom-sort-active {
-            background-color: #0d2234;
+            background-color: ${colorMapper('componentLight')};
         }
     `;
 
