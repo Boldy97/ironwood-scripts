@@ -3139,7 +3139,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             maxAmount,
             finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
-            tier: levelState.level === 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
+            tier: levelState.level >= 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };
     }
 
@@ -4430,6 +4430,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         'Charcoal': itemCache.byName['Charcoal'].id,
         'Compost': itemCache.byName['Compost'].id,
         'Arcane Powder': itemCache.byName['Arcane Powder'].id,
+        'Pet Snacks': itemCache.byName['Pet Snacks'].id,
     };
     let savedFilters = [];
     let enabled = false;
@@ -4725,23 +4726,11 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
                     text: 'None',
                     value: 'None',
                     selected: false
-                }, {
-                    text: 'Food',
-                    value: 'Food',
+                }].concat(Object.keys(TYPE_TO_ITEM).map(a => ({
+                    text: a,
+                    value: a,
                     selected: false
-                }, {
-                    text: 'Charcoal',
-                    value: 'Charcoal',
-                    selected: false
-                }, {
-                    text: 'Compost',
-                    value: 'Compost',
-                    selected: false
-                }, {
-                    text: 'Arcane Powder',
-                    value: 'Arcane Powder',
-                    selected: false
-                }]
+                })))
             }, {
                 type: 'input',
                 id: 'amountInput',
@@ -5104,10 +5093,10 @@ window.moduleRegistry.add('ui', (configuration) => {
         'quests-page',
         'settings-page',
         'skill-page',
-        'upgrade-page'
+        'upgrade-page',
+        'taming-page'
     ].join(', ');
     const selector = `:is(${sections})`;
-    let gap
 
     function initialise() {
         configuration.registerCheckbox({
@@ -6134,6 +6123,12 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             if(item.compost) {
                 item.attributes.COMPOST = item.compost;
             }
+            if(item.arcanePowder) {
+                item.attributes.ARCANE_POWDER = item.arcanePowder;
+            }
+            if(item.petSnacks) {
+                item.attributes.PET_SNACKS = item.petSnacks;
+            }
             if(item.attributes.ATTACK_SPEED) {
                 item.attributes.ATTACK_SPEED /= 2;
             }
@@ -6161,6 +6156,14 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             technicalName: 'COMPOST',
             name: 'Compost',
             image: '/assets/misc/compost.png'
+        },{
+            technicalName: 'ARCANE_POWDER',
+            name: 'Arcane Powder',
+            image: '/assets/misc/arcane-powder.png'
+        },{
+            technicalName: 'PET_SNACKS',
+            name: 'Pet Snacks',
+            image: '/assets/misc/pet-snacks.png'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
@@ -6289,19 +6292,10 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
         exports.byName = {};
         exports.byImage = {};
         for(const recipe of exports.list) {
-            if(!exports.byId[recipe.id]) {
-                exports.byId[recipe.id] = recipe;
-            }
-            if(!exports.byName[recipe.name]) {
-                exports.byName[recipe.name] = recipe;
-            }
-            if(!exports.byName[recipe.name]) {
-                exports.byName[recipe.name] = recipe;
-            }
+            exports.byId[recipe.id] = recipe;
+            exports.byName[recipe.name] = recipe;
             const lastPart = recipe.image.split('/').at(-1);
-            if(!exports.byImage[lastPart]) {
-                exports.byImage[lastPart] = recipe;
-            }
+            exports.byImage[lastPart] = recipe;
         }
     }
 

@@ -6,6 +6,7 @@
         'Charcoal': itemCache.byName['Charcoal'].id,
         'Compost': itemCache.byName['Compost'].id,
         'Arcane Powder': itemCache.byName['Arcane Powder'].id,
+        'Pet Snacks': itemCache.byName['Pet Snacks'].id,
     };
     let savedFilters = [];
     let enabled = false;
@@ -301,23 +302,11 @@
                     text: 'None',
                     value: 'None',
                     selected: false
-                }, {
-                    text: 'Food',
-                    value: 'Food',
+                }].concat(Object.keys(TYPE_TO_ITEM).map(a => ({
+                    text: a,
+                    value: a,
                     selected: false
-                }, {
-                    text: 'Charcoal',
-                    value: 'Charcoal',
-                    selected: false
-                }, {
-                    text: 'Compost',
-                    value: 'Compost',
-                    selected: false
-                }, {
-                    text: 'Arcane Powder',
-                    value: 'Arcane Powder',
-                    selected: false
-                }]
+                })))
             }, {
                 type: 'input',
                 id: 'amountInput',

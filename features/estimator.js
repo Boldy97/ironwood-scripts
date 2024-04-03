@@ -79,7 +79,7 @@
             maxAmount,
             finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
-            tier: levelState.level === 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
+            tier: levelState.level >= 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };
     }
 

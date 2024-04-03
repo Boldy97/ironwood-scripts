@@ -14,10 +14,10 @@
         'quests-page',
         'settings-page',
         'skill-page',
-        'upgrade-page'
+        'upgrade-page',
+        'taming-page'
     ].join(', ');
     const selector = `:is(${sections})`;
-    let gap
 
     function initialise() {
         configuration.registerCheckbox({

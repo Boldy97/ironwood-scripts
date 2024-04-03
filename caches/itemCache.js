@@ -85,6 +85,12 @@
             if(item.compost) {
                 item.attributes.COMPOST = item.compost;
             }
+            if(item.arcanePowder) {
+                item.attributes.ARCANE_POWDER = item.arcanePowder;
+            }
+            if(item.petSnacks) {
+                item.attributes.PET_SNACKS = item.petSnacks;
+            }
             if(item.attributes.ATTACK_SPEED) {
                 item.attributes.ATTACK_SPEED /= 2;
             }
@@ -112,6 +118,14 @@
             technicalName: 'COMPOST',
             name: 'Compost',
             image: '/assets/misc/compost.png'
+        },{
+            technicalName: 'ARCANE_POWDER',
+            name: 'Arcane Powder',
+            image: '/assets/misc/arcane-powder.png'
+        },{
+            technicalName: 'PET_SNACKS',
+            name: 'Pet Snacks',
+            image: '/assets/misc/pet-snacks.png'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
