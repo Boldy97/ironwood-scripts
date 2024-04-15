@@ -3455,8 +3455,9 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
             }
             if(action.type === 'DUNGEON') {
                 // dungeon map
+                const lanternMultiplier = 1 + statsStore.get('DUNGEON_TIME') / 100;
                 statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonMap)
-                    .forEach(a => result[a.id] = 3 / 24);
+                    .forEach(a => result[a.id] = 3 / 24 / lanternMultiplier);
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
                 // active food
@@ -6063,6 +6064,7 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             rod: null,
             dagger: null,
             telescope: null,
+            lantern: null,
             food: null,
             ammo: null,
             gatheringPotion: null,
@@ -6183,6 +6185,7 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         exports.specialIds.rod = getAllIdsEnding('Rod');
         exports.specialIds.dagger = getAllIdsEnding('Dagger');
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
+        exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
         exports.specialIds.ammo = getAllIdsEnding('Arrow');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
@@ -6390,6 +6393,7 @@ window.moduleRegistry.add('statNameCache', () => {
         'PASSIVE_FOOD_CONSUMPTION',
         'REVIVE_TIME',
         'STUN_CHANCE',
+        'DUNGEON_TIME',
         // FRONTEND ONLY
         'MAX_AMOUNT'
     ]);

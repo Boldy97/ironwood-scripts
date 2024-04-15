@@ -42,6 +42,7 @@
         'PASSIVE_FOOD_CONSUMPTION',
         'REVIVE_TIME',
         'STUN_CHANCE',
+        'DUNGEON_TIME',
         // FRONTEND ONLY
         'MAX_AMOUNT'
     ]);

@@ -81,8 +81,9 @@
             }
             if(action.type === 'DUNGEON') {
                 // dungeon map
+                const lanternMultiplier = 1 + statsStore.get('DUNGEON_TIME') / 100;
                 statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonMap)
-                    .forEach(a => result[a.id] = 3 / 24);
+                    .forEach(a => result[a.id] = 3 / 24 / lanternMultiplier);
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
                 // active food

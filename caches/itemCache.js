@@ -25,6 +25,7 @@
             rod: null,
             dagger: null,
             telescope: null,
+            lantern: null,
             food: null,
             ammo: null,
             gatheringPotion: null,
@@ -145,6 +146,7 @@
         exports.specialIds.rod = getAllIdsEnding('Rod');
         exports.specialIds.dagger = getAllIdsEnding('Dagger');
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
+        exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
         exports.specialIds.ammo = getAllIdsEnding('Arrow');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
