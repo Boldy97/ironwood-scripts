@@ -39,7 +39,7 @@
         exp *= efficiency;
         exp *= 1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100;
         exp *= 1 + statsStore.get('COMBAT_EXP', skill.technicalName) / 100;
-        exp *= getDamageTriangleModifier(playerStats, sampleMonsterStats) - 0.1;
+        exp *= getExpTriangleModifier(playerStats, sampleMonsterStats);
         const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId, true, foodPerHour);
         const survivalChance = getSurvivalChance(playerStats, sampleMonsterStats, loopsPerKill);
@@ -242,6 +242,13 @@
             return 1.1;
         }
         return 0.9;
+    }
+
+    function getExpTriangleModifier(attacker, defender) {
+        if(!attacker.attackStyle || !defender.attackStyle) {
+            return 1;
+        }
+        return getDamageTriangleModifier(attacker, defender) - 0.1;
     }
 
     function getDamageScalingRatio(attacker, defender) {

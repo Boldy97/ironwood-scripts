@@ -1101,10 +1101,12 @@ window.moduleRegistry.add('Distribution', () => {
 }
 );
 // elementCreator
-window.moduleRegistry.add('elementCreator', () => {
+window.moduleRegistry.add('elementCreator', (colorMapper) => {
 
     const exports = {
-        addStyles
+        addStyles,
+        getButton,
+        getTag
     };
 
     function addStyles(css) {
@@ -1117,6 +1119,38 @@ window.moduleRegistry.add('elementCreator', () => {
         style.type = 'text/css';
         style.innerHTML = css;
         head.appendChild(style);
+    }
+
+    function getButton(text, onClick) {
+        const element = $(`<button class='myButton'>${text}</button>`)
+            .css('background-color', colorMapper('componentRegular'))
+            .css('display', 'inline-block')
+            .css('padding', '0 5px')
+            .css('margin', '0 5px');
+        if(onClick) {
+            element.click(onClick);
+        }
+        return element;
+    }
+
+    function getTag(text, image, clazz) {
+        const element = $(`<div>${text}</div>`)
+            .css('border-radius', '4px')
+            .css('padding', '2px 6px')
+            .css('border', '1px solid #263849')
+            .css('font-size', '14px')
+            .css('color', '#aaa')
+            .css('display', 'flex')
+            .css('align-items', 'center')
+            .addClass(clazz);
+        if(image) {
+            const imageElement = $(`<img src='${image}'/>`)
+                .css('width', '16px')
+                .css('height', '16px')
+                .css('image-rendering', 'auto');
+            element.prepend(imageElement);
+        }
+        return element;
     }
 
     return exports;
@@ -1667,6 +1701,10 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
                 structure: +parts[parts.length-2],
                 action: +parts[parts.length-1]
             };
+        } else if(url.includes('/skill/15')) {
+            result = {
+                type: 'taming'
+            };
         } else {
             result = {
                 type: parts.pop()
@@ -1879,6 +1917,8 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
             headerName = 'House';
         } else if(page.type === 'automation') {
             headerName = 'House';
+        } else if(page.type === 'taming') {
+            headerName = 'Taming';
         } else {
             headerName = page.type;
             headerName = headerName.charAt(0).toUpperCase() + headerName.slice(1);
@@ -1959,6 +1999,126 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
     return exports
 }
 );
+// petUtil
+window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache) => {
+
+    const exports = {
+        petToText,
+        textToPet,
+        isEncodedPetName
+    };
+
+    const SPECIAL_CHAR = '_';
+    const VALID_CHARS = '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}'.split('');
+    const VALID_CHARS_LENGTH = BigInt(VALID_CHARS.length);
+    const OPTIONS = [
+        petCache.list.length, // species
+        petTraitCache.list.length, // traits
+        ...Array(6).fill(50), // stats
+        ...Array(4).fill(petPassiveCache.list.length+1) // passives, 0 = empty
+    ];
+
+    function numberToText(number) {
+        let text = SPECIAL_CHAR;
+        while(number > 0) {
+            text += VALID_CHARS[number%VALID_CHARS_LENGTH];
+            number /= VALID_CHARS_LENGTH;
+        }
+        return text;
+    }
+
+    function textToNumber(text) {
+        let number = 0n;
+        text = text.slice(1);
+        while(text.length) {
+            number *= VALID_CHARS_LENGTH;
+            number += BigInt(VALID_CHARS.indexOf(text[text.length-1]));
+            text = text.slice(0,-1);
+        }
+        return number;
+    }
+
+    function choicesToNumber(choices, options) {
+        if(choices.length !== options.length) {
+            throw `Expected lengths to be equal : ${choices.length} and ${options.length}`;
+        }
+        let number = 0n;
+        for(let i=0;i<choices.length;i++) {
+            if(choices[i] >= options[i]) {
+                throw `${choices[i]} is outside of options range ${options[i]}`;
+            }
+            number *= BigInt(options[i]);
+            number += BigInt(choices[i]);
+        }
+        return number;
+    }
+
+    function numberToChoices(number, options) {
+        const choices = [];
+        for(let i=options.length-1;i>=0;i--) {
+            if(i > 0) {
+                choices.unshift(Number(number % BigInt(options[i])));
+                number /= BigInt(options[i]);
+            } else {
+                choices.unshift(Number(number));
+            }
+        }
+        return choices;
+    }
+
+    function petToChoices(pet) {
+        const passives = pet.passives.map(a => petPassiveCache.idToIndex[a]+1);
+        while(passives.length < 4) {
+            passives.push(0);
+        }
+        return [
+            petCache.idToIndex[pet.species], // species
+            petTraitCache.idToIndex[pet.traits], // traits
+            pet.health/2-1,
+            pet.attack/2-1,
+            pet.defense/2-1,
+            pet.specialAttack/2-1,
+            pet.specialDefense/2-1,
+            pet.speed/2-1, // stats
+            ...passives // passives, 0 = empty
+        ];
+    }
+
+    function choicesToPet(choices, text) {
+        return {
+            parsed: true,
+            species: petCache.list[choices[0]].id,
+            name: text,
+            traits: petTraitCache.list[choices[1]].id,
+            health: (choices[2]+1)*2,
+            attack: (choices[3]+1)*2,
+            defense: (choices[4]+1)*2,
+            specialAttack: (choices[5]+1)*2,
+            specialDefense: (choices[6]+1)*2,
+            speed: (choices[7]+1)*2,
+            passives: choices.slice(8).filter(a => a).map(a => petPassiveCache.list[a-1].id)
+        };
+    }
+
+    function petToText(pet) {
+        const choices = petToChoices(pet);
+        const number = choicesToNumber(choices, OPTIONS);
+        return numberToText(number);
+    }
+
+    function textToPet(text) {
+        const number = textToNumber(text);
+        const choices = numberToChoices(number, OPTIONS);
+        return choicesToPet(choices, text);
+    }
+
+    function isEncodedPetName(text) {
+        return text.startsWith(SPECIAL_CHAR);
+    }
+
+    return exports;
+
+});
 // Promise
 window.moduleRegistry.add('Promise', (logService) => {
 
@@ -2100,6 +2260,8 @@ window.moduleRegistry.add('request', () => {
     request.listItemAttributes = () => request('public/list/itemAttribute');
     request.listIngredients = () => request('public/list/ingredient');
     request.listMonsters = () => request('public/list/monster');
+    request.listPets = () => request('public/list/pet');
+    request.listPetPassives = () => request('public/list/petPassive');
     request.listRecipes = () => request('public/list/recipe');
     request.listSkills = () => request('public/list/skill');
     request.listStructures = () => request('public/list/structure');
@@ -2117,7 +2279,8 @@ window.moduleRegistry.add('request', () => {
 window.moduleRegistry.add('toast', (util, elementCreator) => {
 
     const exports = {
-        create
+        create,
+        copyToClipboard
     };
 
     function initialise() {
@@ -2151,6 +2314,14 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
         await util.sleep(config.time);
         $(`#${notificationId}`).fadeOut('slow', () => {
             $(`#${notificationId}`).remove();
+        });
+    }
+
+    function copyToClipboard(text, message) {
+        navigator.clipboard.writeText(text);
+        create({
+            text: message,
+            image: 'https://img.icons8.com/?size=48&id=22244'
         });
     }
 
@@ -2207,7 +2378,8 @@ window.moduleRegistry.add('util', () => {
         sleep,
         goToPage,
         compareObjects,
-        debounce
+        debounce,
+        distinct
     };
 
     function levelToExp(level) {
@@ -2399,6 +2571,12 @@ window.moduleRegistry.add('util', () => {
         }
     }
 
+    function distinct(array) {
+        return array.filter((value, index) => {
+          return array.indexOf(value) === index;
+        });
+    }
+
     return exports;
 
 }
@@ -2557,7 +2735,7 @@ window.moduleRegistry.add('guildStructuresReader', (events, util, structuresCach
         if(!page) {
             return;
         }
-        if(page.type === 'guild' && $('guild-page .tracker + div button.row-active').text() === 'Buildings') {
+        if(page.type === 'guild' && $('guild-page .tracker ~ div button.row-active').text() === 'Buildings') {
             readGuildStructuresScreen();
         }
     }
@@ -2706,6 +2884,79 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
     initialise();
 
     return exports;
+
+}
+);
+// petReader
+window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTraitCache) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-pet');
+
+    function initialise() {
+        events.register('page', update);
+        $(document).on('click', 'button.row.ng-star-inserted', update);
+        window.setInterval(update, 1000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        if(page.type === 'taming' && $('taming-page .header:contains("Menu") ~ button.row-active').text().startsWith('Pets')) {
+            readTamingScreen();
+        }
+        if(page.type === 'taming' && $('modal-component .pet-background').length) {
+            readPetModal();
+        }
+    }
+
+    function readTamingScreen() {
+        const elements = $('button.row.ng-star-inserted').get();
+        const values = [];
+        for(const element of elements) {
+            values.push({
+                name: $(element).find('.image').next().find('.flex > :first-child')[0].textContent,
+                element
+            });
+        }
+        emitEvent({
+            type: 'names',
+            value: values
+        });
+    }
+
+    function readPetModal() {
+        const image = $('modal-component .header img').attr('src').split('/').at(-1);
+        const name = $('modal-component .header .description button').text().trim();
+        const traits = $('modal-component .name:contains("Traits")').next().text();
+        const health = +($('modal-component .name:contains("Health")').next().text().match('\\((\\d+)%\\)')[1]);
+        const attack = +($('modal-component .name:contains("Attack")').next().text().match('\\((\\d+)%\\)')[1]);
+        const defense = +($('modal-component .name:contains("Defense")').next().text().match('\\((\\d+)%\\)')[1]);
+        const specialAttack = +($('modal-component .name:contains("Sp. Atk")').next().text().match('\\((\\d+)%\\)')[1]);
+        const specialDefense = +($('modal-component .name:contains("Sp. Def")').next().text().match('\\((\\d+)%\\)')[1]);
+        const speed = +($('modal-component .name:contains("Speed")').next().text().match('\\((\\d+)%\\)')[1]);
+        const passives = $('modal-component .name:contains("Total")').parent().nextAll('.row').find('.name').get().map(a => a.innerText);
+        const pet = {
+            parsed: true,
+            species: petCache.byImage[image].id,
+            name,
+            traits: petTraitCache.byName[traits].id,
+            health,
+            attack,
+            defense,
+            specialAttack,
+            specialDefense,
+            speed,
+            passives: passives.map(a => petPassiveCache.byName[a].id)
+        };
+        emitEvent({
+            type: 'pet',
+            value: pet
+        });
+    }
+
+    initialise();
 
 }
 );
@@ -3014,7 +3265,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
 }
 );
 // debugService
-window.moduleRegistry.add('debugService', (request, toast, statsStore, EstimationGenerator, logService, events) => {
+window.moduleRegistry.add('debugService', (request, toast, statsStore, EstimationGenerator, logService, events, util) => {
 
     const exports = {
         submit
@@ -3047,11 +3298,7 @@ window.moduleRegistry.add('debugService', (request, toast, statsStore, Estimatio
     }
 
     function exportToClipboard(data) {
-        navigator.clipboard.writeText(JSON.stringify(data));
-        toast.create({
-            text: 'Failed to forward, exported to clipboard instead',
-            image: 'https://img.icons8.com/?size=48&id=22244'
-        });
+        toast.copyToClipboard(JSON.stringify(data), 'Failed to forward, exported to clipboard instead');
     }
 
     return exports;
@@ -3599,7 +3846,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
         exp *= efficiency;
         exp *= 1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100;
         exp *= 1 + statsStore.get('COMBAT_EXP', skill.technicalName) / 100;
-        exp *= getDamageTriangleModifier(playerStats, sampleMonsterStats) - 0.1;
+        exp *= getExpTriangleModifier(playerStats, sampleMonsterStats);
         const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId, true, foodPerHour);
         const survivalChance = getSurvivalChance(playerStats, sampleMonsterStats, loopsPerKill);
@@ -3802,6 +4049,13 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             return 1.1;
         }
         return 0.9;
+    }
+
+    function getExpTriangleModifier(attacker, defender) {
+        if(!attacker.attackStyle || !defender.attackStyle) {
+            return 1;
+        }
+        return getDamageTriangleModifier(attacker, defender) - 0.1;
     }
 
     function getDamageScalingRatio(attacker, defender) {
@@ -4766,6 +5020,264 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 
 }
 );
+// petHighlighter
+window.moduleRegistry.add('petHighlighter', (configuration, events, colorMapper) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-highlighter',
+            name: 'Parsed highlighter',
+            default: false,
+            handler: handleConfigStateChange
+        });
+        events.register('state-pet', update);
+    }
+
+    function handleConfigStateChange(state, name) {
+        enabled = state;
+    }
+
+    function update(state) {
+        if(!enabled) {
+            return;
+        }
+        for(const pet of Object.values(state)) {
+            if(pet.parsed) {
+                render(pet);
+            }
+        }
+    }
+
+    function render(pet) {
+        $(pet.element).css('box-shadow', `inset 0px 0px 8px 0px ${colorMapper('success')}`);
+    }
+
+    initialise();
+
+});
+// petRenamer
+window.moduleRegistry.add('petRenamer', (configuration, events, petUtil, elementCreator, toast) => {
+
+    let enabled = false;
+    let lastSeenPet;
+    let pasteButton;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-rename',
+            name: 'Name suggestions',
+            default: false,
+            handler: handleConfigStateChange
+        });
+        events.register('reader-pet', handlePetReader);
+        $(document).on('click', 'modal-component .header .heading', onRename);
+        pasteButton = elementCreator.getButton('Paste encoded name', pasteName);
+    }
+
+    function handleConfigStateChange(state, name) {
+        enabled = state;
+    }
+
+    function handlePetReader(event) {
+        if(event.type === 'pet') {
+            lastSeenPet = event.value;
+        }
+    }
+
+    function onRename() {
+        if(!enabled) {
+            return;
+        }
+        const page = events.getLast('page');
+        if(!page || page.type !== 'taming') {
+            return;
+        }
+        if(petUtil.isEncodedPetName(lastSeenPet.name)) {
+            return;
+        }
+        $('modal-component .header > .name').append(pasteButton);
+    }
+
+    function pasteName() {
+        const text = petUtil.petToText(lastSeenPet);
+        const input = $('modal-component input');
+        input.val(text);
+        input[0].dispatchEvent(new Event('input'));
+        toast.create({
+            text: 'Pasted encoded name',
+            image: 'https://img.icons8.com/?size=48&id=22244'
+        });
+    }
+
+    initialise();
+
+});
+// petStatHighlighter
+window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, colorMapper, petCache) => {
+
+    let enabled = false;
+    const stats = ['health', 'speed', 'attack', 'specialAttack', 'defense', 'specialDefense'];
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-stat-highlighter',
+            name: 'Highlight best stats (depends on stat redesign)',
+            default: false,
+            handler: handleConfigStateChange
+        });
+        events.register('redesign-pet', renderMain);
+        events.register('reader-pet', renderSingle);
+    }
+
+    function handleConfigStateChange(state, name) {
+        enabled = state;
+    }
+
+    function renderMain(pets) {
+        if(!enabled || !pets.length) {
+            return;
+        }
+        const highestValues = getHighestValuesByFamily(pets);
+        for(const pet of pets) {
+            const tags = $(pet.element).find('.tags');
+            for(const stat of stats) {
+                if(pet[stat] === highestValues[pet.family][stat]) {
+                    tags.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${colorMapper('success')}`);
+                } else {
+                    tags.find(`.stat-${stat}`).css('box-shadow', '');
+                }
+                // TODO passives
+            }
+        }
+    }
+
+    function renderSingle(event) {
+        if(!enabled || event.type !== 'pet') {
+            return;
+        }
+        console.log('single', event.value);
+        // TODO
+    }
+
+    function getHighestValuesByFamily(pets) {
+        const result = {};
+        for(const pet of pets) {
+            pet.family = petCache.byId[pet.species].family;
+        }
+        const families = util.distinct(pets.map(pet => pet.family));
+        for(const family of families) {
+            result[family] = {};
+            for(const stat of stats) {
+                result[family][stat] = pets
+                    .filter(pet => pet.family === family)
+                    .map(a => a[stat])
+                    .sort((a,b) => b-a)[0];
+            }
+            // TODO passives?
+        }
+        return result;
+    }
+
+    initialise();
+
+}
+);
+// petStatRedesign
+window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petTraitCache, petPassiveCache) => {
+
+    let enabled = false;
+    const images = {
+        health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
+        speed: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
+        attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
+        defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
+        specialAttack: 'https://img.icons8.com/?size=48&id=18515',
+        specialDefense: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX'
+    };
+    const emitEvent = events.emit.bind(null, 'redesign-pet');
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-stat-redesign',
+            name: 'Stat redesign',
+            default: false,
+            handler: handleConfigStateChange
+        });
+        events.register('state-pet', update);
+    }
+
+    function handleConfigStateChange(state, name) {
+        enabled = state;
+    }
+
+    function update(state) {
+        if(!enabled) {
+            return;
+        }
+        const pets = Object.values(state).filter(pet => pet.parsed);
+        let changed = false;
+        for(const pet of pets) {
+            if(render(pet)) {
+                changed = true;
+            }
+        }
+        if(changed) {
+            emitEvent(pets);
+        }
+    }
+
+    function render(pet) {
+        const tags = $(pet.element).find('.tags');
+        if(!tags.find('.ng-star-inserted').length) {
+            return false;
+        }
+        tags.empty();
+        const table = $(`<div style='display:inline-grid;grid-template-rows:1fr 1fr;grid-auto-flow:column'></div>`);
+        tags.append(table);
+        // traits
+        const traits = petTraitCache.byId[pet.traits];
+        if(traits.hasAttack) {
+            table.append(elementCreator.getTag('', images.attack));
+        }
+        if(traits.hasSpecialAttack) {
+            table.append(elementCreator.getTag('', images.specialAttack));
+        }
+        if(traits.hasDefense) {
+            table.append(elementCreator.getTag('', images.defense));
+        }
+        if(traits.hasSpecialDefense) {
+            table.append(elementCreator.getTag('', images.specialDefense));
+        }
+        // spacing
+        table.append(`<div style='padding:5px'></div>`);
+        table.append(`<div style='padding:5px'></div>`);
+        // stats
+        table.append(elementCreator.getTag(`${pet.health}%`, images.health, 'stat-health'));
+        table.append(elementCreator.getTag(`${pet.speed}%`, images.speed, 'stat-speed'));
+        table.append(elementCreator.getTag(`${pet.attack}%`, images.attack, 'stat-attack'));
+        table.append(elementCreator.getTag(`${pet.specialAttack}%`, images.specialAttack, 'stat-specialAttack'));
+        table.append(elementCreator.getTag(`${pet.defense}%`, images.defense, 'stat-defense'));
+        table.append(elementCreator.getTag(`${pet.specialDefense}%`, images.specialDefense, 'stat-specialDefense'));
+        // spacing
+        table.append(`<div style='padding:5px'></div>`);
+        table.append(`<div style='padding:5px'></div>`);
+        // passives
+        for(const id of pet.passives) {
+            const passive = petPassiveCache.byId[id];
+            table.append(elementCreator.getTag(passive.name, null, `passive-[${passive.name}]`));
+        }
+        return true;
+    }
+
+    initialise();
+
+});
 // recipeClickthrough
 window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, util) => {
 
@@ -5444,6 +5956,74 @@ window.moduleRegistry.add('marketStore', (events) => {
         state.lastType = event.type;
         state.last = event.listings;
         emitEvent(state);
+    }
+
+    initialise();
+
+}
+);
+// petStateStore
+window.moduleRegistry.add('petStateStore', (events, petUtil) => {
+
+    const emitEvent = events.emit.bind(null, 'state-pet');
+    const state = {};
+
+    function initialise() {
+        events.register('reader-pet', handlePetReader);
+    }
+
+    function handlePetReader(event) {
+        let updated = false;
+        if(event.type === 'names') {
+            for(const pet of Object.values(state)) {
+                pet.detected = false;
+            }
+            for(const value of event.value) {
+                if(addName(value.name, value.element)) {
+                    updated = true;
+                }
+                state[value.name].detected = true;
+            }
+            for(const pet of Object.values(state)) {
+                if(!pet.detected) {
+                    updated = true;
+                    delete state[pet.name];
+                }
+                delete pet.detected;
+            }
+        } else if(event.type === 'pet') {
+            updated = addPet(event.value);
+        }
+        if(updated) {
+            emitEvent(state);
+        }
+    }
+
+    function addName(name, element) {
+        if(state[name] && state[name].element === element) {
+            return false;
+        }
+        let pet = {
+            parsed: false,
+            name
+        };
+        if(petUtil.isEncodedPetName(name)) {
+            pet = petUtil.textToPet(name);
+        }
+        pet.element = element;
+        state[name] = pet;
+        return true;
+    }
+
+    function addPet(pet) {
+        if(state[pet.name]) {
+            if(state[pet.name].parsed) {
+                return false;
+            }
+            pet.element = state[pet.name].element;
+        }
+        state[pet.name] = pet;
+        return true;
     }
 
     initialise();
@@ -6265,6 +6845,144 @@ window.moduleRegistry.add('monsterCache', (request, Promise) => {
     tryInitialise();
 
     return initialised;
+
+}
+);
+// petCache
+window.moduleRegistry.add('petCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000, 'petCache');
+
+    const exports = {
+        list: [],
+        byId: null,
+        byName: null,
+        byImage: null,
+        idToIndex: null
+    };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
+
+    async function initialise() {
+        const pets = await request.listPets();
+        exports.byId = {};
+        exports.byName = {};
+        exports.byImage = {};
+        exports.idToIndex = {};
+        for(const pet of pets) {
+            exports.list.push(pet);
+            exports.byId[pet.id] = pet;
+            exports.byName[pet.name] = pet;
+            exports.idToIndex[pet.id] = exports.list.length-1;
+            const lastPart = pet.image.split('/').at(-1);
+            exports.byImage[lastPart] = pet;
+            pet.abilities = [{
+                [pet.abilityName1]: pet.abilityValue1
+            }];
+            if(pet.abilityName2) {
+                pet.abilities.push({
+                    [pet.abilityName2]: pet.abilityValue2
+                });
+            }
+            delete pet.abilityName1;
+            delete pet.abilityValue1;
+            delete pet.abilityName2;
+            delete pet.abilityValue2;
+        }
+    }
+
+    tryInitialise();
+
+    return initialised;
+
+}
+);
+// petPassiveCache
+window.moduleRegistry.add('petPassiveCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000, 'petPassiveCache');
+
+    const exports = {
+        list: [],
+        byId: null,
+        byName: null,
+        idToIndex: null
+    };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
+
+    async function initialise() {
+        const petPassives = await request.listPetPassives();
+        exports.byId = {};
+        exports.byName = {};
+        exports.idToIndex = {};
+        for(const petPassive of petPassives) {
+            exports.list.push(petPassive);
+            exports.byId[petPassive.id] = petPassive;
+            exports.byName[petPassive.name] = petPassive;
+            exports.idToIndex[petPassive.id] = exports.list.length-1;
+            petPassive.stats = {
+                [petPassive.statName]: petPassive.statValue
+            };
+            delete petPassive.statName;
+            delete petPassive.statValue;
+        }
+    }
+
+    tryInitialise();
+
+    return initialised;
+
+}
+);
+// petTraitCache
+window.moduleRegistry.add('petTraitCache', () => {
+
+    const exports = {
+        list: [],
+        byId: null,
+        byName: null,
+        idToIndex: null
+    };
+
+    function initialise() {
+        const petTraits = ['Attack & Defense', 'Attack & Special Def', 'Special Atk & Defense', 'Special Atk & Special Def'];
+        exports.byId = {};
+        exports.byName = {};
+        exports.idToIndex = {};
+        for(const petTrait of petTraits) {
+            const value = {
+                id: exports.list.length,
+                name: petTrait,
+                hasAttack: petTrait.startsWith('Attack'),
+                hasDefense: petTrait.endsWith('Defense'),
+                hasSpecialAttack: petTrait.startsWith('Special Atk'),
+                hasSpecialDefense: petTrait.endsWith('Special Def')
+            };
+            exports.list.push(value);
+            exports.byId[value.id] = value;
+            exports.byName[value.name] = value;
+            exports.idToIndex[value.id] = exports.list.length-1;
+        }
+    }
+
+    initialise();
+
+    return exports;
 
 }
 );
