@@ -1158,7 +1158,7 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
 }
 );
 // elementWatcher
-window.moduleRegistry.add('elementWatcher', (Promise) => {
+window.moduleRegistry.add('elementWatcher', (Promise, polyfill) => {
 
     const exports = {
         exists,
@@ -1239,7 +1239,7 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
 
     async function idle() {
         const promise = new Promise.Expiring(1000, 'elementWatcher - idle');
-        window.requestIdleCallback(() => {
+        polyfill.requestIdleCallback(() => {
             promise.resolve();
         });
         return promise;
@@ -2261,6 +2261,39 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
     return exports;
 
 });
+// polyfill
+window.moduleRegistry.add('polyfill', () => {
+
+    const exports = {
+        requestIdleCallback
+    };
+
+    function requestIdleCallback() {
+        if(!window.requestIdleCallback) {
+            window.requestIdleCallback = function(callback, options) {
+                var options = options || {};
+                var relaxation = 1;
+                var timeout = options.timeout || relaxation;
+                var start = performance.now();
+                return setTimeout(function () {
+                    callback({
+                        get didTimeout() {
+                            return options.timeout ? false : (performance.now() - start) - relaxation > timeout;
+                        },
+                        timeRemaining: function () {
+                            return Math.max(0, relaxation + (performance.now() - start));
+                        },
+                    });
+                }, relaxation);
+            };
+        }
+        return window.requestIdleCallback(...arguments);
+    }
+
+    return exports;
+
+}
+);
 // Promise
 window.moduleRegistry.add('Promise', (logService) => {
 

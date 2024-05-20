@@ -1,4 +1,4 @@
-(Promise) => {
+(Promise, polyfill) => {
 
     const exports = {
         exists,
@@ -79,7 +79,7 @@
 
     async function idle() {
         const promise = new Promise.Expiring(1000, 'elementWatcher - idle');
-        window.requestIdleCallback(() => {
+        polyfill.requestIdleCallback(() => {
             promise.resolve();
         });
         return promise;
