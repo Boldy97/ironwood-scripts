@@ -2069,7 +2069,7 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
     const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
     const IMAGES = {
         health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
-        speed: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
+        speed: 'https://img.icons8.com/?size=48&id=TE1T4XfT3xeN',
         attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
         defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
         specialAttack: 'https://img.icons8.com/?size=48&id=18515',
