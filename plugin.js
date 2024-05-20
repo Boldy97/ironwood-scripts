@@ -2636,7 +2636,7 @@ window.moduleRegistry.add('util', () => {
         if(text.includes('Empty')) {
             return 0;
         }
-        const regexMatch = /\d+.*/.exec(text);
+        const regexMatch = /\d+[^\s]*/.exec(text);
         if(!regexMatch) {
             return 0;
         }
