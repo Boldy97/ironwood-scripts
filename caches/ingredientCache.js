@@ -4,8 +4,8 @@
 
     const exports = {
         list: [],
-        byAction: null,
-        byItem: null
+        byAction: {},
+        byItem: {}
     };
 
     async function tryInitialise() {
@@ -19,8 +19,6 @@
 
     async function initialise() {
         const ingredients = await request.listIngredients();
-        exports.byAction = {};
-        exports.byItem = {};
         for(const ingredient of ingredients) {
             if(!exports.byAction[ingredient.action]) {
                 exports.byAction[ingredient.action] = [];

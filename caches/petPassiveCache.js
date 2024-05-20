@@ -4,9 +4,9 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        idToIndex: null
+        byId: {},
+        byName: {},
+        idToIndex: {}
     };
 
     async function tryInitialise() {
@@ -20,9 +20,6 @@
 
     async function initialise() {
         const petPassives = await request.listPetPassives();
-        exports.byId = {};
-        exports.byName = {};
-        exports.idToIndex = {};
         for(const petPassive of petPassives) {
             exports.list.push(petPassive);
             exports.byId[petPassive.id] = petPassive;

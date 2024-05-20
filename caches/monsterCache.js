@@ -4,8 +4,8 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null
+        byId: {},
+        byName: {}
     };
 
     async function tryInitialise() {
@@ -19,8 +19,6 @@
 
     async function initialise() {
         const monsters = await request.listMonsters();
-        exports.byId = {};
-        exports.byName = {};
         for(const monster of monsters) {
             exports.list.push(monster);
             exports.byId[monster.id] = monster;

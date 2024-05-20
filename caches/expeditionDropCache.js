@@ -4,8 +4,8 @@
 
     const exports = {
         list: [],
-        byExpedition: null,
-        byItem: null
+        byExpedition: {},
+        byItem: {}
     };
 
     async function tryInitialise() {
@@ -19,8 +19,6 @@
 
     async function initialise() {
         const drops = await request.listExpeditionDrops();
-        exports.byExpedition = {};
-        exports.byItem = {};
         for(const drop of drops) {
             exports.list.push(drop);
             if(!exports.byExpedition[drop.expedition]) {

@@ -4,9 +4,9 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byImage: null,
+        byId: {},
+        byName: {},
+        byImage: {},
         attributes: null,
         specialIds: {
             coins: null,
@@ -62,9 +62,6 @@
 
     async function initialise() {
         const enrichedItems = await request.listItems();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
             delete item.item;

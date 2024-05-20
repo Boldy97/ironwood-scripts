@@ -4,9 +4,9 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byImage: null
+        byId: {},
+        byName: {},
+        byImage: {}
     };
 
     async function tryInitialise() {
@@ -20,9 +20,6 @@
 
     async function initialise() {
         exports.list = await request.listRecipes();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
         for(const recipe of exports.list) {
             exports.byId[recipe.id] = recipe;
             exports.byName[recipe.name] = recipe;

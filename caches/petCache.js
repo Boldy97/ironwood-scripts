@@ -4,10 +4,10 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byImage: null,
-        idToIndex: null
+        byId: {},
+        byName: {},
+        byImage: {},
+        idToIndex: {}
     };
 
     async function tryInitialise() {
@@ -21,10 +21,6 @@
 
     async function initialise() {
         const pets = await request.listPets();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
-        exports.idToIndex = {};
         for(const pet of pets) {
             exports.list.push(pet);
             exports.byId[pet.id] = pet;

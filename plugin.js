@@ -7124,8 +7124,8 @@ window.moduleRegistry.add('actionCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null
+        byId: {},
+        byName: {}
     };
 
     async function tryInitialise() {
@@ -7139,8 +7139,6 @@ window.moduleRegistry.add('actionCache', (request, Promise) => {
 
     async function initialise() {
         const actions = await request.listActions();
-        exports.byId = {};
-        exports.byName = {};
         for(const action of actions) {
             exports.list.push(action);
             exports.byId[action.id] = action;
@@ -7161,8 +7159,8 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
 
     const exports = {
         list: [],
-        byAction: null,
-        byItem: null,
+        byAction: {},
+        byItem: {},
         boneCarveMappings: null,
         lowerGatherMappings: null,
         conversionMappings: null
@@ -7196,8 +7194,6 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
 
     async function initialise() {
         const drops = await request.listDrops();
-        exports.byAction = {};
-        exports.byItem = {};
         for(const drop of drops) {
             exports.list.push(drop);
             if(!exports.byAction[drop.action]) {
@@ -7290,9 +7286,9 @@ window.moduleRegistry.add('expeditionCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byTier: null
+        byId: {},
+        byName: {},
+        byTier: {}
     };
 
     async function tryInitialise() {
@@ -7306,9 +7302,6 @@ window.moduleRegistry.add('expeditionCache', (request, Promise) => {
 
     async function initialise() {
         const expeditions = await request.listExpeditions();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byTier = {};
         for(const expedition of expeditions) {
             exports.list.push(expedition);
             exports.byId[expedition.id] = expedition;
@@ -7330,8 +7323,8 @@ window.moduleRegistry.add('expeditionDropCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byExpedition: null,
-        byItem: null
+        byExpedition: {},
+        byItem: {}
     };
 
     async function tryInitialise() {
@@ -7345,8 +7338,6 @@ window.moduleRegistry.add('expeditionDropCache', (request, Promise) => {
 
     async function initialise() {
         const drops = await request.listExpeditionDrops();
-        exports.byExpedition = {};
-        exports.byItem = {};
         for(const drop of drops) {
             exports.list.push(drop);
             if(!exports.byExpedition[drop.expedition]) {
@@ -7373,8 +7364,8 @@ window.moduleRegistry.add('ingredientCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byAction: null,
-        byItem: null
+        byAction: {},
+        byItem: {}
     };
 
     async function tryInitialise() {
@@ -7388,8 +7379,6 @@ window.moduleRegistry.add('ingredientCache', (request, Promise) => {
 
     async function initialise() {
         const ingredients = await request.listIngredients();
-        exports.byAction = {};
-        exports.byItem = {};
         for(const ingredient of ingredients) {
             if(!exports.byAction[ingredient.action]) {
                 exports.byAction[ingredient.action] = [];
@@ -7415,9 +7404,9 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byImage: null,
+        byId: {},
+        byName: {},
+        byImage: {},
         attributes: null,
         specialIds: {
             coins: null,
@@ -7473,9 +7462,6 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
 
     async function initialise() {
         const enrichedItems = await request.listItems();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
             delete item.item;
@@ -7610,8 +7596,8 @@ window.moduleRegistry.add('monsterCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null
+        byId: {},
+        byName: {}
     };
 
     async function tryInitialise() {
@@ -7625,8 +7611,6 @@ window.moduleRegistry.add('monsterCache', (request, Promise) => {
 
     async function initialise() {
         const monsters = await request.listMonsters();
-        exports.byId = {};
-        exports.byName = {};
         for(const monster of monsters) {
             exports.list.push(monster);
             exports.byId[monster.id] = monster;
@@ -7647,10 +7631,10 @@ window.moduleRegistry.add('petCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byImage: null,
-        idToIndex: null
+        byId: {},
+        byName: {},
+        byImage: {},
+        idToIndex: {}
     };
 
     async function tryInitialise() {
@@ -7664,10 +7648,6 @@ window.moduleRegistry.add('petCache', (request, Promise) => {
 
     async function initialise() {
         const pets = await request.listPets();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
-        exports.idToIndex = {};
         for(const pet of pets) {
             exports.list.push(pet);
             exports.byId[pet.id] = pet;
@@ -7703,9 +7683,9 @@ window.moduleRegistry.add('petPassiveCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        idToIndex: null
+        byId: {},
+        byName: {},
+        idToIndex: {}
     };
 
     async function tryInitialise() {
@@ -7719,9 +7699,6 @@ window.moduleRegistry.add('petPassiveCache', (request, Promise) => {
 
     async function initialise() {
         const petPassives = await request.listPetPassives();
-        exports.byId = {};
-        exports.byName = {};
-        exports.idToIndex = {};
         for(const petPassive of petPassives) {
             exports.list.push(petPassive);
             exports.byId[petPassive.id] = petPassive;
@@ -7747,16 +7724,13 @@ window.moduleRegistry.add('petTraitCache', () => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        idToIndex: null
+        byId: {},
+        byName: {},
+        idToIndex: {}
     };
 
     function initialise() {
         const traits = ['Attack & Defense', 'Attack & Special Def', 'Special Atk & Defense', 'Special Atk & Special Def'];
-        exports.byId = {};
-        exports.byName = {};
-        exports.idToIndex = {};
         for(const trait of traits) {
             const value = {
                 id: exports.list.length,
@@ -7786,9 +7760,9 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byImage: null
+        byId: {},
+        byName: {},
+        byImage: {}
     };
 
     async function tryInitialise() {
@@ -7802,9 +7776,6 @@ window.moduleRegistry.add('recipeCache', (request, Promise) => {
 
     async function initialise() {
         exports.list = await request.listRecipes();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byImage = {};
         for(const recipe of exports.list) {
             exports.byId[recipe.id] = recipe;
             exports.byName[recipe.name] = recipe;
@@ -7826,9 +7797,9 @@ window.moduleRegistry.add('skillCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byTechnicalName: null,
+        byId: {},
+        byName: {},
+        byTechnicalName: {},
     };
 
     async function tryInitialise() {
@@ -7842,9 +7813,6 @@ window.moduleRegistry.add('skillCache', (request, Promise) => {
 
     async function initialise() {
         const skills = await request.listSkills();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byTechnicalName = {};
         for(const skill of skills) {
             exports.list.push(skill);
             exports.byId[skill.id] = skill;
@@ -7925,8 +7893,8 @@ window.moduleRegistry.add('structuresCache', (request, Promise) => {
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null
+        byId: {},
+        byName: {}
     };
 
     async function tryInitialise() {
@@ -7940,8 +7908,6 @@ window.moduleRegistry.add('structuresCache', (request, Promise) => {
 
     async function initialise() {
         const structures = await request.listStructures();
-        exports.byId = {};
-        exports.byName = {};
         for(const structure of structures) {
             exports.list.push(structure);
             exports.byId[structure.id] = structure;

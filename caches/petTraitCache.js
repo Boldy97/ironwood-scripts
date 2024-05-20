@@ -2,16 +2,13 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        idToIndex: null
+        byId: {},
+        byName: {},
+        idToIndex: {}
     };
 
     function initialise() {
         const traits = ['Attack & Defense', 'Attack & Special Def', 'Special Atk & Defense', 'Special Atk & Special Def'];
-        exports.byId = {};
-        exports.byName = {};
-        exports.idToIndex = {};
         for(const trait of traits) {
             const value = {
                 id: exports.list.length,

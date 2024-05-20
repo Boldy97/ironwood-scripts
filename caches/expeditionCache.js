@@ -4,9 +4,9 @@
 
     const exports = {
         list: [],
-        byId: null,
-        byName: null,
-        byTier: null
+        byId: {},
+        byName: {},
+        byTier: {}
     };
 
     async function tryInitialise() {
@@ -20,9 +20,6 @@
 
     async function initialise() {
         const expeditions = await request.listExpeditions();
-        exports.byId = {};
-        exports.byName = {};
-        exports.byTier = {};
         for(const expedition of expeditions) {
             exports.list.push(expedition);
             exports.byId[expedition.id] = expedition;

@@ -4,8 +4,8 @@
 
     const exports = {
         list: [],
-        byAction: null,
-        byItem: null,
+        byAction: {},
+        byItem: {},
         boneCarveMappings: null,
         lowerGatherMappings: null,
         conversionMappings: null
@@ -39,8 +39,6 @@
 
     async function initialise() {
         const drops = await request.listDrops();
-        exports.byAction = {};
-        exports.byItem = {};
         for(const drop of drops) {
             exports.list.push(drop);
             if(!exports.byAction[drop.action]) {
