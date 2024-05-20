@@ -3,7 +3,10 @@
     let enabled = false;
 
     const exports = {
-        get
+        get,
+        enrichTimings,
+        enrichValues,
+        preRenderItems
     }
 
     function initialise() {
@@ -28,15 +31,16 @@
             return;
         }
         const page = events.getLast('page');
-        const stats = events.getLast('state-stats');
-        if(!page || !stats || page.type !== 'action') {
-            return;
-        }
-        const estimation = get(page.skill, page.action);
-        if(estimation) {
-            enrichTimings(estimation);
-            enrichValues(estimation);
-            render(estimation);
+        if(page?.type === 'action') {
+            const stats = events.getLast('state-stats');
+            if(stats) {
+                const estimation = get(page.skill, page.action);
+                enrichTimings(estimation);
+                enrichValues(estimation);
+                preRender(estimation, componentBlueprint);
+                preRenderItems(estimation, componentBlueprint);
+                components.addComponent(componentBlueprint);
+            }
         }
     }
 
@@ -100,49 +104,51 @@
             .reduce((a,b) => a+b, 0);
     }
 
-    function render(estimation) {
-        components.search(componentBlueprint, 'actions').value
+    function preRender(estimation, blueprint) {
+        components.search(blueprint, 'actions').value
             = util.formatNumber(estimatorAction.LOOPS_PER_HOUR / estimation.speed);
-        components.search(componentBlueprint, 'exp').hidden
+        components.search(blueprint, 'exp').hidden
             = estimation.exp === 0;
-        components.search(componentBlueprint, 'exp').value
+        components.search(blueprint, 'exp').value
             = util.formatNumber(estimation.exp);
-        components.search(componentBlueprint, 'survivalChance').hidden
+        components.search(blueprint, 'survivalChance').hidden
             = estimation.type === 'ACTIVITY';
-        components.search(componentBlueprint, 'survivalChance').value
+        components.search(blueprint, 'survivalChance').value
             = util.formatNumber(estimation.survivalChance * 100) + ' %';
-        components.search(componentBlueprint, 'finishedTime').value
+        components.search(blueprint, 'finishedTime').value
             = util.secondsToDuration(estimation.timings.finished);
-        components.search(componentBlueprint, 'levelTime').hidden
+        components.search(blueprint, 'levelTime').hidden
             = estimation.exp === 0 || estimation.timings.level === 0;
-        components.search(componentBlueprint, 'levelTime').value
+        components.search(blueprint, 'levelTime').value
             = util.secondsToDuration(estimation.timings.level);
-        components.search(componentBlueprint, 'tierTime').hidden
+        components.search(blueprint, 'tierTime').hidden
             = estimation.exp === 0 || estimation.timings.tier === 0;
-        components.search(componentBlueprint, 'tierTime').value
+        components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
-        components.search(componentBlueprint, 'dropValue').hidden
+        components.search(blueprint, 'dropValue').hidden
             = estimation.values.drop === 0;
-        components.search(componentBlueprint, 'dropValue').value
+        components.search(blueprint, 'dropValue').value
             = util.formatNumber(estimation.values.drop);
-        components.search(componentBlueprint, 'ingredientValue').hidden
+        components.search(blueprint, 'ingredientValue').hidden
             = estimation.values.ingredient === 0;
-        components.search(componentBlueprint, 'ingredientValue').value
+        components.search(blueprint, 'ingredientValue').value
             = util.formatNumber(estimation.values.ingredient);
-        components.search(componentBlueprint, 'equipmentValue').hidden
+        components.search(blueprint, 'equipmentValue').hidden
             = estimation.values.equipment === 0;
-        components.search(componentBlueprint, 'equipmentValue').value
+        components.search(blueprint, 'equipmentValue').value
             = util.formatNumber(estimation.values.equipment);
-        components.search(componentBlueprint, 'netValue').hidden
+        components.search(blueprint, 'netValue').hidden
             = estimation.values.net === 0;
-        components.search(componentBlueprint, 'netValue').value
+        components.search(blueprint, 'netValue').value
             = util.formatNumber(estimation.values.net);
-        components.search(componentBlueprint, 'tabTime').hidden
+        components.search(blueprint, 'tabTime').hidden
             = (estimation.timings.inventory.length + estimation.timings.equipment.length) === 0;
+    }
 
-        const dropRows = components.search(componentBlueprint, 'dropRows');
-        const ingredientRows = components.search(componentBlueprint, 'ingredientRows');
-        const timeRows = components.search(componentBlueprint, 'timeRows');
+    function preRenderItems(estimation, blueprint) {
+        const dropRows = components.search(blueprint, 'dropRows');
+        const ingredientRows = components.search(blueprint, 'ingredientRows');
+        const timeRows = components.search(blueprint, 'timeRows');
         dropRows.rows = [];
         ingredientRows.rows = [];
         timeRows.rows = [];
@@ -201,8 +207,6 @@
                 value: util.secondsToDuration(timing.secondsLeft)
             });
         }
-
-        components.addComponent(componentBlueprint);
     }
 
     const componentBlueprint = {

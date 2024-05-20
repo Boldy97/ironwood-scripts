@@ -1,4 +1,4 @@
-(request, toast, statsStore, EstimationGenerator, logService, events) => {
+(request, toast, statsStore, EstimationGenerator, logService, events, util) => {
 
     const exports = {
         submit
@@ -31,11 +31,7 @@
     }
 
     function exportToClipboard(data) {
-        navigator.clipboard.writeText(JSON.stringify(data));
-        toast.create({
-            text: 'Failed to forward, exported to clipboard instead',
-            image: 'https://img.icons8.com/?size=48&id=22244'
-        });
+        toast.copyToClipboard(JSON.stringify(data), 'Failed to forward, exported to clipboard instead');
     }
 
     return exports;

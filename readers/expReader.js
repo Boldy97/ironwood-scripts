@@ -15,6 +15,9 @@
         if(page.type === 'action') {
             readActionScreen(page.skill);
         }
+        if(page.type === 'taming') {
+            readTamingScreen();
+        }
         readSidebar();
     }
 
@@ -27,6 +30,20 @@
             .text();
         const exp = util.parseNumber(text);
         emitEvent([{ id, exp }]);
+    }
+
+    function readTamingScreen() {
+        const text = $('taming-page .header > .name:contains("Stats")')
+            .closest('.card')
+            .find('.row > .name:contains("Total"):contains("XP")')
+            .closest('.row')
+            .find('.amount')
+            .text();
+        const exp = util.parseNumber(text);
+        emitEvent([{
+            exp,
+            id: skillCache.byName['Taming'].id
+        }]);
     }
 
     function readSidebar() {

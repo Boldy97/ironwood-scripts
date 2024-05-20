@@ -196,6 +196,8 @@
             headerName = 'House';
         } else if(page.type === 'automation') {
             headerName = 'House';
+        } else if(page.type === 'taming') {
+            headerName = 'Taming';
         } else {
             headerName = page.type;
             headerName = headerName.charAt(0).toUpperCase() + headerName.slice(1);

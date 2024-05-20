@@ -1,0 +1,332 @@
+(events, estimator, components, petUtil, util, skillCache, itemCache, petCache, colorMapper, petHighlighter, configuration, expeditionDropCache) => {
+
+    let enabled = false;
+
+    const exports = {
+        get
+    };
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-estimations',
+            name: 'Estimations',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', update);
+        events.register('state-stats', update);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function update() {
+        if(!enabled) {
+            return;
+        }
+        const page = events.getLast('page');
+        if(page?.type === 'taming' && page.menu === 'expeditions' && page.tier) {
+            const estimation = get(page.tier);
+            estimator.enrichTimings(estimation);
+            estimator.enrichValues(estimation);
+            preRender(estimation, componentBlueprint);
+            estimator.preRenderItems(estimation, componentBlueprint);
+            components.addComponent(componentBlueprint);
+            return;
+        }
+        components.removeComponent(componentBlueprint);
+    }
+
+    function get(tier) {
+        const teamStats = events.getLast('state-pet')
+            .filter(pet => pet.partOfTeam)
+            .map(petUtil.petToStats);
+        const totalStats = util.sumObjects(teamStats);
+        const expedition = petUtil.getExpeditionStats(tier);
+        const successChance = getSuccessChance(totalStats, expedition);
+
+        const ingredients = {
+            [itemCache.byName['Pet Snacks'].id]: Math.floor(expedition.food / 4 * (1 + totalStats.hunger / 100)) * 4
+        };
+
+        const drops = {};
+        const expeditionDrops = expeditionDropCache.byExpedition[expedition.id];
+        for(const drop of expeditionDrops) {
+            if(totalStats[drop.type]) {
+                drops[drop.item] = drop.amount * totalStats[drop.type];
+            }
+        }
+
+        return {
+            tier,
+            successChance,
+            ingredients,
+            drops,
+            teamStats,
+            totalStats,
+            exp: expedition.exp,
+            skill: skillCache.byName['Taming'].id,
+            equipments: {}
+        };
+    }
+
+    function getSuccessChance(stats, expedition) {
+        const attackRatio = Math.max(stats.attack / expedition.stats.defense, stats.specialAttack / expedition.stats.specialDefense);
+        let defenseRatio = 0;
+        if(expedition.rotation.attack) {
+            defenseRatio = expedition.stats.attack / stats.defense;
+        } else {
+            defenseRatio = expedition.stats.specialAttack / stats.specialDefense;
+        }
+        const damageRatio = attackRatio / defenseRatio;
+        const healthRatio = stats.health / expedition.stats.health;
+        const speedRatio = stats.speed / expedition.stats.speed;
+        const successChance = 100 * damageRatio * healthRatio * speedRatio + stats.stealth;
+        return Math.min(100, Math.max(0, successChance));
+    }
+
+    function preRender(estimation, blueprint) {
+        components.search(blueprint, 'successChance').value
+            = util.formatNumber(estimation.successChance);
+        components.search(blueprint, 'exp').value
+            = util.formatNumber(estimation.exp);
+        components.search(blueprint, 'expActual').value
+            = util.formatNumber(estimation.exp * estimation.successChance / 100);
+        components.search(blueprint, 'levelTime').value
+            = util.secondsToDuration(estimation.timings.level);
+        components.search(blueprint, 'tierTime').value
+            = util.secondsToDuration(estimation.timings.tier);
+        components.search(blueprint, 'dropValue').value
+            = util.formatNumber(estimation.values.drop);
+        components.search(blueprint, 'ingredientValue').value
+            = util.formatNumber(estimation.values.ingredient);
+        components.search(blueprint, 'netValue').value
+            = util.formatNumber(estimation.values.net);
+        components.search(blueprint, 'teamSize').value
+            = util.formatNumber(estimation.teamStats.length);
+        for(const stat of petUtil.STATS_BASE) {
+            components.search(blueprint, `teamStat-${stat}`).value
+                = util.formatNumber(estimation.totalStats[stat]);
+        }
+        for(const stat of petUtil.STATS_SPECIAL) {
+            components.search(blueprint, `teamStat-${stat}`).value
+                = util.formatNumber(estimation.totalStats[stat]) + ' %';
+        }
+    }
+
+    function calculateOptimizedTeam() {
+        const petsAndStats = events.getLast('state-pet')
+            .filter(pet => pet.parsed)
+            .map(pet => ({
+                pet,
+                stats: petUtil.petToStats(pet)
+            }));
+        // make all combinations of 3 pets of different species (same family is allowed)
+        const combinations = util.generateCombinations(petsAndStats, 3, object => object.pet.species);
+        if(!combinations.length) {
+            return;
+        }
+        console.debug(`Calculating ${combinations.length} team combinations`);
+        const tier = events.getLast('page').tier;
+        const expedition = petUtil.getExpeditionStats(tier);
+        let bestSuccessChance = 0;
+        let bestCombination = null;
+        for(const combination of combinations) {
+            const teamStats = combination.map(a => a.stats);
+            const totalStats = util.sumObjects(teamStats);
+            const successChance = getSuccessChance(totalStats, expedition);
+            if(successChance > bestSuccessChance) {
+                bestCombination = combination;
+            }
+        }
+
+        const teamRows = components.search(componentBlueprint, 'optimalTeamRows');
+        teamRows.rows = [{
+            type: 'header',
+            title: `Expedition T${tier} : ${expedition.name} (${combinations.length} combinations)`,
+            name: 'Highlight',
+            action: () => {
+                const color = colorMapper('success');
+                petHighlighter.highlight(color, bestCombination.map(a => a.pet.name));
+                $('taming-page .header:contains("Menu") ~ button:contains("Pets")').click()
+            }
+        }];
+        for(const object of bestCombination) {
+            teamRows.rows.push({
+                type: 'item',
+                name: object.pet.name,
+                image: `/assets/${petCache.byId[object.pet.species].image}`,
+                imagePixelated: true,
+            });
+        }
+        components.addComponent(componentBlueprint);
+    }
+
+    const componentBlueprint = {
+        componentId: 'tamingEstimatorComponent',
+        dependsOn: 'taming-page',
+        parent: 'taming-page > .groups > .group:last-child',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'Overview',
+            rows: [{
+                type: 'item',
+                id: 'successChance',
+                name: 'Success chance',
+                image: 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'exp',
+                name: 'Exp/hour',
+                image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'expActual',
+                name: 'Exp/hour (weighted)',
+                image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'levelTime',
+                name: 'Level up',
+                image: 'https://cdn-icons-png.flaticon.com/512/4614/4614145.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'tierTime',
+                name: 'Tier up',
+                image: 'https://cdn-icons-png.flaticon.com/512/4789/4789514.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'dropValue',
+                name: 'Gold/hour (loot)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'ingredientValue',
+                name: 'Gold/hour (materials)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'netValue',
+                name: 'Gold/hour (total)',
+                image: 'https://cdn-icons-png.flaticon.com/512/11937/11937869.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            }]
+        },{
+            title: 'Items',
+            rows: [{
+                type: 'header',
+                title: 'Produced'
+            },{
+                type: 'segment',
+                id: 'dropRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Consumed'
+            },{
+                type: 'segment',
+                id: 'ingredientRows',
+                rows: []
+            }]
+        },{
+            title: 'Time',
+            rows: [{
+                type: 'segment',
+                id: 'timeRows',
+                rows: []
+            }]
+        },{
+            title: 'Team',
+            rows: [{
+                type: 'header',
+                title: 'Calculate optimal team',
+                name: 'Run',
+                action: calculateOptimizedTeam
+            },{
+                type: 'segment',
+                id: 'optimalTeamRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Stats'
+            },{
+                type: 'item',
+                id: 'teamSize',
+                name: 'Size',
+                image: 'https://img.icons8.com/?size=48&id=8183',
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-health',
+                name: 'Health',
+                image: petUtil.IMAGES.health,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-speed',
+                name: 'Speed',
+                image: petUtil.IMAGES.speed,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-attack',
+                name: 'Attack',
+                image: petUtil.IMAGES.attack,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-specialAttack',
+                name: 'Special Attack',
+                image: petUtil.IMAGES.specialAttack,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-defense',
+                name: 'Defense',
+                image: petUtil.IMAGES.defense,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-specialDefense',
+                name: 'Special Defense',
+                image: petUtil.IMAGES.specialDefense,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-hunger',
+                name: 'Hunger',
+                image: petUtil.IMAGES.hunger,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-stealth',
+                name: 'Stealth',
+                image: petUtil.IMAGES.stealth,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-loot',
+                name: 'Loot',
+                image: petUtil.IMAGES.loot,
+                value: ''
+            }]
+        }]
+    };
+
+    initialise();
+
+    return exports;
+
+}

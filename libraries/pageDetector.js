@@ -1,16 +1,35 @@
 (events, elementWatcher, util) => {
 
-    const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
+    const debouncedUpdate = util.debounce(update, 100);
 
     async function initialise() {
-        registerUrlHandler(util.debounce(handleUrl, 200));
+        events.register('url', debouncedUpdate);
+        $(document).on('click', 'taming-page .header:contains("Menu") ~ button', () => debouncedUpdate());
+        $(document).on('click', 'taming-page .header:contains("Expeditions") ~ button', () => debouncedUpdate());
+        $(document).on('click', 'taming-page .header:contains("Expeditions") > button', () => debouncedUpdate());
     }
 
-    async function handleUrl(url) {
+    async function update(url) {
+        if(!url) {
+            url = events.getLast('url');
+        }
         let result = null;
         const parts = url.split('/');
-        if(url.includes('/skill/') && url.includes('/action/')) {
+        await elementWatcher.idle();
+        if(url.includes('/skill/15')) {
+            const menu = $('taming-page .header:contains("Menu") ~ button.row-active .name').text().toLowerCase();
+            let tier = 0;
+            if(menu === 'expeditions') {
+                const level = util.parseNumber($('taming-page .header:contains("Expeditions") ~ button.row-active .level').text());
+                tier = util.levelToTier(level);
+            }
+            result = {
+                type: 'taming',
+                menu,
+                tier
+            };
+        } else if(url.includes('/skill/') && url.includes('/action/')) {
             result = {
                 type: 'action',
                 skill: +parts[parts.length-3],
@@ -37,7 +56,6 @@
                 type: parts.pop()
             };
         }
-        await elementWatcher.idle();
         emitEvent(result);
     }
 

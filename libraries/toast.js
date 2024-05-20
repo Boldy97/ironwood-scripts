@@ -1,7 +1,8 @@
 (util, elementCreator) => {
 
     const exports = {
-        create
+        create,
+        copyToClipboard
     };
 
     function initialise() {
@@ -35,6 +36,14 @@
         await util.sleep(config.time);
         $(`#${notificationId}`).fadeOut('slow', () => {
             $(`#${notificationId}`).remove();
+        });
+    }
+
+    function copyToClipboard(text, message) {
+        navigator.clipboard.writeText(text);
+        create({
+            text: message,
+            image: 'https://img.icons8.com/?size=48&id=22244'
         });
     }
 

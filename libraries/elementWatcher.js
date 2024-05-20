@@ -4,7 +4,8 @@
         exists,
         childAdded,
         childAddedContinuous,
-        idle
+        idle,
+        addRecursiveObserver
     }
 
     const $ = window.$;
@@ -48,6 +49,32 @@
             }
         });
         observer.observe(parent, { childList: true });
+    }
+
+    async function addRecursiveObserver(callback, ...chain) {
+        const root = await exists(chain[0]);
+        chain = chain.slice(1).map(a => a.toUpperCase());
+        _addRecursiveObserver(callback, root, chain);
+    }
+
+    function _addRecursiveObserver(callback, element, chain) {
+        if(chain.length === 0) {
+            callback(element);
+        }
+        const observer = new MutationObserver(function(mutations, observer) {
+            const match = mutations
+                .flatMap(a => Array.from(a.addedNodes))
+                .find(a => a.tagName === chain[0]);
+            if(match) {
+                _addRecursiveObserver(callback, match, chain.slice(1));
+            }
+        });
+        observer.observe(element, { childList: true });
+        for(const child of element.children) {
+            if(child.tagName === chain[0]) {
+                _addRecursiveObserver(callback, child, chain.slice(1));
+            }
+        }
     }
 
     async function idle() {

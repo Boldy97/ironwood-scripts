@@ -1164,7 +1164,8 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
         exists,
         childAdded,
         childAddedContinuous,
-        idle
+        idle,
+        addRecursiveObserver
     }
 
     const $ = window.$;
@@ -1208,6 +1209,32 @@ window.moduleRegistry.add('elementWatcher', (Promise) => {
             }
         });
         observer.observe(parent, { childList: true });
+    }
+
+    async function addRecursiveObserver(callback, ...chain) {
+        const root = await exists(chain[0]);
+        chain = chain.slice(1).map(a => a.toUpperCase());
+        _addRecursiveObserver(callback, root, chain);
+    }
+
+    function _addRecursiveObserver(callback, element, chain) {
+        if(chain.length === 0) {
+            callback(element);
+        }
+        const observer = new MutationObserver(function(mutations, observer) {
+            const match = mutations
+                .flatMap(a => Array.from(a.addedNodes))
+                .find(a => a.tagName === chain[0]);
+            if(match) {
+                _addRecursiveObserver(callback, match, chain.slice(1));
+            }
+        });
+        observer.observe(element, { childList: true });
+        for(const child of element.children) {
+            if(child.tagName === chain[0]) {
+                _addRecursiveObserver(callback, child, chain.slice(1));
+            }
+        }
     }
 
     async function idle() {
@@ -1556,7 +1583,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 4);
+        const request = window.indexedDB.open(databaseName, 5);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -1585,6 +1612,11 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
             if(event.oldVersion <= 3) {
                 db
                     .createObjectStore('component-tabs', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 4) {
+                db
+                    .createObjectStore('various', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });
             }
         };
@@ -1669,17 +1701,36 @@ window.moduleRegistry.add('logService', () => {
 // pageDetector
 window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
 
-    const registerUrlHandler = events.register.bind(null, 'url');
     const emitEvent = events.emit.bind(null, 'page');
+    const debouncedUpdate = util.debounce(update, 100);
 
     async function initialise() {
-        registerUrlHandler(util.debounce(handleUrl, 200));
+        events.register('url', debouncedUpdate);
+        $(document).on('click', 'taming-page .header:contains("Menu") ~ button', () => debouncedUpdate());
+        $(document).on('click', 'taming-page .header:contains("Expeditions") ~ button', () => debouncedUpdate());
+        $(document).on('click', 'taming-page .header:contains("Expeditions") > button', () => debouncedUpdate());
     }
 
-    async function handleUrl(url) {
+    async function update(url) {
+        if(!url) {
+            url = events.getLast('url');
+        }
         let result = null;
         const parts = url.split('/');
-        if(url.includes('/skill/') && url.includes('/action/')) {
+        await elementWatcher.idle();
+        if(url.includes('/skill/15')) {
+            const menu = $('taming-page .header:contains("Menu") ~ button.row-active .name').text().toLowerCase();
+            let tier = 0;
+            if(menu === 'expeditions') {
+                const level = util.parseNumber($('taming-page .header:contains("Expeditions") ~ button.row-active .level').text());
+                tier = util.levelToTier(level);
+            }
+            result = {
+                type: 'taming',
+                menu,
+                tier
+            };
+        } else if(url.includes('/skill/') && url.includes('/action/')) {
             result = {
                 type: 'action',
                 skill: +parts[parts.length-3],
@@ -1701,16 +1752,11 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
                 structure: +parts[parts.length-2],
                 action: +parts[parts.length-1]
             };
-        } else if(url.includes('/skill/15')) {
-            result = {
-                type: 'taming'
-            };
         } else {
             result = {
                 type: parts.pop()
             };
         }
-        await elementWatcher.idle();
         emitEvent(result);
     }
 
@@ -2000,12 +2046,31 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
 }
 );
 // petUtil
-window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache) => {
+window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, expeditionCache, util) => {
 
+    const STATS_BASE = ['health', 'speed', 'attack', 'specialAttack', 'defense', 'specialDefense'];
+    const STATS_SPECIAL = ['hunger', 'stealth', 'loot'];
+    const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
+    const IMAGES = {
+        health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
+        speed: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
+        attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
+        defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
+        specialAttack: 'https://img.icons8.com/?size=48&id=18515',
+        specialDefense: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
+        hunger: 'https://img.icons8.com/?size=48&id=AXExnoyylJdK',
+        stealth: 'https://img.icons8.com/?size=48&id=4GYmMTXrMp8g',
+        loot: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8'
+    };
     const exports = {
+        STATS_BASE,
+        STATS_SPECIAL,
+        IMAGES,
         petToText,
         textToPet,
-        isEncodedPetName
+        isEncodedPetName,
+        petToStats,
+        getExpeditionStats
     };
 
     const SPECIAL_CHAR = '_';
@@ -2017,6 +2082,9 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache) 
         ...Array(6).fill(50), // stats
         ...Array(4).fill(petPassiveCache.list.length+1) // passives, 0 = empty
     ];
+
+    const MILLIS_PER_MINUTE = 1000*60;
+    const MILLIS_PER_WEEK = 1000*60*60*24*7;
 
     function numberToText(number) {
         let text = SPECIAL_CHAR;
@@ -2114,6 +2182,64 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache) 
 
     function isEncodedPetName(text) {
         return text.startsWith(SPECIAL_CHAR);
+    }
+
+    function petToStats(pet) {
+        const result = {};
+        const passives = pet.passives.map(id => petPassiveCache.byId[id]);
+        const traits = petTraitCache.byId[pet.traits];
+        for(const stat of STATS_BASE) {
+            result[stat] = 0;
+            let value = (petCache.byId[pet.species].power + pet[stat] / 2 - 10) / 100 * pet.level + 10;
+            value *= traits[stat] ? 1.25 : 1;
+            const passive = passives.find(a => a.stats.name === stat + 'Percent');
+            if(passive) {
+                value *= 1 + passive.stats.value / 100;
+            }
+            result[stat] += value;
+        }
+        for(const stat of STATS_SPECIAL) {
+            result[stat] = 0;
+            const passive = passives.find(a => a.stats.name === stat + 'Percent');
+            if(passive) {
+                result[stat] += passive.stats.value;
+            }
+        }
+        for(const ability of STATS_ABILITIES) {
+            result[ability] = 0;
+        }
+        const abilities = petCache.byId[pet.species].abilities;
+        for(const ability of abilities) {
+            const key = Object.keys(ability)[0];
+            result[key] = ability[key];
+        }
+        for(const key of Object.keys(result)) {
+            result[key] = Math.round(result[key]);
+        }
+        return result;
+    }
+
+    function getExpeditionStats(tier) {
+        const expedition = expeditionCache.byTier[tier];
+        const rotation = getCurrentRotation(expedition.tier);
+        const stats = {};
+        for(const stat of STATS_BASE) {
+            stats[stat] = expedition.power;
+            if(rotation[stat]) {
+                stats[stat] *= 1.25;
+            }
+        }
+        return Object.assign({rotation,stats}, expedition);
+    }
+
+    function getCurrentRotation(offset) {
+        const now = new Date();
+        const date = new Date(now.getTime() + MILLIS_PER_MINUTE * now.getTimezoneOffset());
+        const millisPassed = util.startOfWeek(date) - util.startOfWeek(util.startOfYear(date));
+        const startOfWeek = util.startOfWeek(date);
+        let index = 2 + offset + Math.round(millisPassed / MILLIS_PER_WEEK);
+        index %= petTraitCache.list.length;
+        return petTraitCache.byId[index];
     }
 
     return exports;
@@ -2256,6 +2382,8 @@ window.moduleRegistry.add('request', () => {
 
     request.listActions = () => request('public/list/action');
     request.listDrops = () => request('public/list/drop');
+    request.listExpeditions = () => request('public/list/expedition');
+    request.listExpeditionDrops = () => request('public/list/expeditionDrop');
     request.listItems = () => request('public/list/item');
     request.listItemAttributes = () => request('public/list/itemAttribute');
     request.listIngredients = () => request('public/list/ingredient');
@@ -2370,6 +2498,7 @@ window.moduleRegistry.add('util', () => {
         expToNextLevel,
         expToNextTier,
         tierToLevel,
+        levelToTier,
         formatNumber,
         parseNumber,
         secondsToDuration,
@@ -2379,7 +2508,12 @@ window.moduleRegistry.add('util', () => {
         goToPage,
         compareObjects,
         debounce,
-        distinct
+        distinct,
+        getDuplicates,
+        sumObjects,
+        startOfWeek,
+        startOfYear,
+        generateCombinations
     };
 
     function levelToExp(level) {
@@ -2426,6 +2560,13 @@ window.moduleRegistry.add('util', () => {
             return tier;
         }
         return tier * 15 - 20;
+    }
+
+    function levelToTier(level) {
+        if(level <= 1) {
+            return level;
+        }
+        return (level + 20) / 15;
     }
 
     function formatNumber(number) {
@@ -2577,6 +2718,69 @@ window.moduleRegistry.add('util', () => {
         });
     }
 
+    function getDuplicates(array) {
+        const sorted = array.slice().sort();
+        const result = [];
+        for(let i=0;i<sorted.length-1;i++) {
+            if(sorted[i+1] == sorted[i]) {
+                result.push(sorted[i]);
+            }
+        }
+        return result;
+    }
+
+    function sumObjects(array) {
+        const result = {};
+        for(const element of array) {
+            for(const key of Object.keys(element)) {
+                if(typeof element[key] === 'number') {
+                    result[key] = (result[key] || 0) + element[key];
+                }
+            }
+        }
+        return result;
+    }
+
+    function startOfWeek(date) {
+        const result = new Date();
+        result.setDate(date.getDate() - date.getDay());
+        result.setHours(0,0,0,0);
+        return result;
+    }
+
+    function startOfYear(date) {
+        const result = new Date(date.getFullYear(), 0, 1);
+        return result;
+    }
+
+    function generateCombinations(objects, count, grouper) {
+        const objectsByGroup = {};
+        for(const object of objects) {
+            const group = grouper(object);
+            if(!objectsByGroup[group]) {
+                objectsByGroup[group] = [];
+            }
+            objectsByGroup[group].push(object);
+        }
+        const result = [];
+        const groups = Object.keys(objectsByGroup);
+        addOneCombination(result, objectsByGroup, groups, count);
+        return result;
+    }
+
+    function addOneCombination(result, objectsByGroup, groups, count, combination = [], groupStart = 0) {
+        if(!count) {
+            result.push(combination);
+            return;
+        }
+        for(let i=groupStart;i<groups.length-count+1;i++) {
+            const contents = objectsByGroup[groups[i]];
+            for(let j=0;j<contents.length;j++) {
+                addOneCombination(result, objectsByGroup, groups, count-1, combination.concat([contents[j]]), i+1);
+            }
+        }
+    }
+
     return exports;
 
 }
@@ -2689,6 +2893,9 @@ window.moduleRegistry.add('expReader', (events, skillCache, util) => {
         if(page.type === 'action') {
             readActionScreen(page.skill);
         }
+        if(page.type === 'taming') {
+            readTamingScreen();
+        }
         readSidebar();
     }
 
@@ -2701,6 +2908,20 @@ window.moduleRegistry.add('expReader', (events, skillCache, util) => {
             .text();
         const exp = util.parseNumber(text);
         emitEvent([{ id, exp }]);
+    }
+
+    function readTamingScreen() {
+        const text = $('taming-page .header > .name:contains("Stats")')
+            .closest('.card')
+            .find('.row > .name:contains("Total"):contains("XP")')
+            .closest('.row')
+            .find('.amount')
+            .text();
+        const exp = util.parseNumber(text);
+        emitEvent([{
+            exp,
+            id: skillCache.byName['Taming'].id
+        }]);
     }
 
     function readSidebar() {
@@ -2783,6 +3004,9 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
         if(page.type === 'action') {
             readActionScreen();
         }
+        if(page.type === 'taming' && page.menu === 'expeditions') {
+            readExpeditionsScreen();
+        }
     }
 
     function readInventoryScreen() {
@@ -2799,6 +3023,17 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
     function readActionScreen() {
         const inventory = {};
         $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((i,element) => {
+            itemUtil.extractItem(element, inventory);
+        });
+        emitEvent({
+            type: 'partial',
+            value: inventory
+        });
+    }
+
+    function readExpeditionsScreen() {
+        const inventory = {};
+        $('taming-page .heading:contains("Materials") + button').each((i,element) => {
             itemUtil.extractItem(element, inventory);
         });
         emitEvent({
@@ -2888,58 +3123,64 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
 }
 );
 // petReader
-window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTraitCache) => {
+window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTraitCache, elementWatcher, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-pet');
 
     function initialise() {
-        events.register('page', update);
-        $(document).on('click', 'button.row.ng-star-inserted', update);
-        window.setInterval(update, 1000);
+        events.register('page', handlePage);
+        elementWatcher.addRecursiveObserver(readPetModal, 'app-component > div.scroll div.wrapper', 'taming-page', 'modal-component');
     }
 
-    function update() {
-        const page = events.getLast('page');
-        if(!page) {
-            return;
-        }
-        if(page.type === 'taming' && $('taming-page .header:contains("Menu") ~ button.row-active').text().startsWith('Pets')) {
+    function handlePage(page) {
+        if(page.type === 'taming' && page.menu === 'pets') {
             readTamingScreen();
-        }
-        if(page.type === 'taming' && $('modal-component .pet-background').length) {
-            readPetModal();
         }
     }
 
     function readTamingScreen() {
         const elements = $('button.row.ng-star-inserted').get();
         const values = [];
-        for(const element of elements) {
+        for(let element of elements) {
+            element = $(element);
+            const image = element.find('.image img').attr('src').split('/').at(-1);
+            const name = element.find('.image').next().find('.flex > :nth-child(1)')[0].textContent;
+            const level = util.parseNumber(element.find('.image').next().find('.flex > :nth-child(2)')[0].textContent);
+            const partOfTeam = !!element.closest('.card').find('.header:contains("Expedition Team")').length;
             values.push({
-                name: $(element).find('.image').next().find('.flex > :first-child')[0].textContent,
-                element
+                parsed: false,
+                species: petCache.byImage[image].id,
+                family: petCache.byImage[image].family,
+                name,
+                level,
+                partOfTeam,
+                element: element.get()
             });
         }
         emitEvent({
-            type: 'names',
+            type: 'list',
             value: values
         });
     }
 
-    function readPetModal() {
-        const image = $('modal-component .header img').attr('src').split('/').at(-1);
-        const name = $('modal-component .header .description button').text().trim();
-        const traits = $('modal-component .name:contains("Traits")').next().text();
-        const health = +($('modal-component .name:contains("Health")').next().text().match('\\((\\d+)%\\)')[1]);
-        const attack = +($('modal-component .name:contains("Attack")').next().text().match('\\((\\d+)%\\)')[1]);
-        const defense = +($('modal-component .name:contains("Defense")').next().text().match('\\((\\d+)%\\)')[1]);
-        const specialAttack = +($('modal-component .name:contains("Sp. Atk")').next().text().match('\\((\\d+)%\\)')[1]);
-        const specialDefense = +($('modal-component .name:contains("Sp. Def")').next().text().match('\\((\\d+)%\\)')[1]);
-        const speed = +($('modal-component .name:contains("Speed")').next().text().match('\\((\\d+)%\\)')[1]);
-        const passives = $('modal-component .name:contains("Total")').parent().nextAll('.row').find('.name').get().map(a => a.innerText);
+    function readPetModal(modal) {
+        if(!$(modal).find('.name:contains("Traits")').length) {
+            return; // avoid triggering on other modals
+        }
+        const image = $(modal).find('.header img').attr('src').split('/').at(-1);
+        const name = $(modal).find('.header .description button').text().trim();
+        const traits = $(modal).find('.name:contains("Traits")').next().text();
+        const health = +($(modal).find('.name:contains("Health") + .mono').text().match('\\((\\d+)%\\)')[1]);
+        const attack = +($(modal).find('.name:contains("Attack") + .mono').text().match('\\((\\d+)%\\)')[1]);
+        const defense = +($(modal).find('.name:contains("Defense") + .mono').text().match('\\((\\d+)%\\)')[1]);
+        const specialAttack = +($(modal).find('.name:contains("Sp. Atk") + .mono').text().match('\\((\\d+)%\\)')[1]);
+        const specialDefense = +($(modal).find('.name:contains("Sp. Def") + .mono').text().match('\\((\\d+)%\\)')[1]);
+        const speed = +($(modal).find('.name:contains("Speed") + .mono').text().match('\\((\\d+)%\\)')[1]);
+        const passives = $(modal).find('.name:contains("Total")').parent().nextAll('.row').find('.name').get().map(a => a.innerText);
         const pet = {
             parsed: true,
             species: petCache.byImage[image].id,
+            family: petCache.byImage[image].family,
             name,
             traits: petTraitCache.byName[traits].id,
             health,
@@ -2950,9 +3191,23 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTr
             speed,
             passives: passives.map(a => petPassiveCache.byName[a].id)
         };
+        const healthRow = $(modal).find('.name:contains("Health") + .mono').parent();
+        if(!healthRow.hasClass('stat-health')) {
+            $(modal).find('.name:contains("Health") + .mono').parent().addClass('stat-health');
+            $(modal).find('.name:contains("Attack") + .mono').parent().addClass('stat-attack');
+            $(modal).find('.name:contains("Defense") + .mono').parent().addClass('stat-defense');
+            $(modal).find('.name:contains("Sp. Atk") + .mono').parent().addClass('stat-specialAttack');
+            $(modal).find('.name:contains("Sp. Def") + .mono').parent().addClass('stat-specialDefense');
+            $(modal).find('.name:contains("Speed") + .mono').parent().addClass('stat-speed');
+            for(const id of pet.passives) {
+                const passive = petPassiveCache.byId[id];
+                $(modal).find(`.name:contains("${passive.name}")`).parent().addClass(`passive-${passive.stats.name}`);
+            }
+        }
         emitEvent({
-            type: 'pet',
-            value: pet
+            type: 'single',
+            value: pet,
+            modal: modal
         });
     }
 
@@ -3310,7 +3565,10 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
     let enabled = false;
 
     const exports = {
-        get
+        get,
+        enrichTimings,
+        enrichValues,
+        preRenderItems
     }
 
     function initialise() {
@@ -3335,15 +3593,16 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             return;
         }
         const page = events.getLast('page');
-        const stats = events.getLast('state-stats');
-        if(!page || !stats || page.type !== 'action') {
-            return;
-        }
-        const estimation = get(page.skill, page.action);
-        if(estimation) {
-            enrichTimings(estimation);
-            enrichValues(estimation);
-            render(estimation);
+        if(page?.type === 'action') {
+            const stats = events.getLast('state-stats');
+            if(stats) {
+                const estimation = get(page.skill, page.action);
+                enrichTimings(estimation);
+                enrichValues(estimation);
+                preRender(estimation, componentBlueprint);
+                preRenderItems(estimation, componentBlueprint);
+                components.addComponent(componentBlueprint);
+            }
         }
     }
 
@@ -3407,49 +3666,51 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             .reduce((a,b) => a+b, 0);
     }
 
-    function render(estimation) {
-        components.search(componentBlueprint, 'actions').value
+    function preRender(estimation, blueprint) {
+        components.search(blueprint, 'actions').value
             = util.formatNumber(estimatorAction.LOOPS_PER_HOUR / estimation.speed);
-        components.search(componentBlueprint, 'exp').hidden
+        components.search(blueprint, 'exp').hidden
             = estimation.exp === 0;
-        components.search(componentBlueprint, 'exp').value
+        components.search(blueprint, 'exp').value
             = util.formatNumber(estimation.exp);
-        components.search(componentBlueprint, 'survivalChance').hidden
+        components.search(blueprint, 'survivalChance').hidden
             = estimation.type === 'ACTIVITY';
-        components.search(componentBlueprint, 'survivalChance').value
+        components.search(blueprint, 'survivalChance').value
             = util.formatNumber(estimation.survivalChance * 100) + ' %';
-        components.search(componentBlueprint, 'finishedTime').value
+        components.search(blueprint, 'finishedTime').value
             = util.secondsToDuration(estimation.timings.finished);
-        components.search(componentBlueprint, 'levelTime').hidden
+        components.search(blueprint, 'levelTime').hidden
             = estimation.exp === 0 || estimation.timings.level === 0;
-        components.search(componentBlueprint, 'levelTime').value
+        components.search(blueprint, 'levelTime').value
             = util.secondsToDuration(estimation.timings.level);
-        components.search(componentBlueprint, 'tierTime').hidden
+        components.search(blueprint, 'tierTime').hidden
             = estimation.exp === 0 || estimation.timings.tier === 0;
-        components.search(componentBlueprint, 'tierTime').value
+        components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
-        components.search(componentBlueprint, 'dropValue').hidden
+        components.search(blueprint, 'dropValue').hidden
             = estimation.values.drop === 0;
-        components.search(componentBlueprint, 'dropValue').value
+        components.search(blueprint, 'dropValue').value
             = util.formatNumber(estimation.values.drop);
-        components.search(componentBlueprint, 'ingredientValue').hidden
+        components.search(blueprint, 'ingredientValue').hidden
             = estimation.values.ingredient === 0;
-        components.search(componentBlueprint, 'ingredientValue').value
+        components.search(blueprint, 'ingredientValue').value
             = util.formatNumber(estimation.values.ingredient);
-        components.search(componentBlueprint, 'equipmentValue').hidden
+        components.search(blueprint, 'equipmentValue').hidden
             = estimation.values.equipment === 0;
-        components.search(componentBlueprint, 'equipmentValue').value
+        components.search(blueprint, 'equipmentValue').value
             = util.formatNumber(estimation.values.equipment);
-        components.search(componentBlueprint, 'netValue').hidden
+        components.search(blueprint, 'netValue').hidden
             = estimation.values.net === 0;
-        components.search(componentBlueprint, 'netValue').value
+        components.search(blueprint, 'netValue').value
             = util.formatNumber(estimation.values.net);
-        components.search(componentBlueprint, 'tabTime').hidden
+        components.search(blueprint, 'tabTime').hidden
             = (estimation.timings.inventory.length + estimation.timings.equipment.length) === 0;
+    }
 
-        const dropRows = components.search(componentBlueprint, 'dropRows');
-        const ingredientRows = components.search(componentBlueprint, 'ingredientRows');
-        const timeRows = components.search(componentBlueprint, 'timeRows');
+    function preRenderItems(estimation, blueprint) {
+        const dropRows = components.search(blueprint, 'dropRows');
+        const ingredientRows = components.search(blueprint, 'ingredientRows');
+        const timeRows = components.search(blueprint, 'timeRows');
         dropRows.rows = [];
         ingredientRows.rows = [];
         timeRows.rows = [];
@@ -3508,8 +3769,6 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
                 value: util.secondsToDuration(timing.secondsLeft)
             });
         }
-
-        components.addComponent(componentBlueprint);
     }
 
     const componentBlueprint = {
@@ -4128,6 +4387,340 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
         }
         return 1 - deathChance;
     }
+
+    return exports;
+
+}
+);
+// estimatorExpeditions
+window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components, petUtil, util, skillCache, itemCache, petCache, colorMapper, petHighlighter, configuration, expeditionDropCache) => {
+
+    let enabled = false;
+
+    const exports = {
+        get
+    };
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-estimations',
+            name: 'Estimations',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', update);
+        events.register('state-stats', update);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function update() {
+        if(!enabled) {
+            return;
+        }
+        const page = events.getLast('page');
+        if(page?.type === 'taming' && page.menu === 'expeditions' && page.tier) {
+            const estimation = get(page.tier);
+            estimator.enrichTimings(estimation);
+            estimator.enrichValues(estimation);
+            preRender(estimation, componentBlueprint);
+            estimator.preRenderItems(estimation, componentBlueprint);
+            components.addComponent(componentBlueprint);
+            return;
+        }
+        components.removeComponent(componentBlueprint);
+    }
+
+    function get(tier) {
+        const teamStats = events.getLast('state-pet')
+            .filter(pet => pet.partOfTeam)
+            .map(petUtil.petToStats);
+        const totalStats = util.sumObjects(teamStats);
+        const expedition = petUtil.getExpeditionStats(tier);
+        const successChance = getSuccessChance(totalStats, expedition);
+
+        const ingredients = {
+            [itemCache.byName['Pet Snacks'].id]: Math.floor(expedition.food / 4 * (1 + totalStats.hunger / 100)) * 4
+        };
+
+        const drops = {};
+        const expeditionDrops = expeditionDropCache.byExpedition[expedition.id];
+        for(const drop of expeditionDrops) {
+            if(totalStats[drop.type]) {
+                drops[drop.item] = drop.amount * totalStats[drop.type];
+            }
+        }
+
+        return {
+            tier,
+            successChance,
+            ingredients,
+            drops,
+            teamStats,
+            totalStats,
+            exp: expedition.exp,
+            skill: skillCache.byName['Taming'].id,
+            equipments: {}
+        };
+    }
+
+    function getSuccessChance(stats, expedition) {
+        const attackRatio = Math.max(stats.attack / expedition.stats.defense, stats.specialAttack / expedition.stats.specialDefense);
+        let defenseRatio = 0;
+        if(expedition.rotation.attack) {
+            defenseRatio = expedition.stats.attack / stats.defense;
+        } else {
+            defenseRatio = expedition.stats.specialAttack / stats.specialDefense;
+        }
+        const damageRatio = attackRatio / defenseRatio;
+        const healthRatio = stats.health / expedition.stats.health;
+        const speedRatio = stats.speed / expedition.stats.speed;
+        const successChance = 100 * damageRatio * healthRatio * speedRatio + stats.stealth;
+        return Math.min(100, Math.max(0, successChance));
+    }
+
+    function preRender(estimation, blueprint) {
+        components.search(blueprint, 'successChance').value
+            = util.formatNumber(estimation.successChance);
+        components.search(blueprint, 'exp').value
+            = util.formatNumber(estimation.exp);
+        components.search(blueprint, 'expActual').value
+            = util.formatNumber(estimation.exp * estimation.successChance / 100);
+        components.search(blueprint, 'levelTime').value
+            = util.secondsToDuration(estimation.timings.level);
+        components.search(blueprint, 'tierTime').value
+            = util.secondsToDuration(estimation.timings.tier);
+        components.search(blueprint, 'dropValue').value
+            = util.formatNumber(estimation.values.drop);
+        components.search(blueprint, 'ingredientValue').value
+            = util.formatNumber(estimation.values.ingredient);
+        components.search(blueprint, 'netValue').value
+            = util.formatNumber(estimation.values.net);
+        components.search(blueprint, 'teamSize').value
+            = util.formatNumber(estimation.teamStats.length);
+        for(const stat of petUtil.STATS_BASE) {
+            components.search(blueprint, `teamStat-${stat}`).value
+                = util.formatNumber(estimation.totalStats[stat]);
+        }
+        for(const stat of petUtil.STATS_SPECIAL) {
+            components.search(blueprint, `teamStat-${stat}`).value
+                = util.formatNumber(estimation.totalStats[stat]) + ' %';
+        }
+    }
+
+    function calculateOptimizedTeam() {
+        const petsAndStats = events.getLast('state-pet')
+            .filter(pet => pet.parsed)
+            .map(pet => ({
+                pet,
+                stats: petUtil.petToStats(pet)
+            }));
+        // make all combinations of 3 pets of different species (same family is allowed)
+        const combinations = util.generateCombinations(petsAndStats, 3, object => object.pet.species);
+        if(!combinations.length) {
+            return;
+        }
+        console.debug(`Calculating ${combinations.length} team combinations`);
+        const tier = events.getLast('page').tier;
+        const expedition = petUtil.getExpeditionStats(tier);
+        let bestSuccessChance = 0;
+        let bestCombination = null;
+        for(const combination of combinations) {
+            const teamStats = combination.map(a => a.stats);
+            const totalStats = util.sumObjects(teamStats);
+            const successChance = getSuccessChance(totalStats, expedition);
+            if(successChance > bestSuccessChance) {
+                bestCombination = combination;
+            }
+        }
+
+        const teamRows = components.search(componentBlueprint, 'optimalTeamRows');
+        teamRows.rows = [{
+            type: 'header',
+            title: `Expedition T${tier} : ${expedition.name} (${combinations.length} combinations)`,
+            name: 'Highlight',
+            action: () => {
+                const color = colorMapper('success');
+                petHighlighter.highlight(color, bestCombination.map(a => a.pet.name));
+                $('taming-page .header:contains("Menu") ~ button:contains("Pets")').click()
+            }
+        }];
+        for(const object of bestCombination) {
+            teamRows.rows.push({
+                type: 'item',
+                name: object.pet.name,
+                image: `/assets/${petCache.byId[object.pet.species].image}`,
+                imagePixelated: true,
+            });
+        }
+        components.addComponent(componentBlueprint);
+    }
+
+    const componentBlueprint = {
+        componentId: 'tamingEstimatorComponent',
+        dependsOn: 'taming-page',
+        parent: 'taming-page > .groups > .group:last-child',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'Overview',
+            rows: [{
+                type: 'item',
+                id: 'successChance',
+                name: 'Success chance',
+                image: 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'exp',
+                name: 'Exp/hour',
+                image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'expActual',
+                name: 'Exp/hour (weighted)',
+                image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'levelTime',
+                name: 'Level up',
+                image: 'https://cdn-icons-png.flaticon.com/512/4614/4614145.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'tierTime',
+                name: 'Tier up',
+                image: 'https://cdn-icons-png.flaticon.com/512/4789/4789514.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'dropValue',
+                name: 'Gold/hour (loot)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'ingredientValue',
+                name: 'Gold/hour (materials)',
+                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            },{
+                type: 'item',
+                id: 'netValue',
+                name: 'Gold/hour (total)',
+                image: 'https://cdn-icons-png.flaticon.com/512/11937/11937869.png',
+                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                value: ''
+            }]
+        },{
+            title: 'Items',
+            rows: [{
+                type: 'header',
+                title: 'Produced'
+            },{
+                type: 'segment',
+                id: 'dropRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Consumed'
+            },{
+                type: 'segment',
+                id: 'ingredientRows',
+                rows: []
+            }]
+        },{
+            title: 'Time',
+            rows: [{
+                type: 'segment',
+                id: 'timeRows',
+                rows: []
+            }]
+        },{
+            title: 'Team',
+            rows: [{
+                type: 'header',
+                title: 'Calculate optimal team',
+                name: 'Run',
+                action: calculateOptimizedTeam
+            },{
+                type: 'segment',
+                id: 'optimalTeamRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Stats'
+            },{
+                type: 'item',
+                id: 'teamSize',
+                name: 'Size',
+                image: 'https://img.icons8.com/?size=48&id=8183',
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-health',
+                name: 'Health',
+                image: petUtil.IMAGES.health,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-speed',
+                name: 'Speed',
+                image: petUtil.IMAGES.speed,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-attack',
+                name: 'Attack',
+                image: petUtil.IMAGES.attack,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-specialAttack',
+                name: 'Special Attack',
+                image: petUtil.IMAGES.specialAttack,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-defense',
+                name: 'Defense',
+                image: petUtil.IMAGES.defense,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-specialDefense',
+                name: 'Special Defense',
+                image: petUtil.IMAGES.specialDefense,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-hunger',
+                name: 'Hunger',
+                image: petUtil.IMAGES.hunger,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-stealth',
+                name: 'Stealth',
+                image: petUtil.IMAGES.stealth,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-loot',
+                name: 'Loot',
+                image: petUtil.IMAGES.loot,
+                value: ''
+            }]
+        }]
+    };
+
+    initialise();
 
     return exports;
 
@@ -5021,43 +5614,45 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 }
 );
 // petHighlighter
-window.moduleRegistry.add('petHighlighter', (configuration, events, colorMapper) => {
+window.moduleRegistry.add('petHighlighter', (events) => {
 
-    let enabled = false;
+    const exports = {
+        highlight
+    };
+
+    let currentColor = null;
+    let currentNames = null;
 
     function initialise() {
-        configuration.registerCheckbox({
-            category: 'Pets',
-            key: 'pet-highlighter',
-            name: 'Parsed highlighter',
-            default: false,
-            handler: handleConfigStateChange
-        });
+        events.register('page', update);
         events.register('state-pet', update);
     }
 
-    function handleConfigStateChange(state, name) {
-        enabled = state;
+    function highlight(color, names) {
+        currentColor = color;
+        currentNames = names;
     }
 
-    function update(state) {
-        if(!enabled) {
+    function update() {
+        if(!currentColor || !currentNames || !currentNames.length) {
             return;
         }
-        for(const pet of Object.values(state)) {
-            if(pet.parsed) {
-                render(pet);
-            }
+        const page = events.getLast('page');
+        if(page?.type === 'taming' && page.menu === 'pets') {
+            events.getLast('state-pet')
+                .filter(pet => currentNames.includes(pet.name) && pet.element)
+                .forEach(pet => {
+                    $(pet.element).css('box-shadow', `inset 0px 0px 8px 0px ${currentColor}`)
+                });
         }
-    }
-
-    function render(pet) {
-        $(pet.element).css('box-shadow', `inset 0px 0px 8px 0px ${colorMapper('success')}`);
     }
 
     initialise();
 
-});
+    return exports;
+
+}
+);
 // petRenamer
 window.moduleRegistry.add('petRenamer', (configuration, events, petUtil, elementCreator, toast) => {
 
@@ -5083,7 +5678,7 @@ window.moduleRegistry.add('petRenamer', (configuration, events, petUtil, element
     }
 
     function handlePetReader(event) {
-        if(event.type === 'pet') {
+        if(event.type === 'single') {
             lastSeenPet = event.value;
         }
     }
@@ -5094,9 +5689,6 @@ window.moduleRegistry.add('petRenamer', (configuration, events, petUtil, element
         }
         const page = events.getLast('page');
         if(!page || page.type !== 'taming') {
-            return;
-        }
-        if(petUtil.isEncodedPetName(lastSeenPet.name)) {
             return;
         }
         $('modal-component .header > .name').append(pasteButton);
@@ -5117,16 +5709,18 @@ window.moduleRegistry.add('petRenamer', (configuration, events, petUtil, element
 
 });
 // petStatHighlighter
-window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, colorMapper, petCache) => {
+window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, colorMapper, petCache, petPassiveCache, petUtil) => {
 
     let enabled = false;
-    const stats = ['health', 'speed', 'attack', 'specialAttack', 'defense', 'specialDefense'];
+    const stats = petUtil.STATS_BASE;
+    const passiveStats = util.distinct(petPassiveCache.list.map(a => a.stats.name));
+    let highestValues = null;
 
     function initialise() {
         configuration.registerCheckbox({
             category: 'Pets',
             key: 'pet-stat-highlighter',
-            name: 'Highlight best stats (depends on stat redesign)',
+            name: 'Highlight best stats [needs stat redesign]',
             default: false,
             handler: handleConfigStateChange
         });
@@ -5142,26 +5736,41 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
         if(!enabled || !pets.length) {
             return;
         }
-        const highestValues = getHighestValuesByFamily(pets);
+        highestValues = getHighestValuesByFamily(pets);
+        const color = colorMapper('success');
         for(const pet of pets) {
             const tags = $(pet.element).find('.tags');
-            for(const stat of stats) {
-                if(pet[stat] === highestValues[pet.family][stat]) {
-                    tags.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${colorMapper('success')}`);
-                } else {
-                    tags.find(`.stat-${stat}`).css('box-shadow', '');
-                }
-                // TODO passives
-            }
+            highlight(pet, color, tags);
         }
     }
 
     function renderSingle(event) {
-        if(!enabled || event.type !== 'pet') {
+        if(!enabled || event.type !== 'single') {
             return;
         }
-        console.log('single', event.value);
-        // TODO
+        const pets = events.getLast('redesign-pet').slice(0);
+        pets.push(event.value);
+        highestValues = getHighestValuesByFamily(pets);
+        const color = colorMapper('success');
+        highlight(event.value, color, $(event.modal));
+    }
+
+    function highlight(pet, color, root) {
+        for(const stat of stats) {
+            if(pet[stat] === highestValues[pet.family][stat]) {
+                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${color}`);
+            } else {
+                root.find(`.stat-${stat}`).css('box-shadow', '');
+            }
+        }
+        for(const id of pet.passives) {
+            const passive = petPassiveCache.byId[id].stats;
+            if(passive.value === highestValues[pet.family][passive.name]) {
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color}`);
+            } else {
+                root.find(`.passive-${passive.name}`).css('box-shadow', '');
+            }
+        }
     }
 
     function getHighestValuesByFamily(pets) {
@@ -5175,10 +5784,18 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
             for(const stat of stats) {
                 result[family][stat] = pets
                     .filter(pet => pet.family === family)
-                    .map(a => a[stat])
-                    .sort((a,b) => b-a)[0];
+                    .map(pet => pet[stat])
+                    .sort((a,b) => b-a)[0] || 0;
             }
-            // TODO passives?
+            for(const stat of passiveStats) {
+                result[family][stat] = pets
+                    .filter(pet => pet.family === family)
+                    .flatMap(pet => pet.passives)
+                    .map(id => petPassiveCache.byId[id])
+                    .filter(passive => passive.stats.name === stat)
+                    .map(passive => passive.stats.value)
+                    .sort((a,b) => b-a)[0] || 0;
+            }
         }
         return result;
     }
@@ -5188,17 +5805,9 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
 }
 );
 // petStatRedesign
-window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petTraitCache, petPassiveCache) => {
+window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petTraitCache, petPassiveCache, colorMapper, petUtil) => {
 
     let enabled = false;
-    const images = {
-        health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
-        speed: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
-        attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
-        defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
-        specialAttack: 'https://img.icons8.com/?size=48&id=18515',
-        specialDefense: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX'
-    };
     const emitEvent = events.emit.bind(null, 'redesign-pet');
 
     function initialise() {
@@ -5206,7 +5815,7 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
             category: 'Pets',
             key: 'pet-stat-redesign',
             name: 'Stat redesign',
-            default: false,
+            default: true,
             handler: handleConfigStateChange
         });
         events.register('state-pet', update);
@@ -5220,10 +5829,16 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
         if(!enabled) {
             return;
         }
-        const pets = Object.values(state).filter(pet => pet.parsed);
         let changed = false;
+        for(const pet of state.filter(pet => pet.default)) {
+            renderDefault(pet);
+        }
+        for(const pet of state.filter(pet => !pet.default && pet.duplicate)) {
+            renderDuplicate(pet);
+        }
+        const pets = state.filter(pet => !pet.default && !pet.duplicate && pet.parsed);
         for(const pet of pets) {
-            if(render(pet)) {
+            if(renderParsed(pet)) {
                 changed = true;
             }
         }
@@ -5232,9 +5847,33 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
         }
     }
 
-    function render(pet) {
+    function renderDefault(pet) {
         const tags = $(pet.element).find('.tags');
-        if(!tags.find('.ng-star-inserted').length) {
+        if(tags.find('.tag-default').length) {
+            return false;
+        }
+        const color = colorMapper('warning');
+        const tag = elementCreator.getTag('Default name', undefined, 'tag-default')
+            .css('box-shadow', `inset 0px 0px 8px 0px ${color}`);
+        tags.append(tag);
+        return true;
+    }
+
+    function renderDuplicate(pet) {
+        const tags = $(pet.element).find('.tags');
+        if(tags.find('.tag-duplicate').length) {
+            return false;
+        }
+        const color = colorMapper('warning');
+        const tag = elementCreator.getTag('Duplicate name', undefined, 'tag-duplicate')
+            .css('box-shadow', `inset 0px 0px 8px 0px ${color}`);
+        tags.append(tag);
+        return true;
+    }
+
+    function renderParsed(pet) {
+        const tags = $(pet.element).find('.tags');
+        if(tags.find('.stat-health').length) {
             return false;
         }
         tags.empty();
@@ -5242,35 +5881,87 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
         tags.append(table);
         // traits
         const traits = petTraitCache.byId[pet.traits];
-        if(traits.hasAttack) {
-            table.append(elementCreator.getTag('', images.attack));
+        if(traits.attack) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.attack));
         }
-        if(traits.hasSpecialAttack) {
-            table.append(elementCreator.getTag('', images.specialAttack));
+        if(traits.specialAttack) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.specialAttack));
         }
-        if(traits.hasDefense) {
-            table.append(elementCreator.getTag('', images.defense));
+        if(traits.defense) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.defense));
         }
-        if(traits.hasSpecialDefense) {
-            table.append(elementCreator.getTag('', images.specialDefense));
+        if(traits.specialDefense) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.specialDefense));
         }
         // spacing
         table.append(`<div style='padding:5px'></div>`);
         table.append(`<div style='padding:5px'></div>`);
         // stats
-        table.append(elementCreator.getTag(`${pet.health}%`, images.health, 'stat-health'));
-        table.append(elementCreator.getTag(`${pet.speed}%`, images.speed, 'stat-speed'));
-        table.append(elementCreator.getTag(`${pet.attack}%`, images.attack, 'stat-attack'));
-        table.append(elementCreator.getTag(`${pet.specialAttack}%`, images.specialAttack, 'stat-specialAttack'));
-        table.append(elementCreator.getTag(`${pet.defense}%`, images.defense, 'stat-defense'));
-        table.append(elementCreator.getTag(`${pet.specialDefense}%`, images.specialDefense, 'stat-specialDefense'));
+        table.append(elementCreator.getTag(`${pet.health}%`, petUtil.IMAGES.health, 'stat-health'));
+        table.append(elementCreator.getTag(`${pet.speed}%`, petUtil.IMAGES.speed, 'stat-speed'));
+        table.append(elementCreator.getTag(`${pet.attack}%`, petUtil.IMAGES.attack, 'stat-attack'));
+        table.append(elementCreator.getTag(`${pet.specialAttack}%`, petUtil.IMAGES.specialAttack, 'stat-specialAttack'));
+        table.append(elementCreator.getTag(`${pet.defense}%`, petUtil.IMAGES.defense, 'stat-defense'));
+        table.append(elementCreator.getTag(`${pet.specialDefense}%`, petUtil.IMAGES.specialDefense, 'stat-specialDefense'));
         // spacing
         table.append(`<div style='padding:5px'></div>`);
         table.append(`<div style='padding:5px'></div>`);
         // passives
         for(const id of pet.passives) {
             const passive = petPassiveCache.byId[id];
-            table.append(elementCreator.getTag(passive.name, null, `passive-[${passive.name}]`));
+            table.append(elementCreator.getTag(passive.name, null, `passive-${passive.stats.name}`));
+        }
+        return true;
+    }
+
+    function render(pet) {
+        if(!pet.parsed && !pet.duplicate) {
+            return;
+        }
+        if(pet.duplicate || pet.default) {
+            return false;
+        }
+        const tags = $(pet.element).find('.tags');
+        if(tags.find('.stat-health').length) {
+            return false;
+        }
+        tags.empty();
+        const table = $(`<div style='display:inline-grid;grid-template-rows:1fr 1fr;grid-auto-flow:column'></div>`);
+        tags.append(table);
+        if(!pet.parsed) {
+            return;
+        }
+        // traits
+        const traits = petTraitCache.byId[pet.traits];
+        if(traits.hasAttack) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.attack));
+        }
+        if(traits.hasSpecialAttack) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.specialAttack));
+        }
+        if(traits.hasDefense) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.defense));
+        }
+        if(traits.hasSpecialDefense) {
+            table.append(elementCreator.getTag('', petUtil.IMAGES.specialDefense));
+        }
+        // spacing
+        table.append(`<div style='padding:5px'></div>`);
+        table.append(`<div style='padding:5px'></div>`);
+        // stats
+        table.append(elementCreator.getTag(`${pet.health}%`, petUtil.IMAGES.health, 'stat-health'));
+        table.append(elementCreator.getTag(`${pet.speed}%`, petUtil.IMAGES.speed, 'stat-speed'));
+        table.append(elementCreator.getTag(`${pet.attack}%`, petUtil.IMAGES.attack, 'stat-attack'));
+        table.append(elementCreator.getTag(`${pet.specialAttack}%`, petUtil.IMAGES.specialAttack, 'stat-specialAttack'));
+        table.append(elementCreator.getTag(`${pet.defense}%`, petUtil.IMAGES.defense, 'stat-defense'));
+        table.append(elementCreator.getTag(`${pet.specialDefense}%`, petUtil.IMAGES.specialDefense, 'stat-specialDefense'));
+        // spacing
+        table.append(`<div style='padding:5px'></div>`);
+        table.append(`<div style='padding:5px'></div>`);
+        // passives
+        for(const id of pet.passives) {
+            const passive = petPassiveCache.byId[id];
+            table.append(elementCreator.getTag(passive.name, null, `passive-${passive.stats.name}`));
         }
         return true;
     }
@@ -5963,67 +6654,85 @@ window.moduleRegistry.add('marketStore', (events) => {
 }
 );
 // petStateStore
-window.moduleRegistry.add('petStateStore', (events, petUtil) => {
+window.moduleRegistry.add('petStateStore', (events, petUtil, util, localDatabase, petCache) => {
 
-    const emitEvent = events.emit.bind(null, 'state-pet');
-    const state = {};
+    const STORE_NAME = 'various';
+    const KEY_NAME = 'pets';
+    let state = [];
 
-    function initialise() {
+    async function initialise() {
+        await loadSavedData();
+        events.register('page', handlePage);
         events.register('reader-pet', handlePetReader);
+    }
+
+    async function loadSavedData() {
+        const entries = await localDatabase.getAllEntries(STORE_NAME);
+        const entry = entries.find(entry => entry.key === KEY_NAME);
+        if(entry) {
+            state = entry.value;
+        }
+    }
+
+    function handlePage(page) {
+        if(page.type === 'taming' && page.menu === 'pets') {
+            emitEvent(state);
+        }
     }
 
     function handlePetReader(event) {
         let updated = false;
-        if(event.type === 'names') {
-            for(const pet of Object.values(state)) {
-                pet.detected = false;
-            }
-            for(const value of event.value) {
-                if(addName(value.name, value.element)) {
-                    updated = true;
+        if(event.type === 'list') {
+            const duplicateNames = new Set(util.getDuplicates(event.value.map(a => a.name)));
+            const defaultNames = new Set(petCache.list.map(a => a.name));
+            const newState = event.value.map(pet => {
+                pet.duplicate = duplicateNames.has(pet.name);
+                pet.default = defaultNames.has(pet.name);
+                if(pet.duplicate || pet.default) {
+                    return pet;
                 }
-                state[value.name].detected = true;
-            }
-            for(const pet of Object.values(state)) {
-                if(!pet.detected) {
-                    updated = true;
-                    delete state[pet.name];
+                const match = find(pet);
+                if(match) {
+                    delete pet.parsed;
+                    Object.assign(match, pet);
+                    return match;
                 }
-                delete pet.detected;
+                updated = true;
+                if(petUtil.isEncodedPetName(pet.name)) {
+                    Object.assign(pet, petUtil.textToPet(pet.name));
+                }
+                return pet;
+            });
+            if(state.length !== newState.length) {
+                updated = true;
             }
-        } else if(event.type === 'pet') {
-            updated = addPet(event.value);
+            state = newState;
+        } else if(event.type === 'single') {
+            const match = find(event.value);
+            if(match && !match.duplicate && !match.default && !match.parsed) {
+                Object.assign(match, event.value);
+                updated = true;
+            }
         }
         if(updated) {
             emitEvent(state);
         }
     }
 
-    function addName(name, element) {
-        if(state[name] && state[name].element === element) {
-            return false;
-        }
-        let pet = {
-            parsed: false,
-            name
-        };
-        if(petUtil.isEncodedPetName(name)) {
-            pet = petUtil.textToPet(name);
-        }
-        pet.element = element;
-        state[name] = pet;
-        return true;
+    function find(pet) {
+        return state.find(pet2 => pet2.name === pet.name);
     }
 
-    function addPet(pet) {
-        if(state[pet.name]) {
-            if(state[pet.name].parsed) {
-                return false;
-            }
-            pet.element = state[pet.name].element;
+    async function emitEvent(state) {
+        const savedState = state.map(pet => Object.assign({}, pet));
+        for(const pet of savedState) {
+            delete pet.element;
         }
-        state[pet.name] = pet;
-        return true;
+        await localDatabase.saveEntry(STORE_NAME, {
+            key: KEY_NAME,
+            value: savedState
+        });
+        events.emit('state-pet', state);
     }
 
     initialise();
@@ -6574,6 +7283,89 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
 
 }
 );
+// expeditionCache
+window.moduleRegistry.add('expeditionCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000, 'expeditionCache');
+
+    const exports = {
+        list: [],
+        byId: null,
+        byName: null,
+        byTier: null
+    };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
+
+    async function initialise() {
+        const expeditions = await request.listExpeditions();
+        exports.byId = {};
+        exports.byName = {};
+        exports.byTier = {};
+        for(const expedition of expeditions) {
+            exports.list.push(expedition);
+            exports.byId[expedition.id] = expedition;
+            exports.byName[expedition.name] = expedition;
+            exports.byTier[expedition.tier] = expedition;
+        }
+    }
+
+    tryInitialise();
+
+    return initialised;
+
+}
+);
+// expeditionDropCache
+window.moduleRegistry.add('expeditionDropCache', (request, Promise) => {
+
+    const initialised = new Promise.Expiring(2000, 'expeditionDropCache');
+
+    const exports = {
+        list: [],
+        byExpedition: null,
+        byItem: null
+    };
+
+    async function tryInitialise() {
+        try {
+            await initialise();
+            initialised.resolve(exports);
+        } catch(e) {
+            initialised.reject(e);
+        }
+    }
+
+    async function initialise() {
+        const drops = await request.listExpeditionDrops();
+        exports.byExpedition = {};
+        exports.byItem = {};
+        for(const drop of drops) {
+            exports.list.push(drop);
+            if(!exports.byExpedition[drop.expedition]) {
+                exports.byExpedition[drop.expedition] = [];
+            }
+            exports.byExpedition[drop.expedition].push(drop);
+            if(!exports.byItem[drop.item]) {
+                exports.byItem[drop.item] = [];
+            }
+            exports.byItem[drop.item].push(drop);
+        }
+    }
+
+    tryInitialise();
+
+    return initialised;
+
+}
+);
 // ingredientCache
 window.moduleRegistry.add('ingredientCache', (request, Promise) => {
 
@@ -6936,7 +7728,8 @@ window.moduleRegistry.add('petPassiveCache', (request, Promise) => {
             exports.byName[petPassive.name] = petPassive;
             exports.idToIndex[petPassive.id] = exports.list.length-1;
             petPassive.stats = {
-                [petPassive.statName]: petPassive.statValue
+                name: petPassive.statName,
+                value: petPassive.statValue
             };
             delete petPassive.statName;
             delete petPassive.statValue;
@@ -6960,18 +7753,18 @@ window.moduleRegistry.add('petTraitCache', () => {
     };
 
     function initialise() {
-        const petTraits = ['Attack & Defense', 'Attack & Special Def', 'Special Atk & Defense', 'Special Atk & Special Def'];
+        const traits = ['Attack & Defense', 'Attack & Special Def', 'Special Atk & Defense', 'Special Atk & Special Def'];
         exports.byId = {};
         exports.byName = {};
         exports.idToIndex = {};
-        for(const petTrait of petTraits) {
+        for(const trait of traits) {
             const value = {
                 id: exports.list.length,
-                name: petTrait,
-                hasAttack: petTrait.startsWith('Attack'),
-                hasDefense: petTrait.endsWith('Defense'),
-                hasSpecialAttack: petTrait.startsWith('Special Atk'),
-                hasSpecialDefense: petTrait.endsWith('Special Def')
+                name: trait,
+                attack: trait.startsWith('Attack'),
+                defense: trait.endsWith('Defense'),
+                specialAttack: trait.startsWith('Special Atk'),
+                specialDefense: trait.endsWith('Special Def')
             };
             exports.list.push(value);
             exports.byId[value.id] = value;

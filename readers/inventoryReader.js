@@ -18,6 +18,9 @@
         if(page.type === 'action') {
             readActionScreen();
         }
+        if(page.type === 'taming' && page.menu === 'expeditions') {
+            readExpeditionsScreen();
+        }
     }
 
     function readInventoryScreen() {
@@ -34,6 +37,17 @@
     function readActionScreen() {
         const inventory = {};
         $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((i,element) => {
+            itemUtil.extractItem(element, inventory);
+        });
+        emitEvent({
+            type: 'partial',
+            value: inventory
+        });
+    }
+
+    function readExpeditionsScreen() {
+        const inventory = {};
+        $('taming-page .heading:contains("Materials") + button').each((i,element) => {
             itemUtil.extractItem(element, inventory);
         });
         emitEvent({

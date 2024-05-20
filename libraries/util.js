@@ -7,6 +7,7 @@
         expToNextLevel,
         expToNextTier,
         tierToLevel,
+        levelToTier,
         formatNumber,
         parseNumber,
         secondsToDuration,
@@ -15,7 +16,13 @@
         sleep,
         goToPage,
         compareObjects,
-        debounce
+        debounce,
+        distinct,
+        getDuplicates,
+        sumObjects,
+        startOfWeek,
+        startOfYear,
+        generateCombinations
     };
 
     function levelToExp(level) {
@@ -62,6 +69,13 @@
             return tier;
         }
         return tier * 15 - 20;
+    }
+
+    function levelToTier(level) {
+        if(level <= 1) {
+            return level;
+        }
+        return (level + 20) / 15;
     }
 
     function formatNumber(number) {
@@ -204,6 +218,75 @@
             timer = setTimeout(() => {
                 callback(...args);
             }, delay);
+        }
+    }
+
+    function distinct(array) {
+        return array.filter((value, index) => {
+          return array.indexOf(value) === index;
+        });
+    }
+
+    function getDuplicates(array) {
+        const sorted = array.slice().sort();
+        const result = [];
+        for(let i=0;i<sorted.length-1;i++) {
+            if(sorted[i+1] == sorted[i]) {
+                result.push(sorted[i]);
+            }
+        }
+        return result;
+    }
+
+    function sumObjects(array) {
+        const result = {};
+        for(const element of array) {
+            for(const key of Object.keys(element)) {
+                if(typeof element[key] === 'number') {
+                    result[key] = (result[key] || 0) + element[key];
+                }
+            }
+        }
+        return result;
+    }
+
+    function startOfWeek(date) {
+        const result = new Date();
+        result.setDate(date.getDate() - date.getDay());
+        result.setHours(0,0,0,0);
+        return result;
+    }
+
+    function startOfYear(date) {
+        const result = new Date(date.getFullYear(), 0, 1);
+        return result;
+    }
+
+    function generateCombinations(objects, count, grouper) {
+        const objectsByGroup = {};
+        for(const object of objects) {
+            const group = grouper(object);
+            if(!objectsByGroup[group]) {
+                objectsByGroup[group] = [];
+            }
+            objectsByGroup[group].push(object);
+        }
+        const result = [];
+        const groups = Object.keys(objectsByGroup);
+        addOneCombination(result, objectsByGroup, groups, count);
+        return result;
+    }
+
+    function addOneCombination(result, objectsByGroup, groups, count, combination = [], groupStart = 0) {
+        if(!count) {
+            result.push(combination);
+            return;
+        }
+        for(let i=groupStart;i<groups.length-count+1;i++) {
+            const contents = objectsByGroup[groups[i]];
+            for(let j=0;j<contents.length;j++) {
+                addOneCombination(result, objectsByGroup, groups, count-1, combination.concat([contents[j]]), i+1);
+            }
         }
     }
 
