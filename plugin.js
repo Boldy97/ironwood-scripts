@@ -5794,10 +5794,11 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
             return;
         }
         highestValues = getHighestValuesByFamily(pets);
-        const color = colorMapper('success');
+        const color1 = colorMapper('success');
+        const color2 = colorMapper('danger');
         for(const pet of pets) {
             const tags = $(pet.element).find('.tags');
-            highlight(pet, color, tags);
+            highlight(pet, color1, color2, tags);
         }
     }
 
@@ -5808,22 +5809,25 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
         const pets = events.getLast('redesign-pet').slice(0);
         pets.push(event.value);
         highestValues = getHighestValuesByFamily(pets);
-        const color = colorMapper('success');
-        highlight(event.value, color, $(event.modal));
+        const color1 = colorMapper('success');
+        const color2 = colorMapper('danger');
+        highlight(event.value, color1, color2, $(event.modal));
     }
 
-    function highlight(pet, color, root) {
+    function highlight(pet, color1, color2, root) {
         for(const stat of stats) {
             if(pet[stat] === highestValues[pet.family][stat]) {
-                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${color}`);
+                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${color1}`);
             } else {
                 root.find(`.stat-${stat}`).css('box-shadow', '');
             }
         }
         for(const id of pet.passives) {
             const passive = petPassiveCache.byId[id].stats;
-            if(passive.value === highestValues[pet.family][passive.name]) {
-                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color}`);
+            if(passive.name === 'hunger') {
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color2}`);
+            } else if(passive.value === highestValues[pet.family][passive.name]) {
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color1}`);
             } else {
                 root.find(`.passive-${passive.name}`).css('box-shadow', '');
             }
