@@ -4569,6 +4569,7 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
             const totalStats = util.sumObjects(teamStats);
             const successChance = getSuccessChance(totalStats, expedition);
             if(successChance > bestSuccessChance) {
+                bestSuccessChance = successChance;
                 bestCombination = combination;
             }
         }
@@ -4583,6 +4584,10 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
                 petHighlighter.highlight(color, bestCombination.map(a => a.pet.name));
                 $('taming-page .header:contains("Menu") ~ button:contains("Pets")').click()
             }
+        }, {
+            type: 'item',
+            name: `Success chance : ${util.formatNumber(bestSuccessChance)} %`,
+            image: 'https://cdn-icons-png.flaticon.com/512/3004/3004458.png'
         }];
         for(const object of bestCombination) {
             teamRows.rows.push({
