@@ -2062,23 +2062,29 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
 }
 );
 // petUtil
-window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, expeditionCache, util) => {
+window.moduleRegistry.add('petUtil', (petCache, petPassiveCache, expeditionCache, util, request, Promise) => {
 
-    const STATS_BASE = ['health', 'speed', 'attack', 'specialAttack', 'defense', 'specialDefense'];
-    const STATS_SPECIAL = ['hunger', 'stealth', 'loot'];
+    const STATS_BASE = ['health', 'attack', 'defense'];
+    const STATS_SPECIAL = ['meleeAttack', 'meleeDefense', 'rangedAttack', 'rangedDefense', 'magicAttack', 'magicDefense', 'hunger', 'eggFind', 'itemFind'];
     const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
     const IMAGES = {
         health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
-        speed: 'https://img.icons8.com/?size=48&id=TE1T4XfT3xeN',
         attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
         defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
-        specialAttack: 'https://img.icons8.com/?size=48&id=18515',
-        specialDefense: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
+        itemFind: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8',
+        eggFind: 'https://img.icons8.com/?size=48&id=Ybx2AvxzyUfH',
         hunger: 'https://img.icons8.com/?size=48&id=AXExnoyylJdK',
-        stealth: 'https://img.icons8.com/?size=48&id=4GYmMTXrMp8g',
-        loot: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8'
+        melee: 'https://img.icons8.com/?size=48&id=16672',
+        magic: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
+        ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y'
     };
+    const ROTATION_NAMES = [
+        'melee',
+        'ranged',
+        'magic',
+    ];
     const exports = {
+        VERSION: 0,
         STATS_BASE,
         STATS_SPECIAL,
         IMAGES,
@@ -2089,18 +2095,25 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
         getExpeditionStats
     };
 
-    const SPECIAL_CHAR = '_';
+    let SPECIAL_CHAR = '0';
     const VALID_CHARS = '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}'.split('');
     const VALID_CHARS_LENGTH = BigInt(VALID_CHARS.length);
     const OPTIONS = [
         petCache.list.length, // species
-        petTraitCache.list.length, // traits
-        ...Array(6).fill(50), // stats
+        ...Array(3).fill(50), // stats
         ...Array(4).fill(petPassiveCache.list.length+1) // passives, 0 = empty
     ];
 
     const MILLIS_PER_MINUTE = 1000*60;
     const MILLIS_PER_WEEK = 1000*60*60*24*7;
+
+    const initialised = new Promise.Expiring(2000, 'localDatabase');
+
+    async function initialise() {
+        exports.VERSION = +(await request.getPetVersion());
+        SPECIAL_CHAR = exports.VERSION + '';
+        initialised.resolve(exports);
+    }
 
     function numberToText(number) {
         let text = SPECIAL_CHAR;
@@ -2157,13 +2170,9 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
         }
         return [
             petCache.idToIndex[pet.species], // species
-            petTraitCache.idToIndex[pet.traits], // traits
             pet.health/2-1,
             pet.attack/2-1,
             pet.defense/2-1,
-            pet.specialAttack/2-1,
-            pet.specialDefense/2-1,
-            pet.speed/2-1, // stats
             ...passives // passives, 0 = empty
         ];
     }
@@ -2173,14 +2182,10 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
             parsed: true,
             species: petCache.list[choices[0]].id,
             name: text,
-            traits: petTraitCache.list[choices[1]].id,
-            health: (choices[2]+1)*2,
-            attack: (choices[3]+1)*2,
-            defense: (choices[4]+1)*2,
-            specialAttack: (choices[5]+1)*2,
-            specialDefense: (choices[6]+1)*2,
-            speed: (choices[7]+1)*2,
-            passives: choices.slice(8).filter(a => a).map(a => petPassiveCache.list[a-1].id)
+            health: (choices[1]+1)*2,
+            attack: (choices[2]+1)*2,
+            defense: (choices[3]+1)*2,
+            passives: choices.slice(4).filter(a => a).map(a => petPassiveCache.list[a-1].id)
         };
     }
 
@@ -2203,20 +2208,14 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
     function petToStats(pet) {
         const result = {};
         const passives = pet.passives.map(id => petPassiveCache.byId[id]);
-        const traits = petTraitCache.byId[pet.traits];
         for(const stat of STATS_BASE) {
             result[stat] = 0;
             let value = (petCache.byId[pet.species].power + pet[stat] / 2 - 10) / 100 * pet.level + 10;
-            value *= traits[stat] ? 1.25 : 1;
-            const passive = passives.find(a => a.stats.name === stat + 'Percent');
-            if(passive) {
-                value *= 1 + passive.stats.value / 100;
-            }
             result[stat] += value;
         }
         for(const stat of STATS_SPECIAL) {
             result[stat] = 0;
-            const passive = passives.find(a => a.stats.name === stat + 'Percent');
+            const passive = passives.find(a => a.stats.name === stat);
             if(passive) {
                 result[stat] += passive.stats.value;
             }
@@ -2241,9 +2240,6 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
         const stats = {};
         for(const stat of STATS_BASE) {
             stats[stat] = expedition.power;
-            if(rotation[stat]) {
-                stats[stat] *= 1.25;
-            }
         }
         return Object.assign({rotation,stats}, expedition);
     }
@@ -2254,11 +2250,13 @@ window.moduleRegistry.add('petUtil', (petCache, petTraitCache, petPassiveCache, 
         const millisPassed = util.startOfWeek(date) - util.startOfWeek(util.startOfYear(date));
         const startOfWeek = util.startOfWeek(date);
         let index = 2 + offset + Math.round(millisPassed / MILLIS_PER_WEEK);
-        index %= petTraitCache.list.length;
-        return petTraitCache.byId[index];
+        index %= ROTATION_NAMES.length;
+        return ROTATION_NAMES[index];
     }
 
-    return exports;
+    initialise();
+
+    return initialised;
 
 });
 // polyfill
@@ -2446,6 +2444,7 @@ window.moduleRegistry.add('request', () => {
     request.report = (data) => request('public/report', data);
 
     request.getChangelogs = () => request('public/settings/changelog');
+    request.getPetVersion = () => request('public/settings/petVersion');
     request.getVersion = () => request('public/settings/version');
 
     return request;
@@ -3172,7 +3171,7 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
 }
 );
 // petReader
-window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTraitCache, elementWatcher, util) => {
+window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, elementWatcher, util, petUtil) => {
 
     const emitEvent = events.emit.bind(null, 'reader-pet');
 
@@ -3198,6 +3197,7 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTr
             const partOfTeam = !!element.closest('.card').find('.header:contains("Expedition Team")').length;
             values.push({
                 parsed: false,
+                version: petUtil.VERSION,
                 species: petCache.byImage[image].id,
                 family: petCache.byImage[image].family,
                 name,
@@ -3213,31 +3213,26 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTr
     }
 
     function readPetModal(modal) {
-        if(!$(modal).find('.name:contains("Traits")').length) {
+        if(!$(modal).find('.name:contains("Abilities")').length) {
             return; // avoid triggering on other modals
         }
         const image = $(modal).find('.header img').attr('src').split('/').at(-1);
-        const name = $(modal).find('.header .description button').text().trim();
-        const traits = $(modal).find('.name:contains("Traits")').next().text();
+        const name = $(modal).find('.header .description > button').text().trim();
+        const level = util.parseNumber($(modal).find('.header .description > div').text().trim());
         const health = +($(modal).find('.name:contains("Health") + .mono').text().match('\\((\\d+)%\\)')[1]);
         const attack = +($(modal).find('.name:contains("Attack") + .mono').text().match('\\((\\d+)%\\)')[1]);
         const defense = +($(modal).find('.name:contains("Defense") + .mono').text().match('\\((\\d+)%\\)')[1]);
-        const specialAttack = +($(modal).find('.name:contains("Sp. Atk") + .mono').text().match('\\((\\d+)%\\)')[1]);
-        const specialDefense = +($(modal).find('.name:contains("Sp. Def") + .mono').text().match('\\((\\d+)%\\)')[1]);
-        const speed = +($(modal).find('.name:contains("Speed") + .mono').text().match('\\((\\d+)%\\)')[1]);
         const passives = $(modal).find('.name:contains("Total")').parent().nextAll('.row').find('.name').get().map(a => a.innerText);
         const pet = {
             parsed: true,
+            version: petUtil.VERSION,
             species: petCache.byImage[image].id,
             family: petCache.byImage[image].family,
             name,
-            traits: petTraitCache.byName[traits].id,
+            level,
             health,
             attack,
             defense,
-            specialAttack,
-            specialDefense,
-            speed,
             passives: passives.map(a => petPassiveCache.byName[a].id)
         };
         const healthRow = $(modal).find('.name:contains("Health") + .mono').parent();
@@ -3245,9 +3240,6 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, petTr
             $(modal).find('.name:contains("Health") + .mono').parent().addClass('stat-health');
             $(modal).find('.name:contains("Attack") + .mono').parent().addClass('stat-attack');
             $(modal).find('.name:contains("Defense") + .mono').parent().addClass('stat-defense');
-            $(modal).find('.name:contains("Sp. Atk") + .mono').parent().addClass('stat-specialAttack');
-            $(modal).find('.name:contains("Sp. Def") + .mono').parent().addClass('stat-specialDefense');
-            $(modal).find('.name:contains("Speed") + .mono').parent().addClass('stat-speed');
             for(const id of pet.passives) {
                 const passive = petPassiveCache.byId[id];
                 $(modal).find(`.name:contains("${passive.name}")`).parent().addClass(`passive-${passive.stats.name}`);
@@ -4517,17 +4509,12 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
     }
 
     function getSuccessChance(stats, expedition) {
-        const attackRatio = Math.max(stats.attack / expedition.stats.defense, stats.specialAttack / expedition.stats.specialDefense);
-        let defenseRatio = 0;
-        if(expedition.rotation.attack) {
-            defenseRatio = expedition.stats.attack / stats.defense;
-        } else {
-            defenseRatio = expedition.stats.specialAttack / stats.specialDefense;
-        }
-        const damageRatio = attackRatio / defenseRatio;
-        const healthRatio = stats.health / expedition.stats.health;
-        const speedRatio = stats.speed / expedition.stats.speed;
-        const successChance = 100 * damageRatio * healthRatio * speedRatio + stats.stealth;
+        const expeditionValue = expedition.stats.health + expedition.stats.attack + expedition.stats.defense;
+        let teamValue = stats.health + stats.attack + stats.defense;
+        const rotationAttack = stats[expedition.rotation + 'Attack'];
+        const rotationDefense = stats[expedition.rotation + 'Defense'];
+        teamValue *= 1 + (rotationAttack + rotationDefense) / 100;
+        const successChance = 100 * teamValue / expeditionValue;
         return Math.min(100, Math.max(0, successChance));
     }
 
@@ -4719,21 +4706,9 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
                 value: ''
             },{
                 type: 'item',
-                id: 'teamStat-speed',
-                name: 'Speed',
-                image: petUtil.IMAGES.speed,
-                value: ''
-            },{
-                type: 'item',
                 id: 'teamStat-attack',
                 name: 'Attack',
                 image: petUtil.IMAGES.attack,
-                value: ''
-            },{
-                type: 'item',
-                id: 'teamStat-specialAttack',
-                name: 'Special Attack',
-                image: petUtil.IMAGES.specialAttack,
                 value: ''
             },{
                 type: 'item',
@@ -4743,9 +4718,15 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
                 value: ''
             },{
                 type: 'item',
-                id: 'teamStat-specialDefense',
-                name: 'Special Defense',
-                image: petUtil.IMAGES.specialDefense,
+                id: 'teamStat-itemFind',
+                name: 'Loot',
+                image: petUtil.IMAGES.itemFind,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-eggFind',
+                name: 'Loot',
+                image: petUtil.IMAGES.eggFind,
                 value: ''
             },{
                 type: 'item',
@@ -4754,16 +4735,43 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
                 image: petUtil.IMAGES.hunger,
                 value: ''
             },{
+                type: 'header',
+                title: 'Traits'
+            },{
                 type: 'item',
-                id: 'teamStat-stealth',
-                name: 'Stealth',
-                image: petUtil.IMAGES.stealth,
+                id: 'teamStat-meleeAttack',
+                name: 'Melee Attack',
+                image: petUtil.IMAGES.melee,
                 value: ''
             },{
                 type: 'item',
-                id: 'teamStat-loot',
-                name: 'Loot',
-                image: petUtil.IMAGES.loot,
+                id: 'teamStat-meleeDefense',
+                name: 'Melee Defense',
+                image: petUtil.IMAGES.melee,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-rangedAttack',
+                name: 'Ranged Attack',
+                image: petUtil.IMAGES.ranged,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-rangedDefense',
+                name: 'Ranged Defense',
+                image: petUtil.IMAGES.ranged,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-magicAttack',
+                name: 'Magic Attack',
+                image: petUtil.IMAGES.magic,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-magicDefense',
+                name: 'Magic Defense',
+                image: petUtil.IMAGES.magic,
                 value: ''
             }]
         }]
@@ -5854,7 +5862,7 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
 }
 );
 // petStatRedesign
-window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petTraitCache, petPassiveCache, colorMapper, petUtil) => {
+window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petPassiveCache, colorMapper, petUtil) => {
 
     let enabled = false;
     const emitEvent = events.emit.bind(null, 'redesign-pet');
@@ -5870,7 +5878,7 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
         events.register('state-pet', update);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         enabled = state;
     }
 
@@ -5928,83 +5936,12 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
         tags.empty();
         const table = $(`<div style='display:inline-grid;grid-template-rows:1fr 1fr;grid-auto-flow:column'></div>`);
         tags.append(table);
-        // traits
-        const traits = petTraitCache.byId[pet.traits];
-        if(traits.attack) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.attack));
-        }
-        if(traits.specialAttack) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.specialAttack));
-        }
-        if(traits.defense) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.defense));
-        }
-        if(traits.specialDefense) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.specialDefense));
-        }
-        // spacing
-        table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
         // stats
         table.append(elementCreator.getTag(`${pet.health}%`, petUtil.IMAGES.health, 'stat-health'));
-        table.append(elementCreator.getTag(`${pet.speed}%`, petUtil.IMAGES.speed, 'stat-speed'));
         table.append(elementCreator.getTag(`${pet.attack}%`, petUtil.IMAGES.attack, 'stat-attack'));
-        table.append(elementCreator.getTag(`${pet.specialAttack}%`, petUtil.IMAGES.specialAttack, 'stat-specialAttack'));
         table.append(elementCreator.getTag(`${pet.defense}%`, petUtil.IMAGES.defense, 'stat-defense'));
-        table.append(elementCreator.getTag(`${pet.specialDefense}%`, petUtil.IMAGES.specialDefense, 'stat-specialDefense'));
         // spacing
         table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
-        // passives
-        for(const id of pet.passives) {
-            const passive = petPassiveCache.byId[id];
-            table.append(elementCreator.getTag(passive.name, null, `passive-${passive.stats.name}`));
-        }
-        return true;
-    }
-
-    function render(pet) {
-        if(!pet.parsed && !pet.duplicate) {
-            return;
-        }
-        if(pet.duplicate || pet.default) {
-            return false;
-        }
-        const tags = $(pet.element).find('.tags');
-        if(tags.find('.stat-health').length) {
-            return false;
-        }
-        tags.empty();
-        const table = $(`<div style='display:inline-grid;grid-template-rows:1fr 1fr;grid-auto-flow:column'></div>`);
-        tags.append(table);
-        if(!pet.parsed) {
-            return;
-        }
-        // traits
-        const traits = petTraitCache.byId[pet.traits];
-        if(traits.hasAttack) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.attack));
-        }
-        if(traits.hasSpecialAttack) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.specialAttack));
-        }
-        if(traits.hasDefense) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.defense));
-        }
-        if(traits.hasSpecialDefense) {
-            table.append(elementCreator.getTag('', petUtil.IMAGES.specialDefense));
-        }
-        // spacing
-        table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
-        // stats
-        table.append(elementCreator.getTag(`${pet.health}%`, petUtil.IMAGES.health, 'stat-health'));
-        table.append(elementCreator.getTag(`${pet.speed}%`, petUtil.IMAGES.speed, 'stat-speed'));
-        table.append(elementCreator.getTag(`${pet.attack}%`, petUtil.IMAGES.attack, 'stat-attack'));
-        table.append(elementCreator.getTag(`${pet.specialAttack}%`, petUtil.IMAGES.specialAttack, 'stat-specialAttack'));
-        table.append(elementCreator.getTag(`${pet.defense}%`, petUtil.IMAGES.defense, 'stat-defense'));
-        table.append(elementCreator.getTag(`${pet.specialDefense}%`, petUtil.IMAGES.specialDefense, 'stat-specialDefense'));
-        // spacing
         table.append(`<div style='padding:5px'></div>`);
         table.append(`<div style='padding:5px'></div>`);
         // passives
@@ -6719,7 +6656,7 @@ window.moduleRegistry.add('petStateStore', (events, petUtil, util, localDatabase
         const entries = await localDatabase.getAllEntries(STORE_NAME);
         const entry = entries.find(entry => entry.key === KEY_NAME);
         if(entry) {
-            state = entry.value;
+            state = entry.value.filter(pet => pet.version === petUtil.VERSION);
         }
     }
 
@@ -7765,40 +7702,6 @@ window.moduleRegistry.add('petPassiveCache', (request, Promise) => {
     tryInitialise();
 
     return initialised;
-
-}
-);
-// petTraitCache
-window.moduleRegistry.add('petTraitCache', () => {
-
-    const exports = {
-        list: [],
-        byId: {},
-        byName: {},
-        idToIndex: {}
-    };
-
-    function initialise() {
-        const traits = ['Attack & Defense', 'Attack & Special Def', 'Special Atk & Defense', 'Special Atk & Special Def'];
-        for(const trait of traits) {
-            const value = {
-                id: exports.list.length,
-                name: trait,
-                attack: trait.startsWith('Attack'),
-                defense: trait.endsWith('Defense'),
-                specialAttack: trait.startsWith('Special Atk'),
-                specialDefense: trait.endsWith('Special Def')
-            };
-            exports.list.push(value);
-            exports.byId[value.id] = value;
-            exports.byName[value.name] = value;
-            exports.idToIndex[value.id] = exports.list.length-1;
-        }
-    }
-
-    initialise();
-
-    return exports;
 
 }
 );

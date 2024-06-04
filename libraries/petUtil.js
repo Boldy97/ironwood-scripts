@@ -1,20 +1,26 @@
-(petCache, petTraitCache, petPassiveCache, expeditionCache, util) => {
+(petCache, petPassiveCache, expeditionCache, util, request, Promise) => {
 
-    const STATS_BASE = ['health', 'speed', 'attack', 'specialAttack', 'defense', 'specialDefense'];
-    const STATS_SPECIAL = ['hunger', 'stealth', 'loot'];
+    const STATS_BASE = ['health', 'attack', 'defense'];
+    const STATS_SPECIAL = ['meleeAttack', 'meleeDefense', 'rangedAttack', 'rangedDefense', 'magicAttack', 'magicDefense', 'hunger', 'eggFind', 'itemFind'];
     const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
     const IMAGES = {
         health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
-        speed: 'https://img.icons8.com/?size=48&id=TE1T4XfT3xeN',
         attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
         defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
-        specialAttack: 'https://img.icons8.com/?size=48&id=18515',
-        specialDefense: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
+        itemFind: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8',
+        eggFind: 'https://img.icons8.com/?size=48&id=Ybx2AvxzyUfH',
         hunger: 'https://img.icons8.com/?size=48&id=AXExnoyylJdK',
-        stealth: 'https://img.icons8.com/?size=48&id=4GYmMTXrMp8g',
-        loot: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8'
+        melee: 'https://img.icons8.com/?size=48&id=16672',
+        magic: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
+        ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y'
     };
+    const ROTATION_NAMES = [
+        'melee',
+        'ranged',
+        'magic',
+    ];
     const exports = {
+        VERSION: 0,
         STATS_BASE,
         STATS_SPECIAL,
         IMAGES,
@@ -25,18 +31,25 @@
         getExpeditionStats
     };
 
-    const SPECIAL_CHAR = '_';
+    let SPECIAL_CHAR = '0';
     const VALID_CHARS = '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}'.split('');
     const VALID_CHARS_LENGTH = BigInt(VALID_CHARS.length);
     const OPTIONS = [
         petCache.list.length, // species
-        petTraitCache.list.length, // traits
-        ...Array(6).fill(50), // stats
+        ...Array(3).fill(50), // stats
         ...Array(4).fill(petPassiveCache.list.length+1) // passives, 0 = empty
     ];
 
     const MILLIS_PER_MINUTE = 1000*60;
     const MILLIS_PER_WEEK = 1000*60*60*24*7;
+
+    const initialised = new Promise.Expiring(2000, 'localDatabase');
+
+    async function initialise() {
+        exports.VERSION = +(await request.getPetVersion());
+        SPECIAL_CHAR = exports.VERSION + '';
+        initialised.resolve(exports);
+    }
 
     function numberToText(number) {
         let text = SPECIAL_CHAR;
@@ -93,13 +106,9 @@
         }
         return [
             petCache.idToIndex[pet.species], // species
-            petTraitCache.idToIndex[pet.traits], // traits
             pet.health/2-1,
             pet.attack/2-1,
             pet.defense/2-1,
-            pet.specialAttack/2-1,
-            pet.specialDefense/2-1,
-            pet.speed/2-1, // stats
             ...passives // passives, 0 = empty
         ];
     }
@@ -109,14 +118,10 @@
             parsed: true,
             species: petCache.list[choices[0]].id,
             name: text,
-            traits: petTraitCache.list[choices[1]].id,
-            health: (choices[2]+1)*2,
-            attack: (choices[3]+1)*2,
-            defense: (choices[4]+1)*2,
-            specialAttack: (choices[5]+1)*2,
-            specialDefense: (choices[6]+1)*2,
-            speed: (choices[7]+1)*2,
-            passives: choices.slice(8).filter(a => a).map(a => petPassiveCache.list[a-1].id)
+            health: (choices[1]+1)*2,
+            attack: (choices[2]+1)*2,
+            defense: (choices[3]+1)*2,
+            passives: choices.slice(4).filter(a => a).map(a => petPassiveCache.list[a-1].id)
         };
     }
 
@@ -139,20 +144,14 @@
     function petToStats(pet) {
         const result = {};
         const passives = pet.passives.map(id => petPassiveCache.byId[id]);
-        const traits = petTraitCache.byId[pet.traits];
         for(const stat of STATS_BASE) {
             result[stat] = 0;
             let value = (petCache.byId[pet.species].power + pet[stat] / 2 - 10) / 100 * pet.level + 10;
-            value *= traits[stat] ? 1.25 : 1;
-            const passive = passives.find(a => a.stats.name === stat + 'Percent');
-            if(passive) {
-                value *= 1 + passive.stats.value / 100;
-            }
             result[stat] += value;
         }
         for(const stat of STATS_SPECIAL) {
             result[stat] = 0;
-            const passive = passives.find(a => a.stats.name === stat + 'Percent');
+            const passive = passives.find(a => a.stats.name === stat);
             if(passive) {
                 result[stat] += passive.stats.value;
             }
@@ -177,9 +176,6 @@
         const stats = {};
         for(const stat of STATS_BASE) {
             stats[stat] = expedition.power;
-            if(rotation[stat]) {
-                stats[stat] *= 1.25;
-            }
         }
         return Object.assign({rotation,stats}, expedition);
     }
@@ -190,10 +186,12 @@
         const millisPassed = util.startOfWeek(date) - util.startOfWeek(util.startOfYear(date));
         const startOfWeek = util.startOfWeek(date);
         let index = 2 + offset + Math.round(millisPassed / MILLIS_PER_WEEK);
-        index %= petTraitCache.list.length;
-        return petTraitCache.byId[index];
+        index %= ROTATION_NAMES.length;
+        return ROTATION_NAMES[index];
     }
 
-    return exports;
+    initialise();
+
+    return initialised;
 
 }

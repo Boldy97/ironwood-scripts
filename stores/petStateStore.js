@@ -14,7 +14,7 @@
         const entries = await localDatabase.getAllEntries(STORE_NAME);
         const entry = entries.find(entry => entry.key === KEY_NAME);
         if(entry) {
-            state = entry.value;
+            state = entry.value.filter(pet => pet.version === petUtil.VERSION);
         }
     }
 

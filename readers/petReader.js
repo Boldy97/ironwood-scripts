@@ -1,4 +1,4 @@
-(events, petCache, petPassiveCache, petTraitCache, elementWatcher, util) => {
+(events, petCache, petPassiveCache, elementWatcher, util, petUtil) => {
 
     const emitEvent = events.emit.bind(null, 'reader-pet');
 
@@ -24,6 +24,7 @@
             const partOfTeam = !!element.closest('.card').find('.header:contains("Expedition Team")').length;
             values.push({
                 parsed: false,
+                version: petUtil.VERSION,
                 species: petCache.byImage[image].id,
                 family: petCache.byImage[image].family,
                 name,
@@ -39,31 +40,26 @@
     }
 
     function readPetModal(modal) {
-        if(!$(modal).find('.name:contains("Traits")').length) {
+        if(!$(modal).find('.name:contains("Abilities")').length) {
             return; // avoid triggering on other modals
         }
         const image = $(modal).find('.header img').attr('src').split('/').at(-1);
-        const name = $(modal).find('.header .description button').text().trim();
-        const traits = $(modal).find('.name:contains("Traits")').next().text();
+        const name = $(modal).find('.header .description > button').text().trim();
+        const level = util.parseNumber($(modal).find('.header .description > div').text().trim());
         const health = +($(modal).find('.name:contains("Health") + .mono').text().match('\\((\\d+)%\\)')[1]);
         const attack = +($(modal).find('.name:contains("Attack") + .mono').text().match('\\((\\d+)%\\)')[1]);
         const defense = +($(modal).find('.name:contains("Defense") + .mono').text().match('\\((\\d+)%\\)')[1]);
-        const specialAttack = +($(modal).find('.name:contains("Sp. Atk") + .mono').text().match('\\((\\d+)%\\)')[1]);
-        const specialDefense = +($(modal).find('.name:contains("Sp. Def") + .mono').text().match('\\((\\d+)%\\)')[1]);
-        const speed = +($(modal).find('.name:contains("Speed") + .mono').text().match('\\((\\d+)%\\)')[1]);
         const passives = $(modal).find('.name:contains("Total")').parent().nextAll('.row').find('.name').get().map(a => a.innerText);
         const pet = {
             parsed: true,
+            version: petUtil.VERSION,
             species: petCache.byImage[image].id,
             family: petCache.byImage[image].family,
             name,
-            traits: petTraitCache.byName[traits].id,
+            level,
             health,
             attack,
             defense,
-            specialAttack,
-            specialDefense,
-            speed,
             passives: passives.map(a => petPassiveCache.byName[a].id)
         };
         const healthRow = $(modal).find('.name:contains("Health") + .mono').parent();
@@ -71,9 +67,6 @@
             $(modal).find('.name:contains("Health") + .mono').parent().addClass('stat-health');
             $(modal).find('.name:contains("Attack") + .mono').parent().addClass('stat-attack');
             $(modal).find('.name:contains("Defense") + .mono').parent().addClass('stat-defense');
-            $(modal).find('.name:contains("Sp. Atk") + .mono').parent().addClass('stat-specialAttack');
-            $(modal).find('.name:contains("Sp. Def") + .mono').parent().addClass('stat-specialDefense');
-            $(modal).find('.name:contains("Speed") + .mono').parent().addClass('stat-speed');
             for(const id of pet.passives) {
                 const passive = petPassiveCache.byId[id];
                 $(modal).find(`.name:contains("${passive.name}")`).parent().addClass(`passive-${passive.stats.name}`);

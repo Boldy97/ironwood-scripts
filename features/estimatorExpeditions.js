@@ -73,17 +73,12 @@
     }
 
     function getSuccessChance(stats, expedition) {
-        const attackRatio = Math.max(stats.attack / expedition.stats.defense, stats.specialAttack / expedition.stats.specialDefense);
-        let defenseRatio = 0;
-        if(expedition.rotation.attack) {
-            defenseRatio = expedition.stats.attack / stats.defense;
-        } else {
-            defenseRatio = expedition.stats.specialAttack / stats.specialDefense;
-        }
-        const damageRatio = attackRatio / defenseRatio;
-        const healthRatio = stats.health / expedition.stats.health;
-        const speedRatio = stats.speed / expedition.stats.speed;
-        const successChance = 100 * damageRatio * healthRatio * speedRatio + stats.stealth;
+        const expeditionValue = expedition.stats.health + expedition.stats.attack + expedition.stats.defense;
+        let teamValue = stats.health + stats.attack + stats.defense;
+        const rotationAttack = stats[expedition.rotation + 'Attack'];
+        const rotationDefense = stats[expedition.rotation + 'Defense'];
+        teamValue *= 1 + (rotationAttack + rotationDefense) / 100;
+        const successChance = 100 * teamValue / expeditionValue;
         return Math.min(100, Math.max(0, successChance));
     }
 
@@ -275,21 +270,9 @@
                 value: ''
             },{
                 type: 'item',
-                id: 'teamStat-speed',
-                name: 'Speed',
-                image: petUtil.IMAGES.speed,
-                value: ''
-            },{
-                type: 'item',
                 id: 'teamStat-attack',
                 name: 'Attack',
                 image: petUtil.IMAGES.attack,
-                value: ''
-            },{
-                type: 'item',
-                id: 'teamStat-specialAttack',
-                name: 'Special Attack',
-                image: petUtil.IMAGES.specialAttack,
                 value: ''
             },{
                 type: 'item',
@@ -299,9 +282,15 @@
                 value: ''
             },{
                 type: 'item',
-                id: 'teamStat-specialDefense',
-                name: 'Special Defense',
-                image: petUtil.IMAGES.specialDefense,
+                id: 'teamStat-itemFind',
+                name: 'Loot',
+                image: petUtil.IMAGES.itemFind,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-eggFind',
+                name: 'Loot',
+                image: petUtil.IMAGES.eggFind,
                 value: ''
             },{
                 type: 'item',
@@ -310,16 +299,43 @@
                 image: petUtil.IMAGES.hunger,
                 value: ''
             },{
+                type: 'header',
+                title: 'Traits'
+            },{
                 type: 'item',
-                id: 'teamStat-stealth',
-                name: 'Stealth',
-                image: petUtil.IMAGES.stealth,
+                id: 'teamStat-meleeAttack',
+                name: 'Melee Attack',
+                image: petUtil.IMAGES.melee,
                 value: ''
             },{
                 type: 'item',
-                id: 'teamStat-loot',
-                name: 'Loot',
-                image: petUtil.IMAGES.loot,
+                id: 'teamStat-meleeDefense',
+                name: 'Melee Defense',
+                image: petUtil.IMAGES.melee,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-rangedAttack',
+                name: 'Ranged Attack',
+                image: petUtil.IMAGES.ranged,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-rangedDefense',
+                name: 'Ranged Defense',
+                image: petUtil.IMAGES.ranged,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-magicAttack',
+                name: 'Magic Attack',
+                image: petUtil.IMAGES.magic,
+                value: ''
+            },{
+                type: 'item',
+                id: 'teamStat-magicDefense',
+                name: 'Magic Defense',
+                image: petUtil.IMAGES.magic,
                 value: ''
             }]
         }]

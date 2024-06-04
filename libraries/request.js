@@ -55,6 +55,7 @@
     request.report = (data) => request('public/report', data);
 
     request.getChangelogs = () => request('public/settings/changelog');
+    request.getPetVersion = () => request('public/settings/petVersion');
     request.getVersion = () => request('public/settings/version');
 
     return request;
