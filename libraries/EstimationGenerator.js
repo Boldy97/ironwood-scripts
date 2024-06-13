@@ -1,4 +1,4 @@
-(events, estimator, statsStore, util, skillCache, itemCache, structuresCache) => {
+(events, estimator, statsStore, util, skillCache, actionCache, itemCache, structuresCache) => {
 
     const EVENTS = {
         exp: {
@@ -35,28 +35,40 @@
 
         #backup;
         #state;
+        #skillId;
+        #actionId;
 
         constructor() {
             this.#backup = {};
-            this.#state = this.#backup;
-            for(const name in EVENTS) {
-                this.#backup[name] = events.getLast(EVENTS[name].event);
-            }
+            this.#state = {};
+            this.reset();
         }
 
         reset() {
+            this.#backup = {};
+            this.#state = {};
+            this.#skillId = null;
+            this.#actionId = null;
             for(const name in EVENTS) {
                 this.#state[name] = structuredClone(EVENTS[name].default);
             }
             return this;
         }
 
-        run(skillId, actionId) {
+        run() {
+            this.#populateBackup();
             this.#sendCustomEvents();
             statsStore.update(new Set());
-            const estimation = estimator.get(skillId, actionId);
+            const estimation = estimator.get(this.#skillId, this.#actionId);
             this.#sendBackupEvents();
             return estimation;
+        }
+
+        #populateBackup() {
+            this.#backup = {};
+            for(const name in EVENTS) {
+                this.#backup[name] = events.getLast(EVENTS[name].event);
+            }
         }
 
         #sendCustomEvents() {
@@ -69,6 +81,30 @@
             for(const name in this.#backup) {
                 events.emit(EVENTS[name].event, this.#backup[name]);
             }
+        }
+
+        skill(skill) {
+            if(typeof skill === 'string') {
+                const match = skillCache.byName[skill];
+                if(!match) {
+                    throw `Could not find skill ${skill}`;
+                }
+                skill = match.id;
+            }
+            this.#skillId = skill;
+            return this;
+        }
+
+        action(action) {
+            if(typeof action === 'string') {
+                const match = actionCache.byName[action];
+                if(!match) {
+                    throw `Could not find action ${action}`;
+                }
+                action = match.id;
+            }
+            this.#actionId = action;
+            return this;
         }
 
         level(skill, level, exp = 0) {
@@ -87,6 +123,11 @@
                 exp,
                 level
             };
+            return this;
+        }
+
+        inventory(item, amount) {
+            // noop
             return this;
         }
 
@@ -152,6 +193,7 @@
 
         guild(structure, level) {
             if(typeof structure === 'string') {
+                structure = 'Guild ' + structure;
                 const match = structuresCache.byName[structure];
                 if(!match) {
                     throw `Could not find structure ${structure}`;
