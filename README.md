@@ -72,7 +72,7 @@ window.moduleRegistry.build();
 ## What backend calls are available?
 
 Some scripts depend on calls to my backend, which is not open source.
-The only available endpoints are the ones that are used in scripts.
+The only available endpoints are the ones that are used mentioned in `libraries/request.js`.
 If you feel like you need a new functionality, open an issue or find me on Discord (@pancake.lord)
 
 ## Planned features

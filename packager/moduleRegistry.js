@@ -20,73 +20,71 @@
         return modules[name] || null;
     }
 
-    async function build() {
+    function build() {
+        createTree();
+        loadLeafModules();
+    }
+
+    function createTree() {
         for(const module of Object.values(modules)) {
-            await buildModule(module);
+            for(const dependency of module.dependencies) {
+                dependency.module = modules[dependency.name];
+                if(!dependency.module && !dependency.optional) {
+                    throw `Unresolved dependency : ${dependency.name}`;
+                }
+                dependency.module.dependents.push(module);
+            }
+        }
+    }
+
+    function loadLeafModules() {
+        for(const module of Object.values(modules)) {
+            if(!isMissingDependencies(module)) {
+                buildModule(module);
+            }
         }
     }
 
     function createModule(name, initialiser) {
-        const dependencies = extractParametersFromFunction(initialiser).map(dependency => {
-            const name = dependency.replaceAll('_', '');
-            const module = get(name);
-            const optional = dependency.startsWith('_');
-            return { name, module, optional };
-        });
-        const module = {
+        const dependencies = extractParametersFromFunction(initialiser).map(dependency => ({
+                name: dependency.replaceAll('_', ''),
+                optional: dependency.startsWith('_'),
+                module: null
+            }));
+        return {
             name,
             initialiser,
-            dependencies
+            dependencies,
+            dependents: []
         };
-        for(const other of Object.values(modules)) {
-            for(const dependency of other.dependencies) {
-                if(dependency.name === name) {
-                    dependency.module = module;
-                }
-            }
-        }
-        return module;
     }
 
-    async function buildModule(module, partial, chain) {
+    async function buildModule(module, chain = []) {
         if(module.built) {
-            return true;
+            return;
+        }
+        if(isMissingDependencies(module)) {
+            return;
         }
 
-        chain = chain || [];
         if(chain.includes(module.name)) {
-            chain.push(module.name);
+            chain.unshift(module.name);
             throw `Circular dependency in chain : ${chain.join(' -> ')}`;
         }
-        chain.push(module.name);
-
-        for(const dependency of module.dependencies) {
-            if(!dependency.module) {
-                if(partial) {
-                    return false;
-                }
-                if(dependency.optional) {
-                    continue;
-                }
-                throw `Unresolved dependency : ${dependency.name}`;
-            }
-            const built = await buildModule(dependency.module, partial, chain);
-            if(!built) {
-                return false;
-            }
-        }
+        chain.unshift(module.name);
 
         const parameters = module.dependencies.map(a => a.module?.reference);
         try {
             module.reference = await module.initialiser.apply(null, parameters);
         } catch(e) {
             console.error(`Failed building ${module.name}`, e);
-            return false;
+            return;
         }
         module.built = true;
 
-        chain.pop();
-        return true;
+        for(const dependent of module.dependents) {
+            buildModule(dependent, structuredClone(chain));
+        }
     }
 
     function extractParametersFromFunction(fn) {
@@ -94,6 +92,18 @@
         var fnStr = fn.toString();
         var result = fnStr.slice(fnStr.indexOf('(')+1, fnStr.indexOf(')')).match(PARAMETER_NAMES);
         return result || [];
+    }
+
+    function isMissingDependencies(module) {
+        for(const dependency of module.dependencies) {
+            if(dependency.optional && dependency.module && !dependency.module.built) {
+                return true;
+            }
+            if(!dependency.optional && !dependency.module.built) {
+                return true;
+            }
+        }
+        return false;
     }
 
 })();
