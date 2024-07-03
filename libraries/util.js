@@ -1,4 +1,4 @@
-() => {
+(elementWatcher) => {
 
     const exports = {
         levelToExp,
@@ -152,7 +152,9 @@
         let seconds = 0;
         for(const part of parts) {
             const value = parseFloat(part);
-            if(part.endsWith('m')) {
+            if(part.endsWith('s')) {
+                seconds += value;
+            } else if(part.endsWith('m')) {
                 seconds += value * 60;
             } else if(part.endsWith('h')) {
                 seconds += value * 60 * 60;
@@ -169,7 +171,11 @@
         return [Math.floor(x / y), x % y];
     }
 
-    function goToPage(page) {
+    async function goToPage(page) {
+        if(page === 'settings') {
+            goToPage('merchant');
+            await elementWatcher.exists('merchant-page');
+        }
         window.history.pushState({}, '', page);
         window.history.pushState({}, '', page);
         window.history.back();

@@ -1,4 +1,4 @@
-(pages, components, elementWatcher, configuration, elementCreator) => {
+(pages, components, configuration, elementCreator) => {
 
     const PAGE_NAME = 'Configuration';
 

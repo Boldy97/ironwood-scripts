@@ -16,7 +16,7 @@
         }
         handlers[name].push(handler);
         if(lastCache[name]) {
-            handle(handler, lastCache[name]);
+            handle(handler, lastCache[name], name);
         }
     }
 
@@ -29,13 +29,13 @@
             return;
         }
         for(const handler of handlers[name]) {
-            handle(handler, data);
+            handle(handler, data, name);
         }
     }
 
-    function handle(handler, data) {
+    function handle(handler, data, name) {
         try {
-            handler(data);
+            handler(data, name);
         } catch(e) {
             console.error('Something went wrong', e);
         }

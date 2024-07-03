@@ -6,6 +6,10 @@
     const TOAST_WARN_TIME = 1000*60*60*24*3; // 3 days
     const TOAST_REWARN_TIME = 1000*60*60*4; // 4 hours
 
+    const exports = {
+        PAGE_NAME
+    };
+
     const sources = {
         inventory: {
             name: 'Inventory',
@@ -21,13 +25,13 @@
             name: 'Runes',
             event: 'reader-equipment-runes',
             page: 'equipment',
-            element: 'equipment-page .categories button:contains("Runes")'
+            element: 'equipment-page .categories button .name:contains("Runes")'
         },
         'equipment-tomes': {
             name: 'Tomes',
             event: 'reader-equipment-tomes',
             page: 'equipment',
-            element: 'equipment-page .categories button:contains("Tomes")'
+            element: 'equipment-page .categories button .name:contains("Tomes")'
         },
         structures: {
             name: 'Buildings',
@@ -43,7 +47,23 @@
             name: 'Guild buildings',
             event: 'reader-structures-guild',
             page: 'guild',
-            element: 'guild-page button:contains("Buildings")'
+            element: 'guild-page button .name:contains("Buildings")'
+        },
+        guild: {
+            name: 'Guild',
+            event: 'reader-guild',
+            page: 'guild'
+        },
+        'guild-event': {
+            name: 'Guild Events',
+            event: 'reader-guild-event',
+            page: 'guild',
+            element: 'guild-page button .name:contains("Events")'
+        },
+        settings: {
+            name: 'Settings',
+            event: 'reader-settings',
+            page: 'settings'
         }
     };
 
@@ -131,7 +151,7 @@
         if(!source.page) {
             return;
         }
-        util.goToPage(source.page);
+        await util.goToPage(source.page);
         if(source.element) {
             await elementWatcher.exists(source.element);
             $(source.element).click();
@@ -255,5 +275,7 @@
     };
 
     initialise();
+
+    return exports;
 
 }

@@ -12,7 +12,7 @@
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 5);
+        const request = window.indexedDB.open(databaseName, 6);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -46,6 +46,11 @@
             if(event.oldVersion <= 4) {
                 db
                     .createObjectStore('various', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 5) {
+                db
+                    .createObjectStore('discord', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });
             }
         };

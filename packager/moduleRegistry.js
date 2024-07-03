@@ -29,7 +29,10 @@
         for(const module of Object.values(modules)) {
             for(const dependency of module.dependencies) {
                 dependency.module = modules[dependency.name];
-                if(!dependency.module && !dependency.optional) {
+                if(!dependency.module) {
+                    if(dependency.optional) {
+                        continue;
+                    }
                     throw `Unresolved dependency : ${dependency.name}`;
                 }
                 dependency.module.dependents.push(module);

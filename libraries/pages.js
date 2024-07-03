@@ -133,6 +133,9 @@
 
     async function visitPage(name) {
         const page = pages.find(p => p.name === name);
+        if(!page) {
+            throw `Unknown page : ${name}`;
+        }
         if($('custom-page').length) {
             $('custom-page').remove();
         } else {
@@ -146,7 +149,7 @@
     }
 
     async function setupEmptyPage() {
-        util.goToPage('settings');
+        await util.goToPage('settings');
         await elementWatcher.exists('settings-page');
         $('settings-page').remove();
     }

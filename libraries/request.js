@@ -5,9 +5,9 @@
             headers = {};
         }
         headers['Content-Type'] = 'application/json';
-        const method = body ? 'POST' : 'GET';
+        const method = body !== undefined ? 'POST' : 'GET';
         try {
-            if(body) {
+            if(body !== undefined) {
                 body = JSON.stringify(body);
             }
             const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
@@ -38,6 +38,15 @@
 
     // alphabetical
 
+    request.forwardDataGuildLevel = (guild, level) => request(`public/data/guild/${guild}/level`, level);
+    request.forwardDataGuildStructures = (guild, data) => request(`public/data/guild/${guild}/structures`, data);
+    request.createDiscordRegistration = (registration) => request('public/discord', registration);
+    request.getDiscordRegistrationTypes = () => request('public/discord/types');
+    request.getDiscordRegistration = (id) => request(`public/discord/${id}`);
+    request.setTimeDiscordRegistration = (id, time) => request(`public/discord/${id}/time`, time);
+    request.setEnabledDiscordRegistration = (id, enabled) => request(`public/discord/${id}/enabled`, enabled);
+    request.unlinkDiscordRegistration = (id) => request(`public/discord/${id}/unlink`);
+    request.deleteDiscordRegistration = (id) => request(`public/discord/${id}/delete`);
     request.listActions = () => request('public/list/action');
     request.listDrops = () => request('public/list/drop');
     request.listExpeditions = () => request('public/list/expedition');

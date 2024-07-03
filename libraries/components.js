@@ -3,6 +3,7 @@
     const exports = {
         addComponent,
         removeComponent,
+        removeAllComponents,
         search
     };
 
@@ -31,6 +32,10 @@
 
     function removeComponent(blueprint) {
         $(`#${blueprint.componentId}`).remove();
+    }
+
+    function removeAllComponents() {
+        $('.custom-component').remove();
     }
 
     async function addComponent(blueprint) {

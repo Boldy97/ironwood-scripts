@@ -12,7 +12,7 @@
         if(!page) {
             return;
         }
-        if(page.type === 'guild' && $('guild-page .tracker ~ div button.row-active').text() === 'Buildings') {
+        if(page.type === 'guild' && $('guild-page .tracker ~ div button.row-active .name').text() === 'Buildings') {
             readGuildStructuresScreen();
         }
     }

@@ -44,7 +44,10 @@ window.PANCAKE_VERSION = '4.4.1';
         for(const module of Object.values(modules)) {
             for(const dependency of module.dependencies) {
                 dependency.module = modules[dependency.name];
-                if(!dependency.module && !dependency.optional) {
+                if(!dependency.module) {
+                    if(dependency.optional) {
+                        continue;
+                    }
                     throw `Unresolved dependency : ${dependency.name}`;
                 }
                 dependency.module.dependents.push(module);
@@ -153,6 +156,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     const exports = {
         addComponent,
         removeComponent,
+        removeAllComponents,
         search
     };
 
@@ -181,6 +185,10 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function removeComponent(blueprint) {
         $(`#${blueprint.componentId}`).remove();
+    }
+
+    function removeAllComponents() {
+        $('.custom-component').remove();
     }
 
     async function addComponent(blueprint) {
@@ -1500,7 +1508,7 @@ window.moduleRegistry.add('events', () => {
         }
         handlers[name].push(handler);
         if(lastCache[name]) {
-            handle(handler, lastCache[name]);
+            handle(handler, lastCache[name], name);
         }
     }
 
@@ -1513,13 +1521,13 @@ window.moduleRegistry.add('events', () => {
             return;
         }
         for(const handler of handlers[name]) {
-            handle(handler, data);
+            handle(handler, data, name);
         }
     }
 
-    function handle(handler, data) {
+    function handle(handler, data, name) {
         try {
-            handler(data);
+            handler(data, name);
         } catch(e) {
             console.error('Something went wrong', e);
         }
@@ -1635,7 +1643,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     const databaseName = 'PancakeScripts';
 
     function initialise() {
-        const request = window.indexedDB.open(databaseName, 5);
+        const request = window.indexedDB.open(databaseName, 6);
         request.onsuccess = function(event) {
             database = this.result;
             initialised.resolve(exports);
@@ -1669,6 +1677,11 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
             if(event.oldVersion <= 4) {
                 db
                     .createObjectStore('various', { keyPath: 'key' })
+                    .createIndex('key', 'key', { unique: true });
+            }
+            if(event.oldVersion <= 5) {
+                db
+                    .createObjectStore('discord', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });
             }
         };
@@ -1968,6 +1981,9 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
 
     async function visitPage(name) {
         const page = pages.find(p => p.name === name);
+        if(!page) {
+            throw `Unknown page : ${name}`;
+        }
         if($('custom-page').length) {
             $('custom-page').remove();
         } else {
@@ -1981,7 +1997,7 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
     }
 
     async function setupEmptyPage() {
-        util.goToPage('settings');
+        await util.goToPage('settings');
         await elementWatcher.exists('settings-page');
         $('settings-page').remove();
     }
@@ -2446,9 +2462,9 @@ window.moduleRegistry.add('request', () => {
             headers = {};
         }
         headers['Content-Type'] = 'application/json';
-        const method = body ? 'POST' : 'GET';
+        const method = body !== undefined ? 'POST' : 'GET';
         try {
-            if(body) {
+            if(body !== undefined) {
                 body = JSON.stringify(body);
             }
             const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
@@ -2479,6 +2495,15 @@ window.moduleRegistry.add('request', () => {
 
     // alphabetical
 
+    request.forwardDataGuildLevel = (guild, level) => request(`public/data/guild/${guild}/level`, level);
+    request.forwardDataGuildStructures = (guild, data) => request(`public/data/guild/${guild}/structures`, data);
+    request.createDiscordRegistration = (registration) => request('public/discord', registration);
+    request.getDiscordRegistrationTypes = () => request('public/discord/types');
+    request.getDiscordRegistration = (id) => request(`public/discord/${id}`);
+    request.setTimeDiscordRegistration = (id, time) => request(`public/discord/${id}/time`, time);
+    request.setEnabledDiscordRegistration = (id, enabled) => request(`public/discord/${id}/enabled`, enabled);
+    request.unlinkDiscordRegistration = (id) => request(`public/discord/${id}/unlink`);
+    request.deleteDiscordRegistration = (id) => request(`public/discord/${id}/delete`);
     request.listActions = () => request('public/list/action');
     request.listDrops = () => request('public/list/drop');
     request.listExpeditions = () => request('public/list/expedition');
@@ -2589,7 +2614,7 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
 }
 );
 // util
-window.moduleRegistry.add('util', () => {
+window.moduleRegistry.add('util', (elementWatcher) => {
 
     const exports = {
         levelToExp,
@@ -2743,7 +2768,9 @@ window.moduleRegistry.add('util', () => {
         let seconds = 0;
         for(const part of parts) {
             const value = parseFloat(part);
-            if(part.endsWith('m')) {
+            if(part.endsWith('s')) {
+                seconds += value;
+            } else if(part.endsWith('m')) {
                 seconds += value * 60;
             } else if(part.endsWith('h')) {
                 seconds += value * 60 * 60;
@@ -2760,7 +2787,11 @@ window.moduleRegistry.add('util', () => {
         return [Math.floor(x / y), x % y];
     }
 
-    function goToPage(page) {
+    async function goToPage(page) {
+        if(page === 'settings') {
+            goToPage('merchant');
+            await elementWatcher.exists('merchant-page');
+        }
         window.history.pushState({}, '', page);
         window.history.pushState({}, '', page);
         window.history.back();
@@ -3041,6 +3072,87 @@ window.moduleRegistry.add('expReader', (events, skillCache, util) => {
 
 }
 );
+// guildEventReader
+window.moduleRegistry.add('guildEventReader', (events, util) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-guild-event');
+
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 1000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        if(page.type === 'guild' && $('guild-page .tracker ~ div button.row-active .name').text() === 'Events') {
+            readScreen();
+        }
+    }
+
+    function readScreen() {
+        // TODO check this works when the event is on cooldown
+        const eventRunning = $('guild-page .header:contains("Event")').parent().text().includes('Guild Credits');
+        let eventSecondsRemaining = null;
+        if(eventRunning) {
+            const time = [];
+            $('guild-page .header:contains("Event")').parent().find('.date').children().each((index, element) => time.push($(element).text()));
+            eventSecondsRemaining = util.parseDuration(time.join(' '));
+        }
+        const data = {
+            eventRunning,
+            eventSecondsRemaining
+        };
+        emitEvent({
+            type: 'full',
+            value: data
+        });
+    }
+
+    initialise();
+
+}
+);
+// guildReader
+window.moduleRegistry.add('guildReader', (events, util) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-guild');
+
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 1000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        if(page.type === 'guild') {
+            readScreen();
+        }
+    }
+
+    function readScreen() {
+        const data = {
+            name: $('guild-page .tracker .name').text(),
+            level: util.parseNumber($('guild-page .tracker .level').text())
+        };
+        if(!data.name) {
+            return;
+        }
+        emitEvent({
+            type: 'full',
+            value: data
+        });
+    }
+
+    initialise();
+
+}
+);
 // guildStructuresReader
 window.moduleRegistry.add('guildStructuresReader', (events, util, structuresCache) => {
 
@@ -3056,7 +3168,7 @@ window.moduleRegistry.add('guildStructuresReader', (events, util, structuresCach
         if(!page) {
             return;
         }
-        if(page.type === 'guild' && $('guild-page .tracker ~ div button.row-active').text() === 'Buildings') {
+        if(page.type === 'guild' && $('guild-page .tracker ~ div button.row-active .name').text() === 'Buildings') {
             readGuildStructuresScreen();
         }
     }
@@ -3308,6 +3420,43 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, eleme
 
 }
 );
+// settingsReader
+window.moduleRegistry.add('settingsReader', (events) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-settings');
+
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 1000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        if(page.type === 'settings') {
+            readScreen();
+        }
+    }
+
+    function readScreen() {
+        const data = {
+            name: $('settings-page .name:contains("Username")').next().text()
+        };
+        if(!data.name) {
+            return;
+        }
+        emitEvent({
+            type: 'full',
+            value: data
+        });
+    }
+
+    initialise();
+
+}
+);
 // structuresReader
 window.moduleRegistry.add('structuresReader', (events, util, structuresCache) => {
 
@@ -3485,7 +3634,7 @@ window.moduleRegistry.add('changelog', (Promise, pages, components, request, uti
 }
 );
 // configurationPage
-window.moduleRegistry.add('configurationPage', (pages, components, elementWatcher, configuration, elementCreator) => {
+window.moduleRegistry.add('configurationPage', (pages, components, configuration, elementCreator) => {
 
     const PAGE_NAME = 'Configuration';
 
@@ -3612,6 +3761,55 @@ window.moduleRegistry.add('configurationPage', (pages, components, elementWatche
     initialise();
 }
 );
+// dataForwarder
+window.moduleRegistry.add('dataForwarder', (configuration, events, request) => {
+
+    let enabled = false;
+    const LAST_SENT = {};
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Data',
+            key: 'data-forwarder',
+            name: 'Data Forwarder',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('reader-guild', handleEvent);
+        events.register('reader-structures-guild', handleEvent);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function handleEvent(data, eventName) {
+        if(!enabled) {
+            return;
+        }
+        if(data.type !== 'full') {
+            return;
+        }
+        if(LAST_SENT[eventName] && LAST_SENT[eventName] > fifteenMinutesAgo()) {
+            return;
+        }
+        LAST_SENT[eventName] = Date.now();
+        console.log(eventName, data.value);
+        switch(eventName) {
+            case 'reader-guild': return request.forwardDataGuildLevel(data.value.name, data.value.level);
+            case 'reader-structures-guild': return request.forwardDataGuildStructures(events.getLast('reader-guild').value.name, data.value);
+            default: throw 'Unmapped event name : ' + eventName;
+        }
+    }
+
+    function fifteenMinutesAgo() {
+        return Date.now() - 1000 * 60 * 15;
+    }
+
+    initialise();
+
+}
+);
 // debugService
 window.moduleRegistry.add('debugService', (request, toast, statsStore, EstimationGenerator, logService, events, util) => {
 
@@ -3652,6 +3850,433 @@ window.moduleRegistry.add('debugService', (request, toast, statsStore, Estimatio
     return exports;
 
 });
+// discord
+window.moduleRegistry.add('discord', (pages, components, configuration, request, localDatabase, toast, logService, events, syncTracker) => {
+
+    const PAGE_NAME = 'Discord';
+    const STORE_NAME = 'discord';
+
+    const types = [];
+    let displayedTypes = [];
+    const eventData = {};
+    let registrations = [];
+    let highlightedRegistration = null;
+
+    async function initialise() {
+        await pages.register({
+            category: 'Misc',
+            after: 'Settings',
+            name: PAGE_NAME,
+            image: 'https://img.icons8.com/?size=48&id=30998',
+            columns: '2',
+            render: renderPage
+        });
+        configuration.registerCheckbox({
+            category: 'Pages',
+            key: 'discord-enabled',
+            name: 'Discord',
+            default: false,
+            handler: handleConfigStateChange
+        });
+        events.register('reader-guild', handleEvent);
+        events.register('reader-guild-event', handleEvent);
+        events.register('reader-settings', handleEvent);
+        await load();
+    }
+
+    function handleConfigStateChange(state, name) {
+        if(state) {
+            pages.show(PAGE_NAME);
+        } else {
+            pages.hide(PAGE_NAME);
+        }
+    }
+
+    function handleEvent(data, eventName) {
+        eventName = eventName.split(/-(.*)/)[1];
+        eventData[eventName] = data.value;
+        recomputeTypes();
+    }
+
+    async function load() {
+        types.push(...(await request.getDiscordRegistrationTypes()));
+        recomputeTypes();
+        registrations = [];
+        highlightedRegistration = null;
+        const entries = await localDatabase.getAllEntries(STORE_NAME);
+        for(const entry of entries) {
+            await loadSingle(entry.key);
+        }
+    }
+
+    async function loadSingle(id) {
+        try {
+            const registration = await request.getDiscordRegistration(id);
+            await add(registration);
+            return registration;
+        } catch(e) {
+            remove({
+                id
+            });
+        }
+    }
+
+    async function add(registration) {
+        await localDatabase.saveEntry(STORE_NAME, {
+            key: registration.id,
+            value: registration
+        });
+        const index = registrations.findIndex(a => a.id === registration.id);
+        if(index === -1) {
+            registrations.push(registration);
+        } else {
+            registrations[index] = registration;
+        }
+    }
+
+    async function remove(registration) {
+        await localDatabase.removeEntry(STORE_NAME, registration.id);
+        registrations = registrations.filter(a => a.id !== registration.id);
+    }
+
+    function getDisplayName(registration, includeExtra) {
+        let name = types.find(a => a.value === registration.type).text;
+        if(registration.name) {
+            name += ` (${registration.name})`;
+        }
+        if(includeExtra) {
+            name += ` - ${registration.enabled ? 'enabled' : 'disabled'}`;
+            name += ` - ${registration.channel ? 'linked' : 'unlinked'}`;
+        }
+        return name;
+    }
+
+    function clickForward() {
+        pages.open(syncTracker.PAGE_NAME);
+    }
+
+    function clickInvite() {
+        window.open('https://discord.com/api/oauth2/authorize?client_id=1208765131010478081&permissions=2147485696&scope=bot');
+    }
+
+    function clickCreate() {
+        highlightedRegistration = {
+            id: 'NEW',
+            type: types[0].value,
+            user: eventData.settings.name
+        };
+        pages.requestRender(PAGE_NAME);
+    }
+
+    function clickConfigure(registration) {
+        highlightedRegistration = registration;
+        pages.requestRender(PAGE_NAME);
+    }
+
+    async function tryExecute(executor, messageSuccess, messageError) {
+        try {
+            await executor();
+            toast.create({
+                text: messageSuccess,
+                image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
+            });
+        } catch(e) {
+            console.error(e);
+            logService.error(e);
+            toast.create({
+                text: messageError,
+                image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
+            });
+        }
+        pages.requestRender(PAGE_NAME);
+    }
+
+    async function clickRefresh() {
+        tryExecute(async () => {
+            highlightedRegistration = await loadSingle(highlightedRegistration.id);
+        }, 'Notification refreshed!', 'Error refreshing notification');
+    }
+
+    async function clickEnable() {
+        tryExecute(async () => {
+            highlightedRegistration.enabled = !highlightedRegistration.enabled;
+            highlightedRegistration = await request.setEnabledDiscordRegistration(highlightedRegistration.id, highlightedRegistration.enabled);
+            await add(highlightedRegistration);
+        }, 'Toggled enabled!', 'Error toggling enabled');
+    }
+
+    async function clickLinked() {
+        if(!highlightedRegistration.channel) {
+            toast.create({
+                text: 'Please use the /link command',
+                image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
+            });
+            return;
+        }
+        tryExecute(async () => {
+            highlightedRegistration = await request.unlinkDiscordRegistration(highlightedRegistration.id);
+        }, 'Notification unlinked!', 'Error unlinking notification');
+    }
+
+    async function submitCreate() {
+        tryExecute(async () => {
+            if(highlightedRegistration.type.startsWith('GUILD_')) {
+                highlightedRegistration.name = eventData.guild.name;
+            }
+            const registration = await request.createDiscordRegistration(highlightedRegistration);
+            await add(registration);
+            highlightedRegistration = null;
+        }, 'Notification created!', 'Error creating notification');
+    }
+
+    function clickCopyId() {
+        toast.copyToClipboard(highlightedRegistration.id, 'Copied id to clipboard!');
+    }
+
+    async function clickDelete() {
+        tryExecute(async () => {
+            await request.deleteDiscordRegistration(highlightedRegistration.id);
+            await remove(highlightedRegistration);
+            highlightedRegistration = null;
+        }, 'Notification deleted!', 'Error deleting notification');
+    }
+
+    function recomputeTypes() {
+        displayedTypes = structuredClone(types);
+        if(!eventData?.guild?.name) {
+            displayedTypes = displayedTypes.filter(a => !a.value.startsWith('GUILD_'));
+        }
+    }
+
+    function renderPage() {
+        components.removeAllComponents();
+        if(!eventData?.settings?.name) {
+            renderLeftWarning();
+        } else {
+            renderLeftList();
+        }
+
+        if(!highlightedRegistration) {
+            return;
+        } else if(highlightedRegistration.id === 'NEW') {
+            renderRightCreate();
+        } else {
+            renderRightEdit();
+        }
+    }
+
+    function renderLeftWarning() {
+        components.addComponent(componentBlueprintWarning);
+        components.addComponent(componentBlueprintInfo);
+    }
+
+    function renderLeftList() {
+        const registrationRows = components.search(componentBlueprintList, 'registrationRows');
+        registrationRows.rows = [];
+        for(const registration of registrations) {
+            registrationRows.rows.push({
+                type: 'header',
+                title: getDisplayName(registration, true),
+                name: '>',
+                action: clickConfigure.bind(null, registration),
+                color: 'primary'
+            });
+        }
+        components.addComponent(componentBlueprintList);
+        components.addComponent(componentBlueprintInfo);
+    }
+
+    function renderRightCreate() {
+        components.search(componentBlueprintCreate, 'dropdown').options = displayedTypes;
+        components.addComponent(componentBlueprintCreate);
+    }
+
+    function renderRightEdit() {
+        components.search(componentBlueprintEdit, 'header').title = 'Configure - ' + getDisplayName(highlightedRegistration, false);
+        components.search(componentBlueprintEdit, 'enabled').checked = !!highlightedRegistration.enabled;
+        components.search(componentBlueprintEdit, 'linked').checked = !!highlightedRegistration.channel;
+
+        components.addComponent(componentBlueprintEdit);
+    }
+
+    const componentBlueprintWarning = {
+        componentId: 'discordComponentWarning',
+        dependsOn: 'custom-page',
+        parent: '.column0',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                type: 'header',
+                title: 'Missing info'
+            },{
+                type: 'item',
+                name: 'Some information is missing before you can configure discord notifications'
+            },{
+                type: 'item',
+                name: 'Please go to the sync state page, and run the auto-sync process'
+            },{
+                type: 'buttons',
+                buttons: [{
+                    text: 'Go to sync state page',
+                    color: 'primary',
+                    action: clickForward
+                }]
+            }]
+        }]
+    };
+
+    const componentBlueprintList = {
+        componentId: 'discordComponentList',
+        dependsOn: 'custom-page',
+        parent: '.column0',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                type: 'header',
+                title: 'Notifications',
+                action: clickCreate,
+                name: '+',
+                color: 'success'
+            },{
+                type: 'segment',
+                id: 'registrationRows',
+                rows: []
+            }]
+        }]
+    };
+
+    const componentBlueprintInfo = {
+        componentId: 'discordComponentInfo',
+        dependsOn: 'custom-page',
+        parent: '.column0',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                type: 'header',
+                title: 'Information'
+            },{
+                type: 'header',
+                title: '1. Invite the bot',
+                action: clickInvite,
+                name: 'Invite',
+                color: 'success'
+            },{
+                type: 'header',
+                title: '2. Configure a text channel'
+            },{
+                type: 'item',
+                extra: 'It is suggested to secure your text channel, so only a limited amount of people can send messages'
+            },{
+                type: 'header',
+                title: '3. Link the channel'
+            },{
+                type: 'item',
+                extra: 'To receive notifications, you need to execute the following command in the text channel:'
+            },{
+                type: 'item',
+                name: '/link {id}'
+            },{
+                type: 'item',
+                extra: 'You can get the id from the "Copy id" button when viewing a notification'
+            },{
+                type: 'header',
+                title: '4. Other commands'
+            },{
+                type: 'item',
+                name: '/list'
+            },{
+                type: 'item',
+                extra: 'This lists the notifications currently linked to the channel.'
+            },{
+                type: 'item',
+                name: '/unlink {id}'
+            },{
+                type: 'item',
+                extra: 'This unlinks the id from any channel it may be linked to. This works the same as toggling the linked status in this interface.'
+            },{
+                type: 'item',
+                name: '/unlink_all'
+            },{
+                type: 'item',
+                extra: 'This unlinks all notifications linked to the channel the command was executed in.'
+            }]
+        }]
+    };
+
+    const componentBlueprintCreate = {
+        componentId: 'discordComponentCreate',
+        dependsOn: 'custom-page',
+        parent: '.column1',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                type: 'header',
+                title: 'Create'
+            }, {
+                type: 'dropdown',
+                id: 'dropdown',
+                options: [],
+                action: a => highlightedRegistration.type = a
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'Create',
+                    color: 'success',
+                    action: submitCreate
+                }]
+            }]
+        }]
+    };
+
+    const componentBlueprintEdit = {
+        componentId: 'discordComponentEdit',
+        dependsOn: 'custom-page',
+        parent: '.column1',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                type: 'header',
+                id: 'header',
+                title: 'Configure',
+                action: clickRefresh,
+                name: 'Refresh',
+                color: 'success'
+            },{
+                type: 'buttons',
+                buttons: [{
+                    text: 'Copy id',
+                    color: 'primary',
+                    action: clickCopyId
+                },{
+                    text: 'Delete',
+                    color: 'danger',
+                    action: clickDelete
+                }]
+            },{
+                type: 'checkbox',
+                id: 'enabled',
+                text: 'Enabled',
+                checked: false,
+                action: clickEnable
+            },{
+                type: 'checkbox',
+                id: 'linked',
+                text: 'Linked',
+                checked: false,
+                action: clickLinked
+            }]
+        }]
+    };
+
+    return initialise();
+
+}
+);
 // estimator
 window.moduleRegistry.add('estimator', (configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
 
@@ -6075,6 +6700,10 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
     const TOAST_WARN_TIME = 1000*60*60*24*3; // 3 days
     const TOAST_REWARN_TIME = 1000*60*60*4; // 4 hours
 
+    const exports = {
+        PAGE_NAME
+    };
+
     const sources = {
         inventory: {
             name: 'Inventory',
@@ -6090,13 +6719,13 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
             name: 'Runes',
             event: 'reader-equipment-runes',
             page: 'equipment',
-            element: 'equipment-page .categories button:contains("Runes")'
+            element: 'equipment-page .categories button .name:contains("Runes")'
         },
         'equipment-tomes': {
             name: 'Tomes',
             event: 'reader-equipment-tomes',
             page: 'equipment',
-            element: 'equipment-page .categories button:contains("Tomes")'
+            element: 'equipment-page .categories button .name:contains("Tomes")'
         },
         structures: {
             name: 'Buildings',
@@ -6112,7 +6741,23 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
             name: 'Guild buildings',
             event: 'reader-structures-guild',
             page: 'guild',
-            element: 'guild-page button:contains("Buildings")'
+            element: 'guild-page button .name:contains("Buildings")'
+        },
+        guild: {
+            name: 'Guild',
+            event: 'reader-guild',
+            page: 'guild'
+        },
+        'guild-event': {
+            name: 'Guild Events',
+            event: 'reader-guild-event',
+            page: 'guild',
+            element: 'guild-page button .name:contains("Events")'
+        },
+        settings: {
+            name: 'Settings',
+            event: 'reader-settings',
+            page: 'settings'
         }
     };
 
@@ -6200,7 +6845,7 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
         if(!source.page) {
             return;
         }
-        util.goToPage(source.page);
+        await util.goToPage(source.page);
         if(source.element) {
             await elementWatcher.exists(source.element);
             $(source.element).click();
@@ -6324,6 +6969,8 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
     };
 
     initialise();
+
+    return exports;
 
 }
 );
