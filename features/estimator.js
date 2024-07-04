@@ -1,5 +1,6 @@
 (configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
 
+    const emitEvent = events.emit.bind(null, 'estimator');
     let enabled = false;
 
     const exports = {
@@ -35,11 +36,13 @@
             const stats = events.getLast('state-stats');
             if(stats) {
                 const estimation = get(page.skill, page.action);
+                estimation.isCurrent = !!$('.header .name:contains("Loot")').length;
                 enrichTimings(estimation);
                 enrichValues(estimation);
                 preRender(estimation, componentBlueprint);
                 preRenderItems(estimation, componentBlueprint);
                 components.addComponent(componentBlueprint);
+                emitEvent(estimation);
             }
         }
     }
@@ -81,7 +84,7 @@
             inventory,
             equipment,
             maxAmount,
-            finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
+            finished: Math.min(maxAmount.secondsLeft || Infinity, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level >= 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };

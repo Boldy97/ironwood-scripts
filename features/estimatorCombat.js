@@ -67,6 +67,7 @@
         return {
             type: 'COMBAT',
             skill: skillId,
+            action: actionId,
             speed: loopsPerKill,
             productionSpeed: loopsPerKill * actionCount / dropCount,
             exp,

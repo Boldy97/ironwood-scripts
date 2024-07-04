@@ -22,7 +22,8 @@
         sumObjects,
         startOfWeek,
         startOfYear,
-        generateCombinations
+        generateCombinations,
+        roundToMultiple
     };
 
     function levelToExp(level) {
@@ -294,6 +295,10 @@
                 addOneCombination(result, objectsByGroup, groups, count-1, combination.concat([contents[j]]), i+1);
             }
         }
+    }
+
+    function roundToMultiple(number, multiple) {
+        return Math.round(number / multiple) * multiple;
     }
 
     return exports;

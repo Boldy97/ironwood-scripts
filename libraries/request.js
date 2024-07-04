@@ -40,6 +40,7 @@
 
     request.forwardDataGuildLevel = (guild, level) => request(`public/data/guild/${guild}/level`, level);
     request.forwardDataGuildStructures = (guild, data) => request(`public/data/guild/${guild}/structures`, data);
+    request.forwardDataGuildEventTime = (guild, time) => request(`public/data/guild/${guild}/event`, time);
     request.createDiscordRegistration = (registration) => request('public/discord', registration);
     request.getDiscordRegistrationTypes = () => request('public/discord/types');
     request.getDiscordRegistration = (id) => request(`public/discord/${id}`);

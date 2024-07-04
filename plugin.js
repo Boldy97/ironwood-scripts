@@ -2497,6 +2497,7 @@ window.moduleRegistry.add('request', () => {
 
     request.forwardDataGuildLevel = (guild, level) => request(`public/data/guild/${guild}/level`, level);
     request.forwardDataGuildStructures = (guild, data) => request(`public/data/guild/${guild}/structures`, data);
+    request.forwardDataGuildEventTime = (guild, time) => request(`public/data/guild/${guild}/event`, time);
     request.createDiscordRegistration = (registration) => request('public/discord', registration);
     request.getDiscordRegistrationTypes = () => request('public/discord/types');
     request.getDiscordRegistration = (id) => request(`public/discord/${id}`);
@@ -2638,7 +2639,8 @@ window.moduleRegistry.add('util', (elementWatcher) => {
         sumObjects,
         startOfWeek,
         startOfYear,
-        generateCombinations
+        generateCombinations,
+        roundToMultiple
     };
 
     function levelToExp(level) {
@@ -2912,6 +2914,10 @@ window.moduleRegistry.add('util', (elementWatcher) => {
         }
     }
 
+    function roundToMultiple(number, multiple) {
+        return Math.round(number / multiple) * multiple;
+    }
+
     return exports;
 
 }
@@ -3076,6 +3082,8 @@ window.moduleRegistry.add('expReader', (events, skillCache, util) => {
 window.moduleRegistry.add('guildEventReader', (events, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-guild-event');
+    const ONE_MINUTE = 1000 * 60;
+    const TWO_DAYS = 1000 * 60 * 60 * 24 * 2;
 
     function initialise() {
         events.register('page', update);
@@ -3093,17 +3101,18 @@ window.moduleRegistry.add('guildEventReader', (events, util) => {
     }
 
     function readScreen() {
-        // TODO check this works when the event is on cooldown
         const eventRunning = $('guild-page .header:contains("Event")').parent().text().includes('Guild Credits');
-        let eventSecondsRemaining = null;
+        let eventStartMillis = null;
         if(eventRunning) {
             const time = [];
             $('guild-page .header:contains("Event")').parent().find('.date').children().each((index, element) => time.push($(element).text()));
-            eventSecondsRemaining = util.parseDuration(time.join(' '));
+            const eventSecondsRemaining = util.parseDuration(time.join(' '));
+            eventStartMillis = Date.now() - TWO_DAYS + 1000 * eventSecondsRemaining;
+            eventStartMillis = util.roundToMultiple(eventStartMillis, ONE_MINUTE);
         }
         const data = {
             eventRunning,
-            eventSecondsRemaining
+            eventStartMillis
         };
         emitEvent({
             type: 'full',
@@ -3762,10 +3771,11 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
 }
 );
 // dataForwarder
-window.moduleRegistry.add('dataForwarder', (configuration, events, request) => {
+window.moduleRegistry.add('dataForwarder', (configuration, events, request, discord, util) => {
 
     let enabled = false;
-    const LAST_SENT = {};
+    const DATA = {};
+    const ONE_MINUTE = 1000 * 60;
 
     function initialise() {
         configuration.registerCheckbox({
@@ -3777,6 +3787,9 @@ window.moduleRegistry.add('dataForwarder', (configuration, events, request) => {
         });
         events.register('reader-guild', handleEvent);
         events.register('reader-structures-guild', handleEvent);
+        events.register('reader-guild-event', handleEvent);
+        events.register('estimator', handleComplexEvent);
+        events.register('estimator-expedition', handleComplexEvent);
     }
 
     function handleConfigStateChange(state) {
@@ -3787,26 +3800,75 @@ window.moduleRegistry.add('dataForwarder', (configuration, events, request) => {
         if(!enabled) {
             return;
         }
-        if(data.type !== 'full') {
-            return;
-        }
-        if(LAST_SENT[eventName] && LAST_SENT[eventName] > fifteenMinutesAgo()) {
-            return;
-        }
-        LAST_SENT[eventName] = Date.now();
-        console.log(eventName, data.value);
-        switch(eventName) {
-            case 'reader-guild': return request.forwardDataGuildLevel(data.value.name, data.value.level);
-            case 'reader-structures-guild': return request.forwardDataGuildStructures(events.getLast('reader-guild').value.name, data.value);
-            default: throw 'Unmapped event name : ' + eventName;
+        if(data.type === 'full') {
+            const doForward = JSON.stringify(data.value) !== JSON.stringify(DATA[eventName]);
+            DATA[eventName] = data.value;
+            if(doForward) {
+                forward(eventName);
+            }
         }
     }
 
-    function fifteenMinutesAgo() {
-        return Date.now() - 1000 * 60 * 15;
+    function handleComplexEvent(data, eventName) {
+        if(!enabled) {
+            return;
+        }
+        switch(eventName) {
+            case 'estimator':
+            case 'estimator-expedition':
+                if(data.isCurrent) {
+                    handleEvent({
+                        type: 'full',
+                        value: {
+                            finished: util.roundToMultiple(Date.now() + data.timings.finished * 1000, ONE_MINUTE)
+                        }
+                    }, eventName);
+                }
+                break;
+            default:
+                throw 'Unmapped key : ' + eventName;
+        }
+    }
+
+    function forward(key) {
+        const guildName = DATA['reader-guild']?.name;
+        switch(key) {
+            case 'reader-guild':
+                if(guildName) {
+                    request.forwardDataGuildLevel(guildName, DATA[key].level);
+                }
+                break;
+            case 'reader-structures-guild':
+                if(guildName) {
+                    request.forwardDataGuildStructures(guildName, DATA[key]);
+                }
+                break;
+            case 'reader-guild-event':
+                if(guildName && DATA[key].eventRunning) {
+                    forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
+                }
+                break;
+            case 'estimator':
+                forwardEndTime('IDLE_ACTION', DATA[key].finished);
+                return;
+            case 'estimator-expedition':
+                forwardEndTime('TAMING_EXPEDITION', DATA[key].finished);
+                return;
+            default:
+                throw 'Unmapped key : ' + key;
+        }
+    }
+
+    function forwardEndTime(type, millis) {
+        const registrations = discord.getRegistrations().filter(a => a.type === type);
+        for(const registration of registrations) {
+            request.setTimeDiscordRegistration(registration.id, millis);
+        }
     }
 
     initialise();
+
+    return {forward};
 
 }
 );
@@ -3862,6 +3924,10 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
     let registrations = [];
     let highlightedRegistration = null;
 
+    const exports = {
+        getRegistrations
+    };
+
     async function initialise() {
         await pages.register({
             category: 'Misc',
@@ -3882,6 +3948,7 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
         events.register('reader-guild-event', handleEvent);
         events.register('reader-settings', handleEvent);
         await load();
+        return exports;
     }
 
     function handleConfigStateChange(state, name) {
@@ -3896,6 +3963,10 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
         eventName = eventName.split(/-(.*)/)[1];
         eventData[eventName] = data.value;
         recomputeTypes();
+    }
+
+    function getRegistrations() {
+        return registrations;
     }
 
     async function load() {
@@ -4067,12 +4138,12 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
 
     function renderLeftWarning() {
         components.addComponent(componentBlueprintWarning);
-        components.addComponent(componentBlueprintInfo);
     }
 
     function renderLeftList() {
         const registrationRows = components.search(componentBlueprintList, 'registrationRows');
         registrationRows.rows = [];
+        components.search(componentBlueprintList, 'empty').hidden = !!registrations.length;
         for(const registration of registrations) {
             registrationRows.rows.push({
                 type: 'header',
@@ -4095,6 +4166,14 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
         components.search(componentBlueprintEdit, 'header').title = 'Configure - ' + getDisplayName(highlightedRegistration, false);
         components.search(componentBlueprintEdit, 'enabled').checked = !!highlightedRegistration.enabled;
         components.search(componentBlueprintEdit, 'linked').checked = !!highlightedRegistration.channel;
+        components.search(componentBlueprintEdit, 'name').hidden = !highlightedRegistration.name;
+        components.search(componentBlueprintEdit, 'name').value = highlightedRegistration.name;
+        components.search(componentBlueprintEdit, 'server').hidden = !highlightedRegistration.server;
+        components.search(componentBlueprintEdit, 'server').value = highlightedRegistration.server;
+        components.search(componentBlueprintEdit, 'lastSent').hidden = !highlightedRegistration.lastSentTime;
+        components.search(componentBlueprintEdit, 'lastSent').value = new Date(highlightedRegistration.lastSentTime).toLocaleString();
+        components.search(componentBlueprintEdit, 'nextSent').hidden = !highlightedRegistration.nextTime;
+        components.search(componentBlueprintEdit, 'nextSent').value = new Date(highlightedRegistration.nextTime).toLocaleString();
 
         components.addComponent(componentBlueprintEdit);
     }
@@ -4137,8 +4216,12 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
                 type: 'header',
                 title: 'Notifications',
                 action: clickCreate,
-                name: '+',
+                name: 'Create',
                 color: 'success'
+            },{
+                type: 'item',
+                id: 'empty',
+                extra: '~ No notifications yet ~'
             },{
                 type: 'segment',
                 id: 'registrationRows',
@@ -4158,32 +4241,59 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
                 type: 'header',
                 title: 'Information'
             },{
+                type: 'item',
+                extra: 'Here are some steps you can follow to set up your first notification'
+            },{
                 type: 'header',
-                title: '1. Invite the bot',
+                title: '1. Create a notification',
+                action: clickCreate,
+                name: 'Create',
+                color: 'success'
+            },{
+                type: 'item',
+                extra: 'Create a new notification using the green "Create" button above. Select the desired notification type, and click "Create" again.'
+            },{
+                type: 'item',
+                extra: 'To view it, use the blue ">" button. You can copy the id (needed later) using the "Copy id" button.'
+            },{
+                type: 'header',
+                title: '2. Invite the bot',
                 action: clickInvite,
                 name: 'Invite',
                 color: 'success'
             },{
-                type: 'header',
-                title: '2. Configure a text channel'
-            },{
                 type: 'item',
-                extra: 'It is suggested to secure your text channel, so only a limited amount of people can send messages'
+                extra: 'Now you have a choice. You can either choose to receive messages in a text channel in the server [3], or through direct messages [4]'
             },{
                 type: 'header',
-                title: '3. Link the channel'
+                title: '3. Through a text channel'
             },{
                 type: 'item',
-                extra: 'To receive notifications, you need to execute the following command in the text channel:'
+                extra: 'First you have to create a new text channel in your server. It is suggested to secure the channel, so only you, or a limited amount of people can send messages there.'
+            },{
+                type: 'item',
+                extra: 'Now link the notification to the text channel, by executing the following command in the text channel:'
             },{
                 type: 'item',
                 name: '/link {id}'
             },{
+                type: 'header',
+                title: '4. Through direct messages'
+            },{
                 type: 'item',
-                extra: 'You can get the id from the "Copy id" button when viewing a notification'
+                extra: 'Now link the notification to your dm\'s, by executing the following command in any text channel of the server, or in a direct message with the bot:'
+            },{
+                type: 'item',
+                name: '/link_dm {id}'
             },{
                 type: 'header',
-                title: '4. Other commands'
+                title: '5. Enable'
+            },{
+                type: 'item',
+                extra: 'To start receiving notifications, you still need to enable it. Select the notification using the blue ">" button, and toggle the "enable" checkbox. If everything went okay, you should also see the server (or direct message) name.'
+            },{
+                type: 'header',
+                title: '6. Other commands'
             },{
                 type: 'item',
                 name: '/list'
@@ -4269,6 +4379,26 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
                 text: 'Linked',
                 checked: false,
                 action: clickLinked
+            },{
+                type: 'item',
+                id: 'name',
+                name: 'Associated value',
+                value: null
+            },{
+                type: 'item',
+                id: 'server',
+                name: 'Server',
+                value: null
+            },{
+                type: 'item',
+                id: 'lastSent',
+                name: 'Last Sent',
+                value: null
+            },{
+                type: 'item',
+                id: 'nextSent',
+                name: 'Next send time',
+                value: null
             }]
         }]
     };
@@ -4280,6 +4410,7 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
 // estimator
 window.moduleRegistry.add('estimator', (configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
 
+    const emitEvent = events.emit.bind(null, 'estimator');
     let enabled = false;
 
     const exports = {
@@ -4315,11 +4446,13 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             const stats = events.getLast('state-stats');
             if(stats) {
                 const estimation = get(page.skill, page.action);
+                estimation.isCurrent = !!$('.header .name:contains("Loot")').length;
                 enrichTimings(estimation);
                 enrichValues(estimation);
                 preRender(estimation, componentBlueprint);
                 preRenderItems(estimation, componentBlueprint);
                 components.addComponent(componentBlueprint);
+                emitEvent(estimation);
             }
         }
     }
@@ -4361,7 +4494,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             inventory,
             equipment,
             maxAmount,
-            finished: Math.min(maxAmount.secondsLeft, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
+            finished: Math.min(maxAmount.secondsLeft || Infinity, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level >= 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
         };
@@ -4763,6 +4896,7 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
         return {
             type: 'ACTIVITY',
             skill: skillId,
+            action: actionId,
             speed,
             productionSpeed: speed * actionCount / dropCount,
             exp,
@@ -4851,6 +4985,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
         return {
             type: 'COMBAT',
             skill: skillId,
+            action: actionId,
             speed: loopsPerKill,
             productionSpeed: loopsPerKill * actionCount / dropCount,
             exp,
@@ -5113,6 +5248,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
 // estimatorExpeditions
 window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components, petUtil, util, skillCache, itemCache, petCache, colorMapper, petHighlighter, configuration, expeditionDropCache) => {
 
+    const emitEvent = events.emit.bind(null, 'estimator-expedition');
     let enabled = false;
 
     const exports = {
@@ -5142,11 +5278,13 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
         const page = events.getLast('page');
         if(page?.type === 'taming' && page.menu === 'expeditions' && page.tier) {
             const estimation = get(page.tier);
+            estimation.isCurrent = !!$('.heading .name:contains("Loot")').length;
             estimator.enrichTimings(estimation);
             estimator.enrichValues(estimation);
             preRender(estimation, componentBlueprint);
             estimator.preRenderItems(estimation, componentBlueprint);
             components.addComponent(componentBlueprint);
+            emitEvent(estimation);
             return;
         }
         components.removeComponent(componentBlueprint);
@@ -5202,6 +5340,8 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
             = util.formatNumber(estimation.exp);
         components.search(blueprint, 'expActual').value
             = util.formatNumber(estimation.exp * estimation.successChance / 100);
+        components.search(blueprint, 'finishedTime').value
+            = util.secondsToDuration(estimation.timings.finished);
         components.search(blueprint, 'levelTime').value
             = util.secondsToDuration(estimation.timings.level);
         components.search(blueprint, 'tierTime').value
@@ -5301,6 +5441,12 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
                 id: 'expActual',
                 name: 'Exp/hour (weighted)',
                 image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'finishedTime',
+                name: 'Finished',
+                image: 'https://cdn-icons-png.flaticon.com/512/1505/1505471.png',
                 value: ''
             },{
                 type: 'item',
@@ -5508,6 +5654,7 @@ window.moduleRegistry.add('estimatorOutskirts', (actionCache, itemCache, statsSt
             return {
                 type: 'OUTSKIRTS',
                 skill: skillId,
+                action: actionId,
                 speed: activityEstimation.speed,
                 productionSpeed: activityEstimation.productionSpeed,
                 exp,

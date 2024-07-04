@@ -9,6 +9,10 @@
     let registrations = [];
     let highlightedRegistration = null;
 
+    const exports = {
+        getRegistrations
+    };
+
     async function initialise() {
         await pages.register({
             category: 'Misc',
@@ -29,6 +33,7 @@
         events.register('reader-guild-event', handleEvent);
         events.register('reader-settings', handleEvent);
         await load();
+        return exports;
     }
 
     function handleConfigStateChange(state, name) {
@@ -43,6 +48,10 @@
         eventName = eventName.split(/-(.*)/)[1];
         eventData[eventName] = data.value;
         recomputeTypes();
+    }
+
+    function getRegistrations() {
+        return registrations;
     }
 
     async function load() {
@@ -214,12 +223,12 @@
 
     function renderLeftWarning() {
         components.addComponent(componentBlueprintWarning);
-        components.addComponent(componentBlueprintInfo);
     }
 
     function renderLeftList() {
         const registrationRows = components.search(componentBlueprintList, 'registrationRows');
         registrationRows.rows = [];
+        components.search(componentBlueprintList, 'empty').hidden = !!registrations.length;
         for(const registration of registrations) {
             registrationRows.rows.push({
                 type: 'header',
@@ -242,6 +251,14 @@
         components.search(componentBlueprintEdit, 'header').title = 'Configure - ' + getDisplayName(highlightedRegistration, false);
         components.search(componentBlueprintEdit, 'enabled').checked = !!highlightedRegistration.enabled;
         components.search(componentBlueprintEdit, 'linked').checked = !!highlightedRegistration.channel;
+        components.search(componentBlueprintEdit, 'name').hidden = !highlightedRegistration.name;
+        components.search(componentBlueprintEdit, 'name').value = highlightedRegistration.name;
+        components.search(componentBlueprintEdit, 'server').hidden = !highlightedRegistration.server;
+        components.search(componentBlueprintEdit, 'server').value = highlightedRegistration.server;
+        components.search(componentBlueprintEdit, 'lastSent').hidden = !highlightedRegistration.lastSentTime;
+        components.search(componentBlueprintEdit, 'lastSent').value = new Date(highlightedRegistration.lastSentTime).toLocaleString();
+        components.search(componentBlueprintEdit, 'nextSent').hidden = !highlightedRegistration.nextTime;
+        components.search(componentBlueprintEdit, 'nextSent').value = new Date(highlightedRegistration.nextTime).toLocaleString();
 
         components.addComponent(componentBlueprintEdit);
     }
@@ -284,8 +301,12 @@
                 type: 'header',
                 title: 'Notifications',
                 action: clickCreate,
-                name: '+',
+                name: 'Create',
                 color: 'success'
+            },{
+                type: 'item',
+                id: 'empty',
+                extra: '~ No notifications yet ~'
             },{
                 type: 'segment',
                 id: 'registrationRows',
@@ -305,32 +326,59 @@
                 type: 'header',
                 title: 'Information'
             },{
+                type: 'item',
+                extra: 'Here are some steps you can follow to set up your first notification'
+            },{
                 type: 'header',
-                title: '1. Invite the bot',
+                title: '1. Create a notification',
+                action: clickCreate,
+                name: 'Create',
+                color: 'success'
+            },{
+                type: 'item',
+                extra: 'Create a new notification using the green "Create" button above. Select the desired notification type, and click "Create" again.'
+            },{
+                type: 'item',
+                extra: 'To view it, use the blue ">" button. You can copy the id (needed later) using the "Copy id" button.'
+            },{
+                type: 'header',
+                title: '2. Invite the bot',
                 action: clickInvite,
                 name: 'Invite',
                 color: 'success'
             },{
-                type: 'header',
-                title: '2. Configure a text channel'
-            },{
                 type: 'item',
-                extra: 'It is suggested to secure your text channel, so only a limited amount of people can send messages'
+                extra: 'Now you have a choice. You can either choose to receive messages in a text channel in the server [3], or through direct messages [4]'
             },{
                 type: 'header',
-                title: '3. Link the channel'
+                title: '3. Through a text channel'
             },{
                 type: 'item',
-                extra: 'To receive notifications, you need to execute the following command in the text channel:'
+                extra: 'First you have to create a new text channel in your server. It is suggested to secure the channel, so only you, or a limited amount of people can send messages there.'
+            },{
+                type: 'item',
+                extra: 'Now link the notification to the text channel, by executing the following command in the text channel:'
             },{
                 type: 'item',
                 name: '/link {id}'
             },{
+                type: 'header',
+                title: '4. Through direct messages'
+            },{
                 type: 'item',
-                extra: 'You can get the id from the "Copy id" button when viewing a notification'
+                extra: 'Now link the notification to your dm\'s, by executing the following command in any text channel of the server, or in a direct message with the bot:'
+            },{
+                type: 'item',
+                name: '/link_dm {id}'
             },{
                 type: 'header',
-                title: '4. Other commands'
+                title: '5. Enable'
+            },{
+                type: 'item',
+                extra: 'To start receiving notifications, you still need to enable it. Select the notification using the blue ">" button, and toggle the "enable" checkbox. If everything went okay, you should also see the server (or direct message) name.'
+            },{
+                type: 'header',
+                title: '6. Other commands'
             },{
                 type: 'item',
                 name: '/list'
@@ -416,6 +464,26 @@
                 text: 'Linked',
                 checked: false,
                 action: clickLinked
+            },{
+                type: 'item',
+                id: 'name',
+                name: 'Associated value',
+                value: null
+            },{
+                type: 'item',
+                id: 'server',
+                name: 'Server',
+                value: null
+            },{
+                type: 'item',
+                id: 'lastSent',
+                name: 'Last Sent',
+                value: null
+            },{
+                type: 'item',
+                id: 'nextSent',
+                name: 'Next send time',
+                value: null
             }]
         }]
     };

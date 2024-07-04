@@ -40,6 +40,7 @@
             return {
                 type: 'OUTSKIRTS',
                 skill: skillId,
+                action: actionId,
                 speed: activityEstimation.speed,
                 productionSpeed: activityEstimation.productionSpeed,
                 exp,

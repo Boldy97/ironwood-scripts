@@ -41,6 +41,7 @@
         return {
             type: 'ACTIVITY',
             skill: skillId,
+            action: actionId,
             speed,
             productionSpeed: speed * actionCount / dropCount,
             exp,

@@ -1,6 +1,8 @@
 (events, util) => {
 
     const emitEvent = events.emit.bind(null, 'reader-guild-event');
+    const ONE_MINUTE = 1000 * 60;
+    const TWO_DAYS = 1000 * 60 * 60 * 24 * 2;
 
     function initialise() {
         events.register('page', update);
@@ -18,17 +20,18 @@
     }
 
     function readScreen() {
-        // TODO check this works when the event is on cooldown
         const eventRunning = $('guild-page .header:contains("Event")').parent().text().includes('Guild Credits');
-        let eventSecondsRemaining = null;
+        let eventStartMillis = null;
         if(eventRunning) {
             const time = [];
             $('guild-page .header:contains("Event")').parent().find('.date').children().each((index, element) => time.push($(element).text()));
-            eventSecondsRemaining = util.parseDuration(time.join(' '));
+            const eventSecondsRemaining = util.parseDuration(time.join(' '));
+            eventStartMillis = Date.now() - TWO_DAYS + 1000 * eventSecondsRemaining;
+            eventStartMillis = util.roundToMultiple(eventStartMillis, ONE_MINUTE);
         }
         const data = {
             eventRunning,
-            eventSecondsRemaining
+            eventStartMillis
         };
         emitEvent({
             type: 'full',

@@ -1,7 +1,8 @@
-(configuration, events, request) => {
+(configuration, events, request, discord, util) => {
 
     let enabled = false;
-    const LAST_SENT = {};
+    const DATA = {};
+    const ONE_MINUTE = 1000 * 60;
 
     function initialise() {
         configuration.registerCheckbox({
@@ -13,6 +14,9 @@
         });
         events.register('reader-guild', handleEvent);
         events.register('reader-structures-guild', handleEvent);
+        events.register('reader-guild-event', handleEvent);
+        events.register('estimator', handleComplexEvent);
+        events.register('estimator-expedition', handleComplexEvent);
     }
 
     function handleConfigStateChange(state) {
@@ -23,25 +27,74 @@
         if(!enabled) {
             return;
         }
-        if(data.type !== 'full') {
-            return;
-        }
-        if(LAST_SENT[eventName] && LAST_SENT[eventName] > fifteenMinutesAgo()) {
-            return;
-        }
-        LAST_SENT[eventName] = Date.now();
-        console.log(eventName, data.value);
-        switch(eventName) {
-            case 'reader-guild': return request.forwardDataGuildLevel(data.value.name, data.value.level);
-            case 'reader-structures-guild': return request.forwardDataGuildStructures(events.getLast('reader-guild').value.name, data.value);
-            default: throw 'Unmapped event name : ' + eventName;
+        if(data.type === 'full') {
+            const doForward = JSON.stringify(data.value) !== JSON.stringify(DATA[eventName]);
+            DATA[eventName] = data.value;
+            if(doForward) {
+                forward(eventName);
+            }
         }
     }
 
-    function fifteenMinutesAgo() {
-        return Date.now() - 1000 * 60 * 15;
+    function handleComplexEvent(data, eventName) {
+        if(!enabled) {
+            return;
+        }
+        switch(eventName) {
+            case 'estimator':
+            case 'estimator-expedition':
+                if(data.isCurrent) {
+                    handleEvent({
+                        type: 'full',
+                        value: {
+                            finished: util.roundToMultiple(Date.now() + data.timings.finished * 1000, ONE_MINUTE)
+                        }
+                    }, eventName);
+                }
+                break;
+            default:
+                throw 'Unmapped key : ' + eventName;
+        }
+    }
+
+    function forward(key) {
+        const guildName = DATA['reader-guild']?.name;
+        switch(key) {
+            case 'reader-guild':
+                if(guildName) {
+                    request.forwardDataGuildLevel(guildName, DATA[key].level);
+                }
+                break;
+            case 'reader-structures-guild':
+                if(guildName) {
+                    request.forwardDataGuildStructures(guildName, DATA[key]);
+                }
+                break;
+            case 'reader-guild-event':
+                if(guildName && DATA[key].eventRunning) {
+                    forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
+                }
+                break;
+            case 'estimator':
+                forwardEndTime('IDLE_ACTION', DATA[key].finished);
+                return;
+            case 'estimator-expedition':
+                forwardEndTime('TAMING_EXPEDITION', DATA[key].finished);
+                return;
+            default:
+                throw 'Unmapped key : ' + key;
+        }
+    }
+
+    function forwardEndTime(type, millis) {
+        const registrations = discord.getRegistrations().filter(a => a.type === type);
+        for(const registration of registrations) {
+            request.setTimeDiscordRegistration(registration.id, millis);
+        }
     }
 
     initialise();
+
+    return {forward};
 
 }

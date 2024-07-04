@@ -1,5 +1,6 @@
 (events, estimator, components, petUtil, util, skillCache, itemCache, petCache, colorMapper, petHighlighter, configuration, expeditionDropCache) => {
 
+    const emitEvent = events.emit.bind(null, 'estimator-expedition');
     let enabled = false;
 
     const exports = {
@@ -29,11 +30,13 @@
         const page = events.getLast('page');
         if(page?.type === 'taming' && page.menu === 'expeditions' && page.tier) {
             const estimation = get(page.tier);
+            estimation.isCurrent = !!$('.heading .name:contains("Loot")').length;
             estimator.enrichTimings(estimation);
             estimator.enrichValues(estimation);
             preRender(estimation, componentBlueprint);
             estimator.preRenderItems(estimation, componentBlueprint);
             components.addComponent(componentBlueprint);
+            emitEvent(estimation);
             return;
         }
         components.removeComponent(componentBlueprint);
@@ -89,6 +92,8 @@
             = util.formatNumber(estimation.exp);
         components.search(blueprint, 'expActual').value
             = util.formatNumber(estimation.exp * estimation.successChance / 100);
+        components.search(blueprint, 'finishedTime').value
+            = util.secondsToDuration(estimation.timings.finished);
         components.search(blueprint, 'levelTime').value
             = util.secondsToDuration(estimation.timings.level);
         components.search(blueprint, 'tierTime').value
@@ -188,6 +193,12 @@
                 id: 'expActual',
                 name: 'Exp/hour (weighted)',
                 image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
+                value: ''
+            },{
+                type: 'item',
+                id: 'finishedTime',
+                name: 'Finished',
+                image: 'https://cdn-icons-png.flaticon.com/512/1505/1505471.png',
                 value: ''
             },{
                 type: 'item',
