@@ -13,7 +13,6 @@
             const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
             if(fetchResponse.status !== 200) {
                 console.error(await fetchResponse.text());
-                console.log('response', fetchResponse);
                 throw fetchResponse;
             }
             try {
