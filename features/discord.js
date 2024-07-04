@@ -61,20 +61,18 @@
         highlightedRegistration = null;
         const entries = await localDatabase.getAllEntries(STORE_NAME);
         for(const entry of entries) {
-            await loadSingle(entry.key);
+            await loadSingle(entry.value);
         }
     }
 
-    async function loadSingle(id) {
+    async function loadSingle(registration) {
         try {
-            const registration = await request.getDiscordRegistration(id);
-            await add(registration);
-            return registration;
+            registration = await request.getDiscordRegistration(registration.id);
         } catch(e) {
-            remove({
-                id
-            });
+            registration.errored = true;
         }
+        await add(registration);
+        return registration;
     }
 
     async function add(registration) {
@@ -96,7 +94,10 @@
     }
 
     function getDisplayName(registration, includeExtra) {
-        let name = types.find(a => a.value === registration.type).text;
+        let name = types.find(a => a.value === registration.type)?.text || 'N/A';
+        if(registration.errored) {
+            name = '[!] ' + name;
+        }
         if(registration.name) {
             name += ` (${registration.name})`;
         }
@@ -149,7 +150,7 @@
 
     async function clickRefresh() {
         tryExecute(async () => {
-            highlightedRegistration = await loadSingle(highlightedRegistration.id);
+            highlightedRegistration = await loadSingle(highlightedRegistration);
         }, 'Notification refreshed!', 'Error refreshing notification');
     }
 
@@ -249,7 +250,9 @@
 
     function renderRightEdit() {
         components.search(componentBlueprintEdit, 'header').title = 'Configure - ' + getDisplayName(highlightedRegistration, false);
+        components.search(componentBlueprintEdit, 'enabled').hidden = !!highlightedRegistration.errored;
         components.search(componentBlueprintEdit, 'enabled').checked = !!highlightedRegistration.enabled;
+        components.search(componentBlueprintEdit, 'linked').hidden = !!highlightedRegistration.errored;
         components.search(componentBlueprintEdit, 'linked').checked = !!highlightedRegistration.channel;
         components.search(componentBlueprintEdit, 'name').hidden = !highlightedRegistration.name;
         components.search(componentBlueprintEdit, 'name').value = highlightedRegistration.name;

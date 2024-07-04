@@ -87,7 +87,7 @@
     }
 
     function forwardEndTime(type, millis) {
-        const registrations = discord.getRegistrations().filter(a => a.type === type);
+        const registrations = discord.getRegistrations().filter(a => a.type === type && !a.errored);
         for(const registration of registrations) {
             request.setTimeDiscordRegistration(registration.id, millis);
         }
