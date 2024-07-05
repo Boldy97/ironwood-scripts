@@ -5907,7 +5907,9 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
             handler: handleConfigStateChange
         });
         elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'action-component');
+        elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'combat-component');
         elementWatcher.addReverseRecursiveObserver(actionStop, 'nav-component > div.nav', 'action-component');
+        elementWatcher.addReverseRecursiveObserver(actionStop, 'nav-component > div.nav', 'combat-component');
     }
 
     function handleConfigStateChange(state, name) {
