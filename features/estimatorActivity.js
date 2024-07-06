@@ -14,7 +14,7 @@
         const ingredientCount = actualActionCount * (1 - statsStore.get('PRESERVATION', skill.technicalName) / 100);
         const exp = actualActionCount * action.exp * (1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100);
         const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount);
-        const ingredients = estimatorAction.getIngredients(actionId, ingredientCount);
+        const ingredients = estimatorAction.getIngredients(skillId, actionId, ingredientCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId);
 
         let statLowerTierChance;
@@ -27,14 +27,6 @@
                     }
                     drops[item] *= 1 - statLowerTierChance;
                 }
-            }
-        }
-
-        let statMerchantSellChance;
-        if(skill.type === 'Crafting' && (statMerchantSellChance = statsStore.get('MERCHANT_SELL_CHANCE', skill.technicalName) / 100)) {
-            for(const item in drops) {
-                drops[itemCache.specialIds.coins] = (drops[itemCache.specialIds.coins] || 0) + 2 * statMerchantSellChance * drops[item] * itemCache.byId[item].attributes.SELL_PRICE;
-                drops[item] *= 1 - statMerchantSellChance;
             }
         }
 

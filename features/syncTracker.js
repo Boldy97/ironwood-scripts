@@ -33,6 +33,11 @@
             page: 'equipment',
             element: 'equipment-page .categories button .name:contains("Tomes")'
         },
+        settings: {
+            name: 'Settings',
+            event: 'reader-settings',
+            page: 'settings'
+        },
         structures: {
             name: 'Buildings',
             event: 'reader-structures',
@@ -59,11 +64,6 @@
             event: 'reader-guild-event',
             page: 'guild',
             element: 'guild-page button .name:contains("Events")'
-        },
-        settings: {
-            name: 'Settings',
-            event: 'reader-settings',
-            page: 'settings'
         }
     };
 
@@ -87,6 +87,10 @@
 
     async function loadSavedData() {
         const entries = await localDatabase.getAllEntries(STORE_NAME);
+        const version = entries.find(a => a.key === 'VERSION')?.value || 0;
+        if(version === 0) {
+            await migrate_v1(entries);
+        }
         for(const entry of entries) {
             if(!sources[entry.key]) {
                 continue;
@@ -97,6 +101,18 @@
                 value: entry.value.value
             });
         }
+    }
+
+    async function migrate_v1(entries) {
+        console.log('Migrating sync-state to v1');
+        for(const entry of entries) {
+            await localDatabase.removeEntry(STORE_NAME, entry.key);
+        }
+        await localDatabase.saveEntry(STORE_NAME, {
+            key: 'VERSION',
+            value: 1
+        });
+        entries.length = 0;
     }
 
     function handleReader(key, event) {

@@ -33,7 +33,7 @@
         const attacksReceivedPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / sampleMonsterStats.attackSpeed;
         const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT') / 100);
         const damagePerHour = attacksReceivedPerHour * sampleMonsterStats.damage_.average();
-        const foodPerHour = damagePerHour / healPerFood * (1 - statsStore.get('FOOD_PRESERVATION_CHANCE') / 100);
+        const foodPerHour = damagePerHour / healPerFood;
 
         let exp = estimatorAction.LOOPS_PER_HOUR * action.exp / 1000;
         exp *= efficiency;

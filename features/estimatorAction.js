@@ -20,6 +20,15 @@
         const hasFailDrops = !!drops.find(a => a.type === 'FAILED');
         const hasMonsterDrops = !!drops.find(a => a.type === 'MONSTER');
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
+        if(shouldApplyCoinCraft(skillId)) {
+            const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
+            drops.push({
+                type: 'REGULAR',
+                item: mostCommonDrop,
+                amount: 1,
+                chance: statsStore.get('COIN_CRAFT_CHANCE') / 100
+            });
+        }
         return drops.map(drop => {
             let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
             if(drop.type !== 'MONSTER' && isCombat && hasMonsterDrops) {
@@ -56,10 +65,18 @@
         return Math.min(95, 80 + level - action.level) + Math.floor(level / 20);
     }
 
-    function getIngredients(actionId, multiplier = 1) {
+    function getIngredients(skillId, actionId, multiplier) {
         const ingredients = ingredientCache.byAction[actionId];
         if(!ingredients) {
             return [];
+        }
+        if(shouldApplyCoinCraft(skillId)) {
+            const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
+            const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
+            ingredients.push({
+                item: itemCache.specialIds.stardust,
+                amount: value * statsStore.get('COIN_CRAFT_CHANCE') / 100
+            });
         }
         return ingredients.map(ingredient => ({
             id: ingredient.item,
@@ -115,6 +132,12 @@
                 .forEach(a => result[a.id] = (result[a.id] || 0) + statsStore.get('PASSIVE_FOOD_CONSUMPTION') * 3600 / 5 / statsStore.get('HEAL'));
         }
         return result;
+    }
+
+    function shouldApplyCoinCraft(skillId) {
+        return skillCache.byId[skillId].type === 'Crafting'
+            && statsStore.get('COIN_CRAFT_CHANCE')
+            && statsStore.getInventoryItem(itemCache.specialIds.stardust);
     }
 
     return exports;

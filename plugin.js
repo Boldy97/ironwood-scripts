@@ -4496,10 +4496,6 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             value: maxAmount,
             secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
         };
-        const merchantSellChance = statsStore.get('MERCHANT_SELL_CHANCE', estimation.skill) / 100;
-        if(merchantSellChance) {
-            maxAmount.secondsLeft /= 1 - merchantSellChance;
-        }
         const levelState = statsStore.getLevel(estimation.skill);
         estimation.timings = {
             inventory,
@@ -4762,6 +4758,15 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         const hasFailDrops = !!drops.find(a => a.type === 'FAILED');
         const hasMonsterDrops = !!drops.find(a => a.type === 'MONSTER');
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
+        if(shouldApplyCoinCraft(skillId)) {
+            const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
+            drops.push({
+                type: 'REGULAR',
+                item: mostCommonDrop,
+                amount: 1,
+                chance: statsStore.get('COIN_CRAFT_CHANCE') / 100
+            });
+        }
         return drops.map(drop => {
             let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
             if(drop.type !== 'MONSTER' && isCombat && hasMonsterDrops) {
@@ -4798,10 +4803,18 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         return Math.min(95, 80 + level - action.level) + Math.floor(level / 20);
     }
 
-    function getIngredients(actionId, multiplier = 1) {
+    function getIngredients(skillId, actionId, multiplier) {
         const ingredients = ingredientCache.byAction[actionId];
         if(!ingredients) {
             return [];
+        }
+        if(shouldApplyCoinCraft(skillId)) {
+            const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
+            const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
+            ingredients.push({
+                item: itemCache.specialIds.stardust,
+                amount: value * statsStore.get('COIN_CRAFT_CHANCE') / 100
+            });
         }
         return ingredients.map(ingredient => ({
             id: ingredient.item,
@@ -4859,6 +4872,12 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         return result;
     }
 
+    function shouldApplyCoinCraft(skillId) {
+        return skillCache.byId[skillId].type === 'Crafting'
+            && statsStore.get('COIN_CRAFT_CHANCE')
+            && statsStore.getInventoryItem(itemCache.specialIds.stardust);
+    }
+
     return exports;
 
 }
@@ -4880,7 +4899,7 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
         const ingredientCount = actualActionCount * (1 - statsStore.get('PRESERVATION', skill.technicalName) / 100);
         const exp = actualActionCount * action.exp * (1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100);
         const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount);
-        const ingredients = estimatorAction.getIngredients(actionId, ingredientCount);
+        const ingredients = estimatorAction.getIngredients(skillId, actionId, ingredientCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId);
 
         let statLowerTierChance;
@@ -4893,14 +4912,6 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
                     }
                     drops[item] *= 1 - statLowerTierChance;
                 }
-            }
-        }
-
-        let statMerchantSellChance;
-        if(skill.type === 'Crafting' && (statMerchantSellChance = statsStore.get('MERCHANT_SELL_CHANCE', skill.technicalName) / 100)) {
-            for(const item in drops) {
-                drops[itemCache.specialIds.coins] = (drops[itemCache.specialIds.coins] || 0) + 2 * statMerchantSellChance * drops[item] * itemCache.byId[item].attributes.SELL_PRICE;
-                drops[item] *= 1 - statMerchantSellChance;
             }
         }
 
@@ -4962,7 +4973,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
         const attacksReceivedPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / sampleMonsterStats.attackSpeed;
         const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT') / 100);
         const damagePerHour = attacksReceivedPerHour * sampleMonsterStats.damage_.average();
-        const foodPerHour = damagePerHour / healPerFood * (1 - statsStore.get('FOOD_PRESERVATION_CHANCE') / 100);
+        const foodPerHour = damagePerHour / healPerFood;
 
         let exp = estimatorAction.LOOPS_PER_HOUR * action.exp / 1000;
         exp *= efficiency;
@@ -6887,6 +6898,11 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
             page: 'equipment',
             element: 'equipment-page .categories button .name:contains("Tomes")'
         },
+        settings: {
+            name: 'Settings',
+            event: 'reader-settings',
+            page: 'settings'
+        },
         structures: {
             name: 'Buildings',
             event: 'reader-structures',
@@ -6913,11 +6929,6 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
             event: 'reader-guild-event',
             page: 'guild',
             element: 'guild-page button .name:contains("Events")'
-        },
-        settings: {
-            name: 'Settings',
-            event: 'reader-settings',
-            page: 'settings'
         }
     };
 
@@ -6941,6 +6952,10 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
 
     async function loadSavedData() {
         const entries = await localDatabase.getAllEntries(STORE_NAME);
+        const version = entries.find(a => a.key === 'VERSION')?.value || 0;
+        if(version === 0) {
+            await migrate_v1(entries);
+        }
         for(const entry of entries) {
             if(!sources[entry.key]) {
                 continue;
@@ -6951,6 +6966,18 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
                 value: entry.value.value
             });
         }
+    }
+
+    async function migrate_v1(entries) {
+        console.log('Migrating sync-state to v1');
+        for(const entry of entries) {
+            await localDatabase.removeEntry(STORE_NAME, entry.key);
+        }
+        await localDatabase.saveEntry(STORE_NAME, {
+            key: 'VERSION',
+            value: 1
+        });
+        entries.length = 0;
     }
 
     function handleReader(key, event) {
@@ -8101,7 +8128,8 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
         byItem: {},
         boneCarveMappings: null,
         lowerGatherMappings: null,
-        conversionMappings: null
+        conversionMappings: null,
+        getMostCommonDrop
     };
 
     Object.defineProperty(Array.prototype, '_groupBy', {
@@ -8209,6 +8237,10 @@ window.moduleRegistry.add('dropCache', (request, Promise, itemCache, actionCache
             }))
             ._groupBy(a => a.to)
             .reduce((a,b) => (a[b[0].to] = b, a), {});
+    }
+
+    function getMostCommonDrop(actionId) {
+        return exports.byAction[actionId].sort((a,b) => a.chance - b.chance)[0].item;
     }
 
     tryInitialise();
@@ -8348,6 +8380,7 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         attributes: null,
         specialIds: {
             coins: null,
+            stardust: null,
             mainHand: null,
             offHand: null,
             helmet: null,
@@ -8466,6 +8499,7 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
         exports.specialIds.coins = exports.byName['Coins'].id;
+        exports.specialIds.stardust = exports.byName['Stardust'].id;
         exports.specialIds.mainHand = getAllIdsEnding('Sword', 'Hammer', 'Spear', 'Scythe', 'Bow', 'Boomerang');
         exports.specialIds.offHand = getAllIdsEnding('Shield');
         exports.specialIds.helmet = getAllIdsEnding('Helmet');
@@ -8749,7 +8783,7 @@ window.moduleRegistry.add('statNameCache', () => {
         'DOUBLE_DROP',
         'EFFICIENCY',
         'LOWER_TIER_CHANCE',
-        'MERCHANT_SELL_CHANCE',
+        'COIN_CRAFT_CHANCE',
         'PRESERVATION',
         'SKILL_SPEED',
         // ITEM_ATTRIBUTE
@@ -8766,7 +8800,6 @@ window.moduleRegistry.add('statNameCache', () => {
         'DECREASED_POTION_DURATION',
         'DUNGEON_DAMAGE',
         'FOOD_EFFECT',
-        'FOOD_PRESERVATION_CHANCE',
         'HEAL',
         'HEALTH',
         'HEALTH_PERCENT',
@@ -8774,7 +8807,6 @@ window.moduleRegistry.add('statNameCache', () => {
         'MAP_FIND_CHANCE',
         'PARRY_CHANCE',
         'PASSIVE_FOOD_CONSUMPTION',
-        'REVIVE_TIME',
         'STUN_CHANCE',
         'DUNGEON_TIME',
         // FRONTEND ONLY

@@ -15,7 +15,7 @@
         'DOUBLE_DROP',
         'EFFICIENCY',
         'LOWER_TIER_CHANCE',
-        'MERCHANT_SELL_CHANCE',
+        'COIN_CRAFT_CHANCE',
         'PRESERVATION',
         'SKILL_SPEED',
         // ITEM_ATTRIBUTE
@@ -32,7 +32,6 @@
         'DECREASED_POTION_DURATION',
         'DUNGEON_DAMAGE',
         'FOOD_EFFECT',
-        'FOOD_PRESERVATION_CHANCE',
         'HEAL',
         'HEALTH',
         'HEALTH_PERCENT',
@@ -40,7 +39,6 @@
         'MAP_FIND_CHANCE',
         'PARRY_CHANCE',
         'PASSIVE_FOOD_CONSUMPTION',
-        'REVIVE_TIME',
         'STUN_CHANCE',
         'DUNGEON_TIME',
         // FRONTEND ONLY

@@ -8,7 +8,8 @@
         byItem: {},
         boneCarveMappings: null,
         lowerGatherMappings: null,
-        conversionMappings: null
+        conversionMappings: null,
+        getMostCommonDrop
     };
 
     Object.defineProperty(Array.prototype, '_groupBy', {
@@ -116,6 +117,10 @@
             }))
             ._groupBy(a => a.to)
             .reduce((a,b) => (a[b[0].to] = b, a), {});
+    }
+
+    function getMostCommonDrop(actionId) {
+        return exports.byAction[actionId].sort((a,b) => a.chance - b.chance)[0].item;
     }
 
     tryInitialise();
