@@ -93,6 +93,9 @@
             if(item.attributes.ATTACK_SPEED) {
                 item.attributes.ATTACK_SPEED /= 2;
             }
+            if(item.attributes.SELL_PRICE) {
+                item.attributes.MIN_MERCHANT_PRICE = Math.ceil(item.attributes.SELL_PRICE * 1.5);
+            }
             for(const stat in item.stats.bySkill) {
                 if(item.stats.bySkill[stat].All) {
                     item.stats.global[stat] = item.stats.bySkill[stat].All;
@@ -125,6 +128,10 @@
             technicalName: 'PET_SNACKS',
             name: 'Pet Snacks',
             image: '/assets/misc/pet-snacks.png'
+        },{
+            technicalName: 'MIN_MERCHANT_PRICE',
+            name: 'Min Merchant Price',
+            image: '/assets/misc/market.png'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
