@@ -5928,6 +5928,9 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
     }
 
     function beep() {
+        if(!enabled) {
+            return;
+        }
         if(!started) {
             audio.play();
         }

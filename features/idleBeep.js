@@ -35,6 +35,9 @@
     }
 
     function beep() {
+        if(!enabled) {
+            return;
+        }
         if(!started) {
             audio.play();
         }
