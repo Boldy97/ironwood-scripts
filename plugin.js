@@ -5952,14 +5952,15 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (configuration, itemCache, util) => {
+window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore) => {
 
     let enabled = false;
     let entered = false;
     let element;
     const converters = {
-        SPEED: a => a/2,
-        DURATION: a => util.secondsToDuration(a/10)
+        SPEED: val => val && val/2,
+        DURATION: val => val && util.secondsToDuration(val/10),
+        OWNED: (val,id) => statsStore.getInventoryItem(id)
     }
 
     function initialise() {
@@ -6012,8 +6013,8 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util) => {
         element.find('.name').text(item.name);
         for(const attribute of itemCache.attributes) {
             let value = item.attributes[attribute.technicalName];
-            if(value && converters[attribute.technicalName]) {
-                value = converters[attribute.technicalName](value);
+            if(converters[attribute.technicalName]) {
+                value = converters[attribute.technicalName](value, item.id);
             }
             if(value && Number.isInteger(value)) {
                 value = util.formatNumber(value);
@@ -8502,6 +8503,10 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             technicalName: 'MIN_MERCHANT_PRICE',
             name: 'Min Merchant Price',
             image: '/assets/misc/market.png'
+        },{
+            technicalName: 'OWNED',
+            name: 'Owned',
+            image: '/assets/misc/inventory.png'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items

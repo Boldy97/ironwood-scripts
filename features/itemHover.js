@@ -1,11 +1,12 @@
-(configuration, itemCache, util) => {
+(configuration, itemCache, util, statsStore) => {
 
     let enabled = false;
     let entered = false;
     let element;
     const converters = {
-        SPEED: a => a/2,
-        DURATION: a => util.secondsToDuration(a/10)
+        SPEED: val => val && val/2,
+        DURATION: val => val && util.secondsToDuration(val/10),
+        OWNED: (val,id) => statsStore.getInventoryItem(id)
     }
 
     function initialise() {
@@ -58,8 +59,8 @@
         element.find('.name').text(item.name);
         for(const attribute of itemCache.attributes) {
             let value = item.attributes[attribute.technicalName];
-            if(value && converters[attribute.technicalName]) {
-                value = converters[attribute.technicalName](value);
+            if(converters[attribute.technicalName]) {
+                value = converters[attribute.technicalName](value, item.id);
             }
             if(value && Number.isInteger(value)) {
                 value = util.formatNumber(value);

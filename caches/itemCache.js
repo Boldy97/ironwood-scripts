@@ -132,6 +132,10 @@
             technicalName: 'MIN_MERCHANT_PRICE',
             name: 'Min Merchant Price',
             image: '/assets/misc/market.png'
+        },{
+            technicalName: 'OWNED',
+            name: 'Owned',
+            image: '/assets/misc/inventory.png'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
