@@ -1831,7 +1831,7 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
                 type: 'structure',
                 structure: +parts[parts.length-1]
             };
-        } else if(url.includes('house/enhance')) {
+        } else if(url.includes('house/enchant')) {
             result = {
                 type: 'enhancement',
                 structure: +parts[parts.length-1]
