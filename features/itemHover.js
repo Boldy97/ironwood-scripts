@@ -5,7 +5,7 @@
     let element;
     const converters = {
         SPEED: val => val/2,
-        DURATION: val => val && util.secondsToDuration(val/10),
+        DURATION: val => val && util.secondsToDuration(val),
         OWNED: (val, item) => statsStore.getInventoryItem(item.id),
         CHARCOAL: (val, item) => item.charcoal,
         COMPOST: (val, item) => item.compost,
