@@ -72,6 +72,7 @@
             registration.errored = true;
         }
         await add(registration);
+        pages.requestRender(PAGE_NAME);
         return registration;
     }
 
@@ -133,17 +134,21 @@
     async function tryExecute(executor, messageSuccess, messageError) {
         try {
             await executor();
-            toast.create({
-                text: messageSuccess,
-                image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
-            });
+            if(messageSuccess) {
+                toast.create({
+                    text: messageSuccess,
+                    image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
+                });
+            }
         } catch(e) {
             console.error(e);
             logService.error(e);
-            toast.create({
-                text: messageError,
-                image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
-            });
+            if(messageError) {
+                toast.create({
+                    text: messageError,
+                    image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
+                });
+            }
         }
         pages.requestRender(PAGE_NAME);
     }
@@ -202,8 +207,8 @@
         tryExecute(async () => {
             let text = JSON.stringify(registrations);
             text = await util.compress(text);
-            toast.copyToClipboard(text, 'Exported to clipboard!');
-        }, 'Exported to clipboard!', 'Error exporting to clipboard');
+            toast.copyToClipboard(text);
+        }, null, 'Error exporting to clipboard');
     }
 
     function clickImport() {
@@ -215,13 +220,12 @@
             for(const registration of registrations) {
                 await remove(registration);
             }
+            highlightedRegistration = null;
             // add new
             registrations = [];
             for(const registration of _registrations) {
                 await loadSingle(registration);
             }
-            highlightedRegistration = null;
-            pages.requestRender(PAGE_NAME);
         }, 'Succesfully imported!', 'Error importing from clipboard');
     }
 

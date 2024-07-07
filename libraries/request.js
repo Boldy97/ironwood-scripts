@@ -1,4 +1,4 @@
-() => {
+(logService) => {
 
     async function request(url, body, headers) {
         if(!headers) {
@@ -12,8 +12,7 @@
             }
             const fetchResponse = await fetch(`${window.PANCAKE_ROOT}/${url}`, {method, headers, body});
             if(fetchResponse.status !== 200) {
-                console.error(await fetchResponse.text());
-                throw fetchResponse;
+                throw await fetchResponse.text();
             }
             try {
                 const contentType = fetchResponse.headers.get('Content-Type');
@@ -30,7 +29,7 @@
                 }
             }
         } catch(e) {
-            console.log('error', e);
+            logService.error(e);
             throw `Failed fetching ${url} : ${e}`;
         }
     }
