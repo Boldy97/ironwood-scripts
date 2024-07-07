@@ -1,4 +1,4 @@
-(pages, components, configuration, request, localDatabase, toast, logService, events, syncTracker) => {
+(pages, components, configuration, request, localDatabase, toast, logService, events, syncTracker, util) => {
 
     const PAGE_NAME = 'Discord';
     const STORE_NAME = 'discord';
@@ -198,6 +198,33 @@
         }, 'Notification deleted!', 'Error deleting notification');
     }
 
+    function clickExport() {
+        tryExecute(async () => {
+            let text = JSON.stringify(registrations);
+            text = await util.compress(text);
+            toast.copyToClipboard(text, 'Exported to clipboard!');
+        }, 'Exported to clipboard!', 'Error exporting to clipboard');
+    }
+
+    function clickImport() {
+        tryExecute(async () => {
+            let text = await toast.readFromClipboard('Copied from clipboard!');
+            text = await util.decompress(text);
+            const _registrations = JSON.parse(text);
+            // cleanup old
+            for(const registration of registrations) {
+                await remove(registration);
+            }
+            // add new
+            registrations = [];
+            for(const registration of _registrations) {
+                await loadSingle(registration);
+            }
+            highlightedRegistration = null;
+            pages.requestRender(PAGE_NAME);
+        }, 'Succesfully imported!', 'Error importing from clipboard');
+    }
+
     function recomputeTypes() {
         displayedTypes = structuredClone(types);
         if(!eventData?.guild?.name) {
@@ -314,6 +341,17 @@
                 type: 'segment',
                 id: 'registrationRows',
                 rows: []
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'Export',
+                    color: 'primary',
+                    action: clickExport
+                },{
+                    text: 'Import',
+                    color: 'primary',
+                    action: clickImport
+                }]
             }]
         }]
     };

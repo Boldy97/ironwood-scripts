@@ -1,4 +1,4 @@
-(elementWatcher) => {
+(elementWatcher, Promise) => {
 
     const exports = {
         levelToExp,
@@ -23,7 +23,9 @@
         startOfWeek,
         startOfYear,
         generateCombinations,
-        roundToMultiple
+        roundToMultiple,
+        compress,
+        decompress
     };
 
     function levelToExp(level) {
@@ -183,7 +185,7 @@
     }
 
     async function sleep(millis) {
-        await new Promise(r => window.setTimeout(r, millis));
+        await new window.Promise(r => window.setTimeout(r, millis));
     }
 
     function compareObjects(object1, object2, doLog) {
@@ -299,6 +301,41 @@
 
     function roundToMultiple(number, multiple) {
         return Math.round(number / multiple) * multiple;
+    }
+
+    function arrayBufferToText(arrayBuffer) {
+        return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    }
+
+    async function textToArrayBuffer(text) {
+        const result = new Promise.Deferred();
+        var req = new XMLHttpRequest;
+        req.open('GET', "data:application/octet;base64," + text);
+        req.responseType = 'arraybuffer';
+        req.onload = a => result.resolve(new Uint8Array(a.target.response));
+        req.onerror = () => result.reject('Failed to convert text to array buffer');
+        req.send();
+        return result;
+    }
+
+    async function compress(string) {
+        const byteArray = new TextEncoder().encode(string);
+        const cs = new CompressionStream('gzip');
+        const writer = cs.writable.getWriter();
+        writer.write(byteArray);
+        writer.close();
+        const arrayBuffer = await new Response(cs.readable).arrayBuffer();
+        return arrayBufferToText(arrayBuffer);
+    }
+
+    async function decompress(text) {
+        const arrayBuffer = await textToArrayBuffer(text);
+        const cs = new DecompressionStream('gzip');
+        const writer = cs.writable.getWriter();
+        writer.write(arrayBuffer);
+        writer.close();
+        const byteArray = await new Response(cs.readable).arrayBuffer();
+        return new TextDecoder().decode(byteArray);
     }
 
     return exports;

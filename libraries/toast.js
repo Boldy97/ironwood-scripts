@@ -2,7 +2,8 @@
 
     const exports = {
         create,
-        copyToClipboard
+        copyToClipboard,
+        readFromClipboard
     };
 
     function initialise() {
@@ -45,6 +46,15 @@
             text: message,
             image: 'https://img.icons8.com/?size=48&id=22244'
         });
+    }
+
+    function readFromClipboard(message) {
+        const text = navigator.clipboard.readText();
+        create({
+            text: message,
+            image: 'https://img.icons8.com/?size=48&id=22244'
+        });
+        return text;
     }
 
     const styles = `

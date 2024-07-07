@@ -2542,7 +2542,8 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
 
     const exports = {
         create,
-        copyToClipboard
+        copyToClipboard,
+        readFromClipboard
     };
 
     function initialise() {
@@ -2587,6 +2588,15 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
         });
     }
 
+    function readFromClipboard(message) {
+        const text = navigator.clipboard.readText();
+        create({
+            text: message,
+            image: 'https://img.icons8.com/?size=48&id=22244'
+        });
+        return text;
+    }
+
     const styles = `
         .customNotification {
             padding: 8px 16px 8px 12px;
@@ -2623,7 +2633,7 @@ window.moduleRegistry.add('toast', (util, elementCreator) => {
 }
 );
 // util
-window.moduleRegistry.add('util', (elementWatcher) => {
+window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     const exports = {
         levelToExp,
@@ -2648,7 +2658,9 @@ window.moduleRegistry.add('util', (elementWatcher) => {
         startOfWeek,
         startOfYear,
         generateCombinations,
-        roundToMultiple
+        roundToMultiple,
+        compress,
+        decompress
     };
 
     function levelToExp(level) {
@@ -2808,7 +2820,7 @@ window.moduleRegistry.add('util', (elementWatcher) => {
     }
 
     async function sleep(millis) {
-        await new Promise(r => window.setTimeout(r, millis));
+        await new window.Promise(r => window.setTimeout(r, millis));
     }
 
     function compareObjects(object1, object2, doLog) {
@@ -2924,6 +2936,41 @@ window.moduleRegistry.add('util', (elementWatcher) => {
 
     function roundToMultiple(number, multiple) {
         return Math.round(number / multiple) * multiple;
+    }
+
+    function arrayBufferToText(arrayBuffer) {
+        return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    }
+
+    async function textToArrayBuffer(text) {
+        const result = new Promise.Deferred();
+        var req = new XMLHttpRequest;
+        req.open('GET', "data:application/octet;base64," + text);
+        req.responseType = 'arraybuffer';
+        req.onload = a => result.resolve(new Uint8Array(a.target.response));
+        req.onerror = () => result.reject('Failed to convert text to array buffer');
+        req.send();
+        return result;
+    }
+
+    async function compress(string) {
+        const byteArray = new TextEncoder().encode(string);
+        const cs = new CompressionStream('gzip');
+        const writer = cs.writable.getWriter();
+        writer.write(byteArray);
+        writer.close();
+        const arrayBuffer = await new Response(cs.readable).arrayBuffer();
+        return arrayBufferToText(arrayBuffer);
+    }
+
+    async function decompress(text) {
+        const arrayBuffer = await textToArrayBuffer(text);
+        const cs = new DecompressionStream('gzip');
+        const writer = cs.writable.getWriter();
+        writer.write(arrayBuffer);
+        writer.close();
+        const byteArray = await new Response(cs.readable).arrayBuffer();
+        return new TextDecoder().decode(byteArray);
     }
 
     return exports;
@@ -3921,7 +3968,7 @@ window.moduleRegistry.add('debugService', (request, toast, statsStore, Estimatio
 
 });
 // discord
-window.moduleRegistry.add('discord', (pages, components, configuration, request, localDatabase, toast, logService, events, syncTracker) => {
+window.moduleRegistry.add('discord', (pages, components, configuration, request, localDatabase, toast, logService, events, syncTracker, util) => {
 
     const PAGE_NAME = 'Discord';
     const STORE_NAME = 'discord';
@@ -4121,6 +4168,33 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
         }, 'Notification deleted!', 'Error deleting notification');
     }
 
+    function clickExport() {
+        tryExecute(async () => {
+            let text = JSON.stringify(registrations);
+            text = await util.compress(text);
+            toast.copyToClipboard(text, 'Exported to clipboard!');
+        }, 'Exported to clipboard!', 'Error exporting to clipboard');
+    }
+
+    function clickImport() {
+        tryExecute(async () => {
+            let text = await toast.readFromClipboard('Copied from clipboard!');
+            text = await util.decompress(text);
+            const _registrations = JSON.parse(text);
+            // cleanup old
+            for(const registration of registrations) {
+                await remove(registration);
+            }
+            // add new
+            registrations = [];
+            for(const registration of _registrations) {
+                await loadSingle(registration);
+            }
+            highlightedRegistration = null;
+            pages.requestRender(PAGE_NAME);
+        }, 'Succesfully imported!', 'Error importing from clipboard');
+    }
+
     function recomputeTypes() {
         displayedTypes = structuredClone(types);
         if(!eventData?.guild?.name) {
@@ -4237,6 +4311,17 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
                 type: 'segment',
                 id: 'registrationRows',
                 rows: []
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'Export',
+                    color: 'primary',
+                    action: clickExport
+                },{
+                    text: 'Import',
+                    color: 'primary',
+                    action: clickImport
+                }]
             }]
         }]
     };
