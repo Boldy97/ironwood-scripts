@@ -15,6 +15,7 @@
         const entry = entries.find(entry => entry.key === KEY_NAME);
         if(entry) {
             state = entry.value.filter(pet => pet.version === petUtil.VERSION);
+            events.emit('state-pet', state);
         }
     }
 

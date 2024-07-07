@@ -5390,6 +5390,10 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
         const page = events.getLast('page');
         if(page?.type === 'taming' && page.menu === 'expeditions' && page.tier) {
             const estimation = get(page.tier);
+            if(!estimation) {
+                components.removeComponent(componentBlueprint);
+                return;
+            }
             estimation.isCurrent = !!$('.heading .name:contains("Loot")').length;
             estimator.enrichTimings(estimation);
             estimator.enrichValues(estimation);
@@ -5403,7 +5407,11 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
     }
 
     function get(tier) {
-        const teamStats = events.getLast('state-pet')
+        const petState = events.getLast('state-pet');
+        if(!petState) {
+            return;
+        }
+        const teamStats = petState
             .filter(pet => pet.partOfTeam)
             .map(petUtil.petToStats);
         const totalStats = util.sumObjects(teamStats);
@@ -7742,6 +7750,7 @@ window.moduleRegistry.add('petStateStore', (events, petUtil, util, localDatabase
         const entry = entries.find(entry => entry.key === KEY_NAME);
         if(entry) {
             state = entry.value.filter(pet => pet.version === petUtil.VERSION);
+            events.emit('state-pet', state);
         }
     }
 

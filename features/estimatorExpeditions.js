@@ -30,6 +30,10 @@
         const page = events.getLast('page');
         if(page?.type === 'taming' && page.menu === 'expeditions' && page.tier) {
             const estimation = get(page.tier);
+            if(!estimation) {
+                components.removeComponent(componentBlueprint);
+                return;
+            }
             estimation.isCurrent = !!$('.heading .name:contains("Loot")').length;
             estimator.enrichTimings(estimation);
             estimator.enrichValues(estimation);
@@ -43,7 +47,11 @@
     }
 
     function get(tier) {
-        const teamStats = events.getLast('state-pet')
+        const petState = events.getLast('state-pet');
+        if(!petState) {
+            return;
+        }
+        const teamStats = petState
             .filter(pet => pet.partOfTeam)
             .map(petUtil.petToStats);
         const totalStats = util.sumObjects(teamStats);
