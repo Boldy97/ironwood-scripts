@@ -4,9 +4,24 @@
     let entered = false;
     let element;
     const converters = {
-        SPEED: val => val && val/2,
+        SPEED: val => val/2,
         DURATION: val => val && util.secondsToDuration(val/10),
-        OWNED: (val,id) => statsStore.getInventoryItem(id)
+        OWNED: (val, item) => statsStore.getInventoryItem(item.id),
+        CHARCOAL: (val, item) => item.charcoal,
+        COMPOST: (val, item) => item.compost,
+        ARCANE_POWDER: (val, item) => item.arcanePowder,
+        PET_SNACKS: (val, item) => item.petSnacks,
+        UNTRADEABLE: (val) => val ? 'Yes' : null,
+        MIN_MARKET_PRICE: (val, item) => {
+            // calcMarketPrice
+            if(itemCache.specialIds.gem.includes(item.id)) {
+                return item.attributes.SELL_PRICE * 1.2;
+            }
+            if(itemCache.specialIds.food.includes(item.id) || itemCache.specialIds.smithing.includes(item.id)) {
+                return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
+            }
+            return 2 * item.attributes.SELL_PRICE;
+        }
     }
 
     function initialise() {
@@ -60,7 +75,7 @@
         for(const attribute of itemCache.attributes) {
             let value = item.attributes[attribute.technicalName];
             if(converters[attribute.technicalName]) {
-                value = converters[attribute.technicalName](value, item.id);
+                value = converters[attribute.technicalName](value, item);
             }
             if(value && Number.isInteger(value)) {
                 value = util.formatNumber(value);

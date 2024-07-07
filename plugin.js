@@ -6043,9 +6043,24 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
     let entered = false;
     let element;
     const converters = {
-        SPEED: val => val && val/2,
+        SPEED: val => val/2,
         DURATION: val => val && util.secondsToDuration(val/10),
-        OWNED: (val,id) => statsStore.getInventoryItem(id)
+        OWNED: (val, item) => statsStore.getInventoryItem(item.id),
+        CHARCOAL: (val, item) => item.charcoal,
+        COMPOST: (val, item) => item.compost,
+        ARCANE_POWDER: (val, item) => item.arcanePowder,
+        PET_SNACKS: (val, item) => item.petSnacks,
+        UNTRADEABLE: (val) => val ? 'Yes' : null,
+        MIN_MARKET_PRICE: (val, item) => {
+            // calcMarketPrice
+            if(itemCache.specialIds.gem.includes(item.id)) {
+                return item.attributes.SELL_PRICE * 1.2;
+            }
+            if(itemCache.specialIds.food.includes(item.id) || itemCache.specialIds.smithing.includes(item.id)) {
+                return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
+            }
+            return 2 * item.attributes.SELL_PRICE;
+        }
     }
 
     function initialise() {
@@ -6099,7 +6114,7 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
         for(const attribute of itemCache.attributes) {
             let value = item.attributes[attribute.technicalName];
             if(converters[attribute.technicalName]) {
-                value = converters[attribute.technicalName](value, item.id);
+                value = converters[attribute.technicalName](value, item);
             }
             if(value && Number.isInteger(value)) {
                 value = util.formatNumber(value);
@@ -8505,6 +8520,8 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             eternalLifeTome: null,
             insatiablePowerTome: null,
             potentConcoctionTome: null,
+            gem: null,
+            smithing: null
         }
     };
 
@@ -8534,23 +8551,8 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
             if(!item.attributes) {
                 item.attributes = {};
             }
-            if(item.charcoal) {
-                item.attributes.CHARCOAL = item.charcoal;
-            }
-            if(item.compost) {
-                item.attributes.COMPOST = item.compost;
-            }
-            if(item.arcanePowder) {
-                item.attributes.ARCANE_POWDER = item.arcanePowder;
-            }
-            if(item.petSnacks) {
-                item.attributes.PET_SNACKS = item.petSnacks;
-            }
             if(item.attributes.ATTACK_SPEED) {
                 item.attributes.ATTACK_SPEED /= 2;
-            }
-            if(item.attributes.SELL_PRICE) {
-                item.attributes.MIN_MERCHANT_PRICE = Math.ceil(item.attributes.SELL_PRICE * 1.5);
             }
             for(const stat in item.stats.bySkill) {
                 if(item.stats.bySkill[stat].All) {
@@ -8575,18 +8577,18 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         },{
             technicalName: 'COMPOST',
             name: 'Compost',
-            image: '/assets/misc/compost.png'
+            image: '/assets/items/compost.png'
         },{
             technicalName: 'ARCANE_POWDER',
             name: 'Arcane Powder',
-            image: '/assets/misc/arcane-powder.png'
+            image: '/assets/items/arcane-powder.png'
         },{
             technicalName: 'PET_SNACKS',
             name: 'Pet Snacks',
-            image: '/assets/misc/pet-snacks.png'
+            image: '/assets/items/pet-snacks.png'
         },{
-            technicalName: 'MIN_MERCHANT_PRICE',
-            name: 'Min Merchant Price',
+            technicalName: 'MIN_MARKET_PRICE',
+            name: 'Min Market Price',
             image: '/assets/misc/market.png'
         },{
             technicalName: 'OWNED',
@@ -8640,16 +8642,31 @@ window.moduleRegistry.add('itemCache', (request, Promise) => {
         exports.specialIds.eternalLifeTome = getAllIdsStarting('Eternal Life Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
+        exports.specialIds.gem = exports.list.filter(a => a.arcanePowder).map(a => a.id);
+        exports.specialIds.smithing = [
+            ...exports.specialIds.mainHand,
+            ...exports.specialIds.offHand,
+            ...exports.specialIds.helmet,
+            ...exports.specialIds.body,
+            ...exports.specialIds.gloves,
+            ...exports.specialIds.boots,
+            ...exports.specialIds.hatchet,
+            ...exports.specialIds.pickaxe,
+            ...exports.specialIds.spade,
+            ...exports.specialIds.rod
+        ];
     }
 
-    function getAllIdsEnding() {
-        const suffixes = Array.prototype.slice.call(arguments);
+    function getAllIdsEnding(...suffixes) {
         return exports.list.filter(a => new RegExp(`(${suffixes.join('|')})$`).exec(a.name)).map(a => a.id);
     }
 
-    function getAllIdsStarting() {
-        const prefixes = Array.prototype.slice.call(arguments);
+    function getAllIdsStarting(...prefixes) {
         return exports.list.filter(a => new RegExp(`^(${prefixes.join('|')})`).exec(a.name)).map(a => a.id);
+    }
+
+    function getAllIdsWithName(...names) {
+        return exports.list.filter(a => names.includes(a.name)).map(a => a.id);
     }
 
     tryInitialise();
