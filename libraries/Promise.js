@@ -10,6 +10,8 @@
             this.#promise = new Promise((resolve, reject) => {
                 this.resolve = resolve;
                 this.reject = reject;
+            }).then(result => {
+                return result;
             }).catch(error => {
                 if(error) {
                     console.warn(error);

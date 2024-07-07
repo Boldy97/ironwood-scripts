@@ -1,6 +1,4 @@
-(request, Promise) => {
-
-    const initialised = new Promise.Expiring(2000, 'monsterCache');
+(fallbackCache) => {
 
     const exports = {
         list: [],
@@ -8,26 +6,16 @@
         byName: {}
     };
 
-    async function tryInitialise() {
-        try {
-            await initialise();
-            initialised.resolve(exports);
-        } catch(e) {
-            initialised.reject(e);
-        }
-    }
-
     async function initialise() {
-        const monsters = await request.listMonsters();
+        const monsters = await fallbackCache.load('monster');
         for(const monster of monsters) {
             exports.list.push(monster);
             exports.byId[monster.id] = monster;
             exports.byName[monster.name] = monster;
         }
+        return exports;
     }
 
-    tryInitialise();
-
-    return initialised;
+    return initialise();
 
 }

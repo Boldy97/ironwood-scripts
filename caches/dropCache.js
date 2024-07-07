@@ -1,6 +1,4 @@
-(request, Promise, itemCache, actionCache, skillCache, ingredientCache) => {
-
-    const initialised = new Promise.Expiring(2000, 'dropCache');
+(fallbackCache, itemCache, actionCache, skillCache, ingredientCache) => {
 
     const exports = {
         list: [],
@@ -29,17 +27,8 @@
         }
     });
 
-    async function tryInitialise() {
-        try {
-            await initialise();
-            initialised.resolve(exports);
-        } catch(e) {
-            initialised.reject(e);
-        }
-    }
-
     async function initialise() {
-        const drops = await request.listDrops();
+        const drops = await fallbackCache.load('drop');
         for(const drop of drops) {
             exports.list.push(drop);
             if(!exports.byAction[drop.action]) {
@@ -54,6 +43,7 @@
         extractBoneCarvings();
         extractLowerGathers();
         extractConversions();
+        return exports;
     }
 
     // I'm sorry for what follows
@@ -123,8 +113,6 @@
         return exports.byAction[actionId].sort((a,b) => a.chance - b.chance)[0].item;
     }
 
-    tryInitialise();
-
-    return initialised;
+    return initialise();
 
 }

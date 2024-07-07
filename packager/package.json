@@ -22,6 +22,7 @@
   "homepage": "https://github.com/Boldy97/ironwood-scripts#readme",
   "dependencies": {
     "nodemon": "^3.0.1",
+    "request-promise-native": "^1.0.9",
     "semver": "^7.5.4"
   }
 }

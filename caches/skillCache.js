@@ -1,6 +1,4 @@
-(request, Promise) => {
-
-    const initialised = new Promise.Expiring(2000, 'skillCache');
+(fallbackCache) => {
 
     const exports = {
         list: [],
@@ -9,27 +7,17 @@
         byTechnicalName: {},
     };
 
-    async function tryInitialise() {
-        try {
-            await initialise();
-            initialised.resolve(exports);
-        } catch(e) {
-            initialised.reject(e);
-        }
-    }
-
     async function initialise() {
-        const skills = await request.listSkills();
+        const skills = await fallbackCache.load('skill');
         for(const skill of skills) {
             exports.list.push(skill);
             exports.byId[skill.id] = skill;
             exports.byName[skill.displayName] = skill;
             exports.byTechnicalName[skill.technicalName] = skill;
         }
+        return exports;
     }
 
-    tryInitialise();
-
-    return initialised;
+    return initialise();
 
 }

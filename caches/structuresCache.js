@@ -1,6 +1,4 @@
-(request, Promise) => {
-
-    const initialised = new Promise.Expiring(2000, 'structuresCache');
+(fallbackCache) => {
 
     const exports = {
         list: [],
@@ -8,26 +6,16 @@
         byName: {}
     };
 
-    async function tryInitialise() {
-        try {
-            await initialise();
-            initialised.resolve(exports);
-        } catch(e) {
-            initialised.reject(e);
-        }
-    }
-
     async function initialise() {
-        const structures = await request.listStructures();
+        const structures = await fallbackCache.load('structure');
         for(const structure of structures) {
             exports.list.push(structure);
             exports.byId[structure.id] = structure;
             exports.byName[structure.name] = structure;
         }
+        return exports;
     }
 
-    tryInitialise();
-
-    return initialised;
+    return initialise();
 
 }

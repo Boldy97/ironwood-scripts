@@ -1,6 +1,4 @@
-(request, Promise) => {
-
-    const initialised = new Promise.Expiring(2000, 'petPassiveCache');
+(fallbackCache) => {
 
     const exports = {
         list: [],
@@ -9,17 +7,8 @@
         idToIndex: {}
     };
 
-    async function tryInitialise() {
-        try {
-            await initialise();
-            initialised.resolve(exports);
-        } catch(e) {
-            initialised.reject(e);
-        }
-    }
-
     async function initialise() {
-        const petPassives = await request.listPetPassives();
+        const petPassives = await fallbackCache.load('petPassive');
         for(const petPassive of petPassives) {
             exports.list.push(petPassive);
             exports.byId[petPassive.id] = petPassive;
@@ -32,10 +21,9 @@
             delete petPassive.statName;
             delete petPassive.statValue;
         }
+        return exports;
     }
 
-    tryInitialise();
-
-    return initialised;
+    return initialise();
 
 }

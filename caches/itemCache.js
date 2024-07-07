@@ -1,6 +1,4 @@
-(request, Promise) => {
-
-    const initialised = new Promise.Expiring(2000, 'itemCache');
+(fallbackCache) => {
 
     const exports = {
         list: [],
@@ -54,17 +52,8 @@
         }
     };
 
-    async function tryInitialise() {
-        try {
-            await initialise();
-            initialised.resolve(exports);
-        } catch(e) {
-            initialised.reject(e);
-        }
-    }
-
     async function initialise() {
-        const enrichedItems = await request.listItems();
+        const enrichedItems = await fallbackCache.load('item');
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
             delete item.item;
@@ -98,7 +87,7 @@
                 delete exports.byImage[image];
             }
         }
-        exports.attributes = await request.listItemAttributes();
+        exports.attributes = await fallbackCache.load('itemAttribute');
         exports.attributes.push({
             technicalName: 'CHARCOAL',
             name: 'Charcoal',
@@ -184,6 +173,7 @@
             ...exports.specialIds.spade,
             ...exports.specialIds.rod
         ];
+        return exports;
     }
 
     function getAllIdsEnding(...suffixes) {
@@ -198,8 +188,6 @@
         return exports.list.filter(a => names.includes(a.name)).map(a => a.id);
     }
 
-    tryInitialise();
-
-    return initialised;
+    return initialise();
 
 }
