@@ -26,6 +26,7 @@
             telescope: null,
             lantern: null,
             food: null,
+            pies: null,
             ammo: null,
             gatheringPotion: null,
             craftingPotion: null,
@@ -134,6 +135,7 @@
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
+        exports.specialIds.pies = exports.list.filter(a => a.name.endsWith('Pie') && !a.name.startsWith('Burnt')).map(a => a.id);
         exports.specialIds.ammo = getAllIdsEnding('Arrow');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);

@@ -17,7 +17,10 @@
             if(itemCache.specialIds.gem.includes(item.id)) {
                 return item.attributes.SELL_PRICE * 1.2;
             }
-            if(itemCache.specialIds.food.includes(item.id) || itemCache.specialIds.smithing.includes(item.id)) {
+            if(itemCache.specialIds.pies.includes(item.id)) {
+                return item.attributes.SELL_PRICE * 2 - 2;
+            }
+            if(itemCache.specialIds.smithing.includes(item.id)) {
                 return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
             }
             return 2 * item.attributes.SELL_PRICE;
