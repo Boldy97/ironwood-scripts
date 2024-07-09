@@ -40,6 +40,9 @@
     }
 
     async function addAdditionGuildSortButtons() {
+        if($('div.sort > .customButtonGroup').length) {
+            return; // skip, already added
+        }
         await elementWatcher.exists('div.sort');
         const orginalButtonGroup = $('div.sort').find('div.container');
 
