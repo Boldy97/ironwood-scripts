@@ -28,9 +28,9 @@
         }
         try {
             inProgress = true;
+            await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
             const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
-            await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             if($('market-listings-component .search > input').val()) {
                 return;
             }
