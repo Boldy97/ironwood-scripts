@@ -71,6 +71,15 @@
                     padding: 0 !important;
                 }
 
+                ${selector} div.filters {
+                    gap: 4px !important;
+                }
+
+                ${selector} button.filter {
+                    padding: 2px 6px !important;
+                    min-width: 0 !important;
+                }
+
                 action-component div.body >  div.image,
                 produce-component div.body > div.image,
                 daily-quest-page div.body > div.image {
