@@ -207,7 +207,7 @@
         tryExecute(async () => {
             let text = JSON.stringify(registrations);
             text = await util.compress(text);
-            toast.copyToClipboard(text);
+            toast.copyToClipboard(text, 'Exported to clipboard!');
         }, null, 'Error exporting to clipboard');
     }
 

@@ -185,7 +185,7 @@
         const date = new Date(now.getTime() + MILLIS_PER_MINUTE * now.getTimezoneOffset());
         const millisPassed = util.startOfWeek(date) - util.startOfWeek(util.startOfYear(date));
         const startOfWeek = util.startOfWeek(date);
-        let index = 2 + offset + Math.round(millisPassed / MILLIS_PER_WEEK);
+        let index = offset + Math.round(millisPassed / MILLIS_PER_WEEK);
         index %= ROTATION_NAMES.length;
         return ROTATION_NAMES[index];
     }
