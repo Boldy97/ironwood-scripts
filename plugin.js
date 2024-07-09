@@ -1300,8 +1300,8 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
             event: 'state-structures',
             default: {}
         },
-        enhancements: {
-            event: 'state-enhancements',
+        enchantments: {
+            event: 'state-enchantments',
             default: {}
         },
         guild: {
@@ -1458,7 +1458,7 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
             return this;
         }
 
-        enhancement(structure, level) {
+        enchantment(structure, level) {
             if(typeof structure === 'string') {
                 const match = structuresCache.byName[structure];
                 if(!match) {
@@ -1466,7 +1466,7 @@ window.moduleRegistry.add('EstimationGenerator', (events, estimator, statsStore,
                 }
                 structure = match.id;
             }
-            this.#state.enhancements[structure] = level;
+            this.#state.enchantments[structure] = level;
             return this;
         }
 
@@ -1833,7 +1833,7 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
             };
         } else if(url.includes('house/enchant')) {
             result = {
-                type: 'enhancement',
+                type: 'enchantment',
                 structure: +parts[parts.length-1]
             };
         } else if(url.includes('house/produce')) {
@@ -2052,7 +2052,7 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
             headerName = skillCache.byId[page.skill].displayName;
         } else if(page.type === 'structure') {
             headerName = 'House';
-        } else if(page.type === 'enhancement') {
+        } else if(page.type === 'enchantment') {
             headerName = 'House';
         } else if(page.type === 'automation') {
             headerName = 'House';
@@ -2978,10 +2978,10 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
 }
 );
-// enhancementsReader
-window.moduleRegistry.add('enhancementsReader', (events, util, structuresCache) => {
+// enchantmentsReader
+window.moduleRegistry.add('enchantmentsReader', (events, util, structuresCache) => {
 
-    const emitEvent = events.emit.bind(null, 'reader-enhancements');
+    const emitEvent = events.emit.bind(null, 'reader-enchantments');
 
     function initialise() {
         events.register('page', update);
@@ -2993,13 +2993,13 @@ window.moduleRegistry.add('enhancementsReader', (events, util, structuresCache) 
         if(!page) {
             return;
         }
-        if(page.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
-            readEnhancementsScreen();
+        if(page.type === 'enchantment' && $('home-page .categories .category-active').text() === 'Enchant') {
+            readEnchantmentsScreen();
         }
     }
 
-    function readEnhancementsScreen() {
-        const enhancements = {};
+    function readEnchantmentsScreen() {
+        const enchantments = {};
         $('home-page .categories + .card button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
@@ -3008,11 +3008,11 @@ window.moduleRegistry.add('enhancementsReader', (events, util, structuresCache) 
                 return;
             }
             const level = util.parseNumber(element.find('.level').text());
-            enhancements[structure.id] = level;
+            enchantments[structure.id] = level;
         });
         emitEvent({
             type: 'full',
-            value: enhancements
+            value: enchantments
         });
     }
 
@@ -7024,10 +7024,10 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
             event: 'reader-structures',
             page: 'house/build/2'
         },
-        enhancements: {
-            name: 'Building enhancements',
-            event: 'reader-enhancements',
-            page: 'house/enhance/2'
+        enchantments: {
+            name: 'Building enchantments',
+            event: 'reader-enchantments',
+            page: 'house/enchant/2'
         },
         'structures-guild': {
             name: 'Guild buildings',
@@ -7533,7 +7533,7 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
         'equipment-runes',
         'equipment-tomes',
         'structures',
-        'enhancements',
+        'enchantments',
         'structures-guild'
     ];
 
@@ -7852,7 +7852,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     let equipment = {};
     let runes = {};
     let structures = {};
-    let enhancements = {};
+    let enchantments = {};
     let guildStructures = {};
     let various = {};
 
@@ -7866,7 +7866,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         events.register('state-equipment-equipment', event => (equipment = event, _update()));
         events.register('state-equipment-runes', event => (runes = event, _update()));
         events.register('state-structures', event => (structures = event, _update()));
-        events.register('state-enhancements', event => (enhancements = event, _update()));
+        events.register('state-enchantments', event => (enchantments = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
         events.register('state-various', event => (various = event, _update()));
     }
@@ -8045,12 +8045,12 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     }
 
     function processEnhancements() {
-        for(const id in enhancements) {
+        for(const id in enchantments) {
             const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.enhance, enhancements[id]);
+            addStats(structure.enchant, enchantments[id]);
         }
     }
 

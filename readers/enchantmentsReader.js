@@ -1,6 +1,6 @@
 (events, util, structuresCache) => {
 
-    const emitEvent = events.emit.bind(null, 'reader-enhancements');
+    const emitEvent = events.emit.bind(null, 'reader-enchantments');
 
     function initialise() {
         events.register('page', update);
@@ -12,13 +12,13 @@
         if(!page) {
             return;
         }
-        if(page.type === 'enhancement' && $('home-page .categories .category-active').text() === 'Enhance') {
-            readEnhancementsScreen();
+        if(page.type === 'enchantment' && $('home-page .categories .category-active').text() === 'Enchant') {
+            readEnchantmentsScreen();
         }
     }
 
-    function readEnhancementsScreen() {
-        const enhancements = {};
+    function readEnchantmentsScreen() {
+        const enchantments = {};
         $('home-page .categories + .card button').each((i,element) => {
             element = $(element);
             const name = element.find('.name').text();
@@ -27,11 +27,11 @@
                 return;
             }
             const level = util.parseNumber(element.find('.level').text());
-            enhancements[structure.id] = level;
+            enchantments[structure.id] = level;
         });
         emitEvent({
             type: 'full',
-            value: enhancements
+            value: enchantments
         });
     }
 

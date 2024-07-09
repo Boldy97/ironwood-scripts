@@ -21,8 +21,8 @@
             event: 'state-structures',
             default: {}
         },
-        enhancements: {
-            event: 'state-enhancements',
+        enchantments: {
+            event: 'state-enchantments',
             default: {}
         },
         guild: {
@@ -179,7 +179,7 @@
             return this;
         }
 
-        enhancement(structure, level) {
+        enchantment(structure, level) {
             if(typeof structure === 'string') {
                 const match = structuresCache.byName[structure];
                 if(!match) {
@@ -187,7 +187,7 @@
                 }
                 structure = match.id;
             }
-            this.#state.enhancements[structure] = level;
+            this.#state.enchantments[structure] = level;
             return this;
         }
 

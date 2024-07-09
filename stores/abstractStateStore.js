@@ -5,7 +5,7 @@
         'equipment-runes',
         'equipment-tomes',
         'structures',
-        'enhancements',
+        'enchantments',
         'structures-guild'
     ];
 

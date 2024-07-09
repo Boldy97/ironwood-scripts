@@ -42,7 +42,7 @@
             };
         } else if(url.includes('house/enchant')) {
             result = {
-                type: 'enhancement',
+                type: 'enchantment',
                 structure: +parts[parts.length-1]
             };
         } else if(url.includes('house/produce')) {

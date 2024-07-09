@@ -195,7 +195,7 @@
             headerName = skillCache.byId[page.skill].displayName;
         } else if(page.type === 'structure') {
             headerName = 'House';
-        } else if(page.type === 'enhancement') {
+        } else if(page.type === 'enchantment') {
             headerName = 'House';
         } else if(page.type === 'automation') {
             headerName = 'House';

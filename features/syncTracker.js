@@ -43,10 +43,10 @@
             event: 'reader-structures',
             page: 'house/build/2'
         },
-        enhancements: {
-            name: 'Building enhancements',
-            event: 'reader-enhancements',
-            page: 'house/enhance/2'
+        enchantments: {
+            name: 'Building enchantments',
+            event: 'reader-enchantments',
+            page: 'house/enchant/2'
         },
         'structures-guild': {
             name: 'Guild buildings',

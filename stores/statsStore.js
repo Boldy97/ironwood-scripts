@@ -19,7 +19,7 @@
     let equipment = {};
     let runes = {};
     let structures = {};
-    let enhancements = {};
+    let enchantments = {};
     let guildStructures = {};
     let various = {};
 
@@ -33,7 +33,7 @@
         events.register('state-equipment-equipment', event => (equipment = event, _update()));
         events.register('state-equipment-runes', event => (runes = event, _update()));
         events.register('state-structures', event => (structures = event, _update()));
-        events.register('state-enhancements', event => (enhancements = event, _update()));
+        events.register('state-enchantments', event => (enchantments = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
         events.register('state-various', event => (various = event, _update()));
     }
@@ -212,12 +212,12 @@
     }
 
     function processEnhancements() {
-        for(const id in enhancements) {
+        for(const id in enchantments) {
             const structure = structuresCache.byId[id];
             if(!structure) {
                 continue;
             }
-            addStats(structure.enhance, enhancements[id]);
+            addStats(structure.enchant, enchantments[id]);
         }
     }
 
