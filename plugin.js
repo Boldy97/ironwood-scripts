@@ -3329,6 +3329,39 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
 
 }
 );
+// lootReader
+window.moduleRegistry.add('lootReader', (events, itemUtil) => {
+
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 1000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page || page.type !== 'action') {
+            return;
+        }
+        const lootCard = $('skill-page .header > .name:contains("Loot")')
+            .closest('.card');
+        if(!lootCard.length) {
+            return;
+        }
+        const loot = {};
+        lootCard.find('.row').each((i,element) => {
+            itemUtil.extractItem(element, loot);
+        });
+        events.emit('reader-loot', {
+            skill: page.skill,
+            action: page.action,
+            loot
+        });
+    }
+
+    initialise();
+
+}
+);
 // marketReader
 window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, util) => {
 
@@ -7728,6 +7761,46 @@ window.moduleRegistry.add('localConfigurationStore', (localDatabase) => {
     }
 
     return exports;
+
+}
+);
+// lootStore
+window.moduleRegistry.add('lootStore', (events) => {
+
+    let state = null;
+
+    function initialise() {
+        events.register('reader-loot', handle);
+    }
+
+    function handle(event) {
+        // first time
+        if(state == null) {
+            return emit(event);
+        }
+        // compare action and skill
+        if(state.skill !== event.skill || state.action !== event.action) {
+            return emit(event);
+        }
+        // check updated amounts
+        let updated = false;
+        for(const key in state.loot) {
+            if(event.loot[key] !== state.loot[key] || event.loot[key] < state.loot[key]) {
+                updated = true;
+                break;
+            }
+        }
+        if(updated) {
+            return emit(event);
+        }
+    }
+
+    function emit(event) {
+        state = event;
+        events.emit('state-loot', state);
+    }
+
+    initialise();
 
 }
 );
