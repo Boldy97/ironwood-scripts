@@ -51,16 +51,14 @@
             drops[itemCache.specialIds.coins] = (drops[itemCache.specialIds.coins] || 0) + coinsPerHour;
         }
 
-        let statCarveChance = 0.1;
+        let statCarveChance;
         if(action.type !== 'OUTSKIRTS' && (statCarveChance = statsStore.get('CARVE_CHANCE') / 100)) {
             const boneDrop = dropCache.byAction[actionId].find(a => a.chance === 1);
             const boneDropCount = drops[boneDrop.item];
-            const coinDrop = dropCache.byAction[actionId].find(a => a.item === itemCache.specialIds.coins);
-            const averageAmount = (1 + coinDrop.amount) / 2;
-            drops[itemCache.specialIds.coins] -= statCarveChance * coinDrop.chance * averageAmount / 2 * boneDropCount;
+            drops[boneDrop.item] -= statCarveChance * boneDropCount;
             const mappings = dropCache.boneCarveMappings[boneDrop.item];
-            for(const other of mappings) {
-                drops[other] = (drops[other] || 0) + statCarveChance * coinDrop.chance * boneDropCount / mappings.length;
+            for(const otherBone of mappings) {
+                drops[otherBone] = (drops[otherBone] || 0) + statCarveChance * boneDropCount;
             }
         }
 
