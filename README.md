@@ -6,9 +6,10 @@ Available on [Greasy Fork](https://greasyfork.org/en/scripts/475356-ironwood-rpg
 
 # How to contribute
 
-* Fork this repository - [github docs](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
+* Find the [Trello board](https://trello.com/b/crQ5ibHp/ironwood-scripts)
+* Fork this repository from the development branch - [github docs](https://docs.github.com/en/get-started/quickstart/fork-a-repo)
 * Make a change to your fork
-* Submit a pull request for your change - [github docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
+* Submit a pull request for your change to the development branch - [github docs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
 # How to develop
 
