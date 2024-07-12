@@ -4685,7 +4685,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
         };
         const levelState = statsStore.getLevel(estimation.skill);
-        const goalTimeRow = componentBlueprint.tabs[0].rows.find(({id}) => id === 'goalTime')
+        const goalTimeRow = components.search(componentBlueprint, 'goalTime');
         estimation.timings = {
             inventory,
             equipment,
