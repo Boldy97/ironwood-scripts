@@ -12,6 +12,7 @@
     const rowTypeMappings = {
         item: createRow_Item,
         input: createRow_Input,
+        itemWithInput: createRow_ItemWithInput,
         break: createRow_Break,
         buttons: createRow_Button,
         dropdown: createRow_Select,
@@ -181,6 +182,59 @@
                         }
                     }, inputBlueprint.delay || 0))
             )
+        return parentRow;
+    }
+
+    function createRow_ItemWithInput(itemWithInputBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+
+        if(itemWithInputBlueprint.image) {
+            parentRow.append(createImage(itemWithInputBlueprint));
+        }
+
+        if(itemWithInputBlueprint?.name) {
+            parentRow
+                .append(
+                    $('<div/>')
+                        .addClass('myItemName name')
+                        .text(itemWithInputBlueprint.name)
+                );
+        }
+
+        parentRow
+            .append(
+                $('<input/>')
+                    .attr('id', itemWithInputBlueprint.id)
+                    .addClass('myItemInput')
+                    .addClass(itemWithInputBlueprint.class || '')
+                    .attr('type', itemWithInputBlueprint.inputType || 'text')
+                    .attr('placeholder', itemWithInputBlueprint.placeholder)
+                    .attr('value', itemWithInputBlueprint.inputValue || '')
+                    .css('flex', `${itemWithInputBlueprint.layout?.split('/')[1] || 1}`)
+                    .css('max-width', itemWithInputBlueprint.inputMaxWidth ?? 'unset')
+                    .keyup(inputDelay(function(e) {
+                        itemWithInputBlueprint.inputValue = e.target.value;
+                        if(itemWithInputBlueprint.action) {
+                            itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
+                        }
+                    }, itemWithInputBlueprint.delay || 0))
+            )
+
+        parentRow
+            .append(
+                $('<div/>')
+                    .addClass('myItemValue')
+                    .text(itemWithInputBlueprint?.extra || '')
+            );
+
+        if(itemWithInputBlueprint?.value) {
+            parentRow
+                .append(
+                    $('<div/>')
+                        .addClass('myItemWorth')
+                        .text(itemWithInputBlueprint.value)
+                )
+        }
         return parentRow;
     }
 
