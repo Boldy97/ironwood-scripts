@@ -6187,8 +6187,8 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
             if(itemCache.specialIds.gem.includes(item.id)) {
                 return item.attributes.SELL_PRICE * 1.2;
             }
-            if(itemCache.specialIds.pies.includes(item.id)) {
-                return item.attributes.SELL_PRICE * 2 - 2;
+            if(itemCache.specialIds.food.includes(item.id)) {
+                return Math.round(0.8 * item.stats.global.HEAL);
             }
             if(itemCache.specialIds.smithing.includes(item.id)) {
                 return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
@@ -8705,7 +8705,6 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
             telescope: null,
             lantern: null,
             food: null,
-            pies: null,
             ammo: null,
             gatheringPotion: null,
             craftingPotion: null,
@@ -8814,7 +8813,6 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
-        exports.specialIds.pies = exports.list.filter(a => a.name.endsWith('Pie') && !a.name.startsWith('Burnt')).map(a => a.id);
         exports.specialIds.ammo = getAllIdsEnding('Arrow');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
