@@ -76,6 +76,7 @@
             secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
         };
         const levelState = statsStore.getLevel(estimation.skill);
+        const goalTimeRow = components.search(componentBlueprint, 'goalTime');
         estimation.timings = {
             inventory,
             equipment,
@@ -83,6 +84,7 @@
             finished: Math.min(maxAmount.secondsLeft || Infinity, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level >= 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
+            goal: util.expToSpecificLevel(levelState.exp, goalTimeRow.inputValue) * 3600 / estimation.exp
         };
     }
 
@@ -124,6 +126,8 @@
             = estimation.exp === 0 || estimation.timings.tier === 0;
         components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
+        components.search(blueprint, 'goalTime').value
+            = estimation.timings.goal > 0 ? util.secondsToDuration(estimation.timings.goal) : '0s';
         components.search(blueprint, 'dropValue').hidden
             = estimation.values.drop === 0;
         components.search(blueprint, 'dropValue').value
@@ -251,6 +255,17 @@
                 name: 'Tier up',
                 image: 'https://cdn-icons-png.flaticon.com/512/4789/4789514.png',
                 value: ''
+            },{
+                type: 'itemWithInput',
+                id: 'goalTime',
+                name: 'Goal level',
+                image: 'https://cdn-icons-png.flaticon.com/512/14751/14751729.png',
+                value: '',
+                inputValue: '100',
+                inputType: 'number',
+                inputMaxWidth: '60px',
+                delay: 1000,
+                action: () => update()
             },{
                 type: 'item',
                 id: 'dropValue',

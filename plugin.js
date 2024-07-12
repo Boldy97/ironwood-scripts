@@ -165,6 +165,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     const rowTypeMappings = {
         item: createRow_Item,
         input: createRow_Input,
+        itemWithInput: createRow_ItemWithInput,
         break: createRow_Break,
         buttons: createRow_Button,
         dropdown: createRow_Select,
@@ -334,6 +335,59 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                         }
                     }, inputBlueprint.delay || 0))
             )
+        return parentRow;
+    }
+
+    function createRow_ItemWithInput(itemWithInputBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+
+        if(itemWithInputBlueprint.image) {
+            parentRow.append(createImage(itemWithInputBlueprint));
+        }
+
+        if(itemWithInputBlueprint?.name) {
+            parentRow
+                .append(
+                    $('<div/>')
+                        .addClass('myItemName name')
+                        .text(itemWithInputBlueprint.name)
+                );
+        }
+
+        parentRow
+            .append(
+                $('<input/>')
+                    .attr('id', itemWithInputBlueprint.id)
+                    .addClass('myItemInput')
+                    .addClass(itemWithInputBlueprint.class || '')
+                    .attr('type', itemWithInputBlueprint.inputType || 'text')
+                    .attr('placeholder', itemWithInputBlueprint.placeholder)
+                    .attr('value', itemWithInputBlueprint.inputValue || '')
+                    .css('flex', `${itemWithInputBlueprint.layout?.split('/')[1] || 1}`)
+                    .css('max-width', itemWithInputBlueprint.inputMaxWidth ?? 'unset')
+                    .keyup(inputDelay(function(e) {
+                        itemWithInputBlueprint.inputValue = e.target.value;
+                        if(itemWithInputBlueprint.action) {
+                            itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
+                        }
+                    }, itemWithInputBlueprint.delay || 0))
+            )
+
+        parentRow
+            .append(
+                $('<div/>')
+                    .addClass('myItemValue')
+                    .text(itemWithInputBlueprint?.extra || '')
+            );
+
+        if(itemWithInputBlueprint?.value) {
+            parentRow
+                .append(
+                    $('<div/>')
+                        .addClass('myItemWorth')
+                        .text(itemWithInputBlueprint.value)
+                )
+        }
         return parentRow;
     }
 
@@ -2642,6 +2696,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
+        expToSpecificLevel,
         tierToLevel,
         levelToTier,
         formatNumber,
@@ -2701,6 +2756,10 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
             target += 15;
         }
         return levelToExp(target) - exp;
+    }
+
+    function expToSpecificLevel(exp, goalLevel) {
+        return levelToExp(goalLevel) - exp;
     }
 
     function tierToLevel(tier) {
@@ -4626,6 +4685,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             secondsLeft: estimation.productionSpeed / 10 * (maxAmount || Infinity)
         };
         const levelState = statsStore.getLevel(estimation.skill);
+        const goalTimeRow = components.search(componentBlueprint, 'goalTime');
         estimation.timings = {
             inventory,
             equipment,
@@ -4633,6 +4693,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             finished: Math.min(maxAmount.secondsLeft || Infinity, ...Object.values(inventory).concat(Object.values(equipment)).map(a => a.secondsLeft)),
             level: util.expToNextLevel(levelState.exp) * 3600 / estimation.exp,
             tier: levelState.level >= 100 ? 0 : util.expToNextTier(levelState.exp) * 3600 / estimation.exp,
+            goal: util.expToSpecificLevel(levelState.exp, goalTimeRow.inputValue) * 3600 / estimation.exp
         };
     }
 
@@ -4674,6 +4735,8 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             = estimation.exp === 0 || estimation.timings.tier === 0;
         components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
+        components.search(blueprint, 'goalTime').value
+            = estimation.timings.goal > 0 ? util.secondsToDuration(estimation.timings.goal) : '0s';
         components.search(blueprint, 'dropValue').hidden
             = estimation.values.drop === 0;
         components.search(blueprint, 'dropValue').value
@@ -4801,6 +4864,17 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
                 name: 'Tier up',
                 image: 'https://cdn-icons-png.flaticon.com/512/4789/4789514.png',
                 value: ''
+            },{
+                type: 'itemWithInput',
+                id: 'goalTime',
+                name: 'Goal level',
+                image: 'https://cdn-icons-png.flaticon.com/512/14751/14751729.png',
+                value: '',
+                inputValue: '100',
+                inputType: 'number',
+                inputMaxWidth: '60px',
+                delay: 1000,
+                action: () => update()
             },{
                 type: 'item',
                 id: 'dropValue',

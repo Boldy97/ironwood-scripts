@@ -6,6 +6,7 @@
         expToCurrentExp,
         expToNextLevel,
         expToNextTier,
+        expToSpecificLevel,
         tierToLevel,
         levelToTier,
         formatNumber,
@@ -65,6 +66,10 @@
             target += 15;
         }
         return levelToExp(target) - exp;
+    }
+
+    function expToSpecificLevel(exp, goalLevel) {
+        return levelToExp(goalLevel) - exp;
     }
 
     function tierToLevel(tier) {
