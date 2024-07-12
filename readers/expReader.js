@@ -22,14 +22,20 @@
     }
 
     function readActionScreen(id) {
-        const text = $('skill-page .header > .name:contains("Stats")')
+        const text = $('skill-page .tabs > button:contains("Stats")')
             .closest('.card')
             .find('.row > .name:contains("Total"):contains("XP")')
             .closest('.row')
             .find('.value')
             .text();
-        const exp = util.parseNumber(text);
+        const exp = text ? util.parseNumber(text) : readActionScreenFallback();
         emitEvent([{ id, exp }]);
+    }
+
+    function readActionScreenFallback() {
+        const level = util.parseNumber($('tracker-component .level').text());
+        const exp = util.parseNumber($('tracker-component .exp').text());
+        return util.levelToExp(level) + exp;
     }
 
     function readTamingScreen() {

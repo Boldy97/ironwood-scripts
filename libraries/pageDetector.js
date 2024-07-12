@@ -45,7 +45,7 @@
                 type: 'enchantment',
                 structure: +parts[parts.length-1]
             };
-        } else if(url.includes('house/produce')) {
+        } else if(url.includes('house/automate')) {
             result = {
                 type: 'automation',
                 structure: +parts[parts.length-2],

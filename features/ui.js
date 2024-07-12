@@ -81,7 +81,8 @@
                 }
 
                 action-component div.body >  div.image,
-                produce-component div.body > div.image,
+                enchant-component div.body > div.image,
+                automate-component div.body > div.image,
                 daily-quest-page div.body > div.image {
                     height: 48px !important;
                     width: 48px !important;

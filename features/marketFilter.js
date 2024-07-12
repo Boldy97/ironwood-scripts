@@ -262,6 +262,9 @@
     }
 
     function showComponent() {
+        if(!enabled) {
+            return;
+        }
         componentBlueprint.prepend = screen.width < 750;
         components.addComponent(componentBlueprint);
     }

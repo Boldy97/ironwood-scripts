@@ -18,7 +18,7 @@ These steps assume you are using the Tampermonkey extension with Chrome
 Replace the last require with the path to the actual plugin.js
 ```
 // ==UserScript==
-// @name         Ironwood RGP - Development
+// @name         Ironwood RPG - Development
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  try to take over the world!
