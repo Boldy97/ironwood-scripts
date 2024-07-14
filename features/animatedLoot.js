@@ -1,4 +1,4 @@
-(events, elementWatcher, dropCache, itemCache) => {
+(events, elementWatcher, dropCache, itemCache, configuration) => {
     const THICCNESS = 60;
 
     const Engine = Matter.Engine;
@@ -18,6 +18,7 @@
     var engine;
     var render;
     var killswitch;
+    let enabled = false;
 
     var items = [];
     var lastLoot = {};
@@ -28,20 +29,23 @@
         addStyles();
         events.register('page', handlePage);
         events.register('state-loot', handleLoot);
+        configuration.registerCheckbox({
+            category: 'Other',
+            key: 'animated-loot',
+            name: 'Animated Loot',
+            default: false,
+            handler: handleConfigStateChange,
+        });
+    }
 
-        window.itemsTest = {
-            clearItems: clearItems,
-            spawnitem: addItem,
-            debug: debug,
-        };
+    function handleConfigStateChange(state) {
+        enabled = state;
     }
 
     async function handlePage(page) {
+        if (!enabled) return;
         reset();
-
-        if (page.type !== 'action') {
-            return;
-        }
+        if (page.type !== 'action') return;
 
         await ensureImagesLoaded(page.action);
 
@@ -50,12 +54,13 @@
     }
 
     async function handleLoot(lootState) {
-        if(!lootState) return;
+        if (!enabled) return;
+        if (!lootState) return;
         const page = events.getLast('page');
         if (lootState.action !== page.action) return;
 
         const itemWrapper = $('#itemWrapper');
-        if(!itemWrapper.length) {
+        if (!itemWrapper.length) {
             await createItemWrapper();
         }
 
@@ -70,20 +75,19 @@
 
     async function createItemWrapper() {
         await elementWatcher.exists('skill-page .header > .name:contains("Loot")');
-        
-        const lootCard = $('skill-page .header > .name:contains("Loot")')
-            .closest('.card');
-        if(!lootCard.length) {
+
+        const lootCard = $('skill-page .header > .name:contains("Loot")').closest('.card');
+        if (!lootCard.length) {
             return;
         }
         lootCard.append(itemWrapper);
 
         killswitch = setInterval(() => {
             const itemWrapper = $('#itemWrapper');
-            if(!itemWrapper.length) {
+            if (!itemWrapper.length) {
                 reset();
             }
-        },1000)
+        }, 1000);
 
         const matterContainer = document.querySelector('#itemWrapper');
         console.log(matterContainer);
@@ -165,7 +169,6 @@
         Runner.run(runner, engine);
 
         function handleResize(matterContainer) {
-            
             const actualWidth = matterContainer.clientWidth + 2;
             const actualheigth = matterContainer.clientHeight + 2;
 
@@ -174,34 +177,16 @@
 
             Matter.Body.setPosition(
                 ground,
-                Matter.Vector.create(
-                    actualWidth / 2,
-                    actualheigth + THICCNESS / 2
-                )
+                Matter.Vector.create(actualWidth / 2, actualheigth + THICCNESS / 2)
             );
 
             Matter.Body.setPosition(
                 rightWall,
-                Matter.Vector.create(
-                    actualWidth + THICCNESS / 2,
-                    actualheigth / 2
-                )
+                Matter.Vector.create(actualWidth + THICCNESS / 2, actualheigth / 2)
             );
         }
 
         window.addEventListener('resize', () => handleResize(matterContainer));
-    }
-
-    function debug() {
-        console.log(items);
-    }                                                                     
-
-    function clearItems() {
-        console.log('clearItems', items);
-        items.forEach((i) => {
-            cullItem(i);
-        });
-        items = [];
     }
 
     function reset() {
@@ -215,7 +200,7 @@
             render.context = null;
             render.textures = {};
         }
-        if(killswitch) {
+        if (killswitch) {
             clearInterval(killswitch);
             killswitch = undefined;
         }
@@ -233,7 +218,7 @@
             items.push(newItem);
         }
 
-        var clumpingOccurred; 
+        var clumpingOccurred;
         do {
             clumpingOccurred = false;
             const distinctPairs = Array.from(
@@ -242,35 +227,35 @@
                     set.add(pair);
                     return set;
                 }, new Set())
-            ).map(pair => JSON.parse(pair));
+            ).map((pair) => JSON.parse(pair));
 
-            distinctPairs.forEach(p => {
-                const itemsWithIdAndDensity = items
-                    .filter(i => i.id === p.id && i.density == p.density);
-                
+            distinctPairs.forEach((p) => {
+                const itemsWithIdAndDensity = items.filter(
+                    (i) => i.id === p.id && i.density == p.density
+                );
+
                 if (itemsWithIdAndDensity.length < MAX_SAME_DENSITY) {
                     return;
                 }
 
                 clumpingOccurred = true;
 
-                const itemsToClump = itemsWithIdAndDensity.slice(0, CLUMPSIZE)
+                const itemsToClump = itemsWithIdAndDensity.slice(0, CLUMPSIZE);
 
-                items = items.filter(item => !itemsToClump.includes(item));
+                items = items.filter((item) => !itemsToClump.includes(item));
 
                 const newItem = { id: itemId, density: p.density * CLUMPSIZE, ref: undefined };
                 items.push(newItem);
-                
             });
         } while (clumpingOccurred);
 
-        const removed = previousItemState.filter(prevItem => !items.includes(prevItem));
-        removed.forEach(removedItem => {
+        const removed = previousItemState.filter((prevItem) => !items.includes(prevItem));
+        removed.forEach((removedItem) => {
             if (removedItem.ref) cullItem(removedItem);
         });
 
-        const added = items.filter(currItem => !previousItemState.includes(currItem));
-        added.forEach(addedItem => {
+        const added = items.filter((currItem) => !previousItemState.includes(currItem));
+        added.forEach((addedItem) => {
             spawnItem(addedItem);
         });
     }
