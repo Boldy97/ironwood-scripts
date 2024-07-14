@@ -159,7 +159,6 @@
 
     async function handlePage(page) {
         if (!enabled) return;
-        console.log(page);
         reset();
         if (!ENABLED_PAGES.includes(page.type)) return;
 
@@ -173,7 +172,7 @@
         if (!enabled) return;
         if (!lootState) return;
         if (busy) {
-            console.log('skipped cuz busy');
+            //console.log('skipped cuz busy');
             return;
         }
         try {
@@ -211,7 +210,7 @@
         }
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
         if(backgroundUrl) {
-            itemWrapper.css("background-image", 'url(' + backgroundUrl + ')');
+            itemWrapper.css("background-image", 'linear-gradient(0deg, rgba(58, 0, 255, 0) 50%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
         }
         lootCard.append(itemWrapper);
 
@@ -223,7 +222,7 @@
         }, 1000);
 
         const matterContainer = document.querySelector('#itemWrapper');
-        console.log(matterContainer);
+        //console.log(matterContainer);
 
         const actualWidth = matterContainer.clientWidth + 2;
         const actualheigth = matterContainer.clientHeight + 2;
@@ -435,14 +434,14 @@
         const item = itemCache.byId[itemId];
         if(!item) return;
         if(loadedImages.includes(itemId)) {
-            console.log(`Already have image for ${item.name} (${item.id})`);
+            //console.log(`Already have image for ${item.name} (${item.id})`);
             return;
         }
         await new Promise((res, rej) => {
             let img = new Image();
             img.onload = () => {
                 loadedImages.push(itemId);
-                console.log(`Successfully loaded image for ${item.name} (${item.id})`);
+                //console.log(`Successfully loaded image for ${item.name} (${item.id})`);
                 res();
             };
             img.onerror = rej;
@@ -487,18 +486,18 @@
         return delta;
     }
 
+    //background-position: center center;
+    //border-top: 1px solid #263849;
     const styles = `
 		.itemWrapper {
 			width: 100%;
 			height: 350px;
 			background-color: transparent;
-            border-top: 1px solid #263849;
             overflow: hidden;
             position: relative;
             border-radius: 0px 0px 4px 4px;
 
             background-size: cover;
-            background-position: center center;
             background-repeat: no-repeat;
 
             canvas {
