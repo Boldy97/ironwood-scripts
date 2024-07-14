@@ -2,7 +2,7 @@
 
     function initialise() {
         events.register('page', update);
-        window.setInterval(update, 1000);
+        window.setInterval(update, 500);
     }
 
     function update() {
