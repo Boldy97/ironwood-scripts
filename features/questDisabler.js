@@ -14,9 +14,10 @@
         await elementWatcher.exists('nav-component button[routerLink="/quests"]');
         $('nav-component button[routerLink="/quests"]')
             .attr('disabled', state)
+            .css('pointer-events', state ? 'none' : '')
+            .find('.name')
             .css('color', state ? '#db6565' : 'white')
-            .css('text-decoration', state ? 'line-through' : '')
-            .css('pointer-events', state ? 'none' : '');
+            .css('text-decoration', state ? 'line-through' : '');
     }
 
     initialise();
