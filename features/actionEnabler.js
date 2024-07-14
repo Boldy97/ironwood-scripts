@@ -7,7 +7,7 @@
             category: 'UI Features',
             key: 'action-enabler',
             name: 'Action Enabler',
-            default: false,
+            default: true,
             handler: handleConfigStateChange
         });
         events.register('page', handlePage);
@@ -18,7 +18,7 @@
     }
 
     function handlePage(page) {
-        if(!enabled ||page.type !== 'action') {
+        if(!enabled || page.type !== 'action') {
             return;
         }
         $('skill-page .header > .name:contains("Actions")')
