@@ -252,8 +252,6 @@
                 wireframes: false,
             },
         });
-        // engine.positionIterations = 2;
-        // engine.velocityIterations = 2;
 
         var ground = Bodies.rectangle(
             actualWidth / 2,
