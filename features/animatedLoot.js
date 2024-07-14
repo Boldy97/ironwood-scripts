@@ -88,10 +88,10 @@
         configuration.registerInput({
             category: 'Animated Loot',
             key: 'animated-loot-background',
-            name: 'Background URL',
+            name: 'png, jpeg, webm, gif, etc.',
             default: '',
             inputType: 'text',
-            text: 'Background url',
+            text: 'Background URL',
             layout: '1/3',
             class: 'noPad_InheritHeigth',
             noHeader: true,
@@ -211,6 +211,8 @@
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
         if(backgroundUrl) {
             itemWrapper.css("background-image", 'linear-gradient(0deg, rgba(0, 0, 0, 0) 66%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
+        } else {
+            itemWrapper.addClass('lineAboveCanvas');
         }
         lootCard.append(itemWrapper);
 
@@ -487,7 +489,6 @@
     }
 
     //background-position: center center;
-    //border-top: 1px solid #263849;
     const styles = `
 		.itemWrapper {
 			width: 100%;
@@ -509,6 +510,9 @@
             padding: 0px !important;
             height: inherit !important;
             color: #aaa;
+        }
+        .lineAboveCanvas {
+            border-top: 1px solid #263849
         }
 	`;
 
