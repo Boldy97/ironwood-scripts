@@ -6266,7 +6266,7 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore) => {
+window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore, dropCache, actionCache) => {
 
     let enabled = false;
     let entered = false;
@@ -6292,6 +6292,17 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
                 return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
             }
             return 2 * item.attributes.SELL_PRICE;
+        },
+        DROP_CHANCE: (val, item) => {
+            const chances = dropCache.byItem[item.id].map(a => a.chance);
+            if(!chances.length) {
+                return;
+            }
+            const max = chances.reduce((acc,val) => Math.max(acc,val));
+            if(max > 0.05) {
+                return;
+            }
+            return `${util.formatNumber(100 * max)}%`;
         }
     }
 
@@ -8914,6 +8925,10 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
             technicalName: 'OWNED',
             name: 'Owned',
             image: '/assets/misc/inventory.png'
+        },{
+            technicalName: 'DROP_CHANCE',
+            name: 'Drop Chance',
+            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
