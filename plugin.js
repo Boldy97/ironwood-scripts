@@ -4048,7 +4048,7 @@ window.moduleRegistry.add('dataForwarder', (configuration, events, request, disc
                 break;
             case 'reader-guild-event':
                 if(guildName && DATA[key].eventRunning) {
-                    forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
+                    request.forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
                 }
                 break;
             case 'estimator':
