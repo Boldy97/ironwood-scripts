@@ -151,15 +151,15 @@
 
     function handleConfigClumpImageSizeIncreaseStateChange(state) {
         if(!state || state === '') {
-            clumpsize = IMAGESIZE_INCREASE_DEFAULT;
+            imagesize_increase = IMAGESIZE_INCREASE_DEFAULT;
             return;
         }
         if(state < IMAGESIZE_INCREASE_MIN) {
-            clumpsize = IMAGESIZE_INCREASE_MIN;
+            imagesize_increase = IMAGESIZE_INCREASE_MIN;
             return;
         }
         if(state > IMAGESIZE_INCREASE_MAX) {
-            clumpsize = IMAGESIZE_INCREASE_MAX;
+            imagesize_increase = IMAGESIZE_INCREASE_MAX;
             return;
         }
         imagesize_increase = state;
