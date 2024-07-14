@@ -8,32 +8,82 @@
     const World = Matter.World;
     const Composite = Matter.Composite;
 
-    const CLUMPSIZE = 10;
-    const MAX_SAME_DENSITY = 10;
+    const CLUMPDENSITY_MIN = 2;
+    const CLUMPDENSITY_DEFAULT = 10;
+    const CLUMPDENSITY_MAX = 100;
+
+    const MAX_SAME_DENSITY_MIN = 2;
+    const MAX_SAME_DENSITY_DEFAULT = 10;
+    const MAX_SAME_DENSITY_MAX = 100;
 
     const ORIGINAL_IMAGESIZE = 32;
     const DESIRED_IMAGESIZE = 24;
-    const IMAGESIZE_INCREASE = DESIRED_IMAGESIZE / 4;
 
+    const IMAGESIZE_INCREASE_MIN = 0;
+    const IMAGESIZE_INCREASE_DEFAULT = 0.25;
+    const IMAGESIZE_INCREASE_MAX = 1;
+
+    const ENABLED_PAGES = ['action']; //,'taming','automation'
+
+    var loadedImages = [];
     var engine;
     var render;
     var killswitch;
+
+    let busy = false;
     let enabled = false;
     let backgroundUrl = undefined;
+    let clumpsize = CLUMPDENSITY_DEFAULT;
+    let max_same_density = MAX_SAME_DENSITY_DEFAULT;
+    let imagesize_increase = IMAGESIZE_INCREASE_DEFAULT;
 
     var items = [];
     var lastLoot = {};
 
     async function initialise() {
         addStyles();
-        events.register('page', handlePage);
-        events.register('state-loot', handleLoot);
         configuration.registerCheckbox({
             category: 'Animated Loot',
             key: 'animated-loot-enabled',
             name: 'Animated Loot Enabled',
             default: false,
             handler: handleConfigEnabledStateChange,
+        });
+        configuration.registerInput({
+            category: 'Animated Loot',
+            key: 'animated-loot-max-same-density',
+            name: `[${MAX_SAME_DENSITY_MIN} - ${MAX_SAME_DENSITY_MAX}]`,
+            default: MAX_SAME_DENSITY_DEFAULT,
+            inputType: 'number',
+            text: 'Max items of same density',
+            layout: '2/1',
+            class: 'noPad_InheritHeigth',
+            noHeader: true,
+            handler: handleConfigMaxSameDensityStateChange,
+        });
+        configuration.registerInput({
+            category: 'Animated Loot',
+            key: 'animated-loot-clumpdensity',
+            name: `[${CLUMPDENSITY_MIN} - ${CLUMPDENSITY_MAX}]`,
+            default: CLUMPDENSITY_DEFAULT,
+            inputType: 'number',
+            text: 'Clump density',
+            layout: '2/1',
+            class: 'noPad_InheritHeigth',
+            noHeader: true,
+            handler: handleConfigClumpSizeStateChange,
+        });
+        configuration.registerInput({
+            category: 'Animated Loot',
+            key: 'animated-loot-clump-imagesize-increase',
+            name: `[${IMAGESIZE_INCREASE_MIN} - ${IMAGESIZE_INCREASE_MAX}]`,
+            default: IMAGESIZE_INCREASE_DEFAULT,
+            inputType: 'number',
+            text: 'Clump size increase',
+            layout: '2/1',
+            class: 'noPad_InheritHeigth',
+            noHeader: true,
+            handler: handleConfigClumpImageSizeIncreaseStateChange,
         });
         configuration.registerInput({
             category: 'Animated Loot',
@@ -47,10 +97,60 @@
             noHeader: true,
             handler: handleConfigBackgroundStateChange,
         });
+        events.register('page', handlePage);
+        events.register('state-loot', handleLoot);
     }
 
     function handleConfigEnabledStateChange(state) {
         enabled = state;
+    }
+
+    function handleConfigMaxSameDensityStateChange(state) {
+        if(state < MAX_SAME_DENSITY_MIN) {
+            max_same_density = MAX_SAME_DENSITY_MIN;
+            return;
+        }
+        if(state > MAX_SAME_DENSITY_MAX) {
+            max_same_density = MAX_SAME_DENSITY_MAX;
+            return;
+        }
+        if(!state || state === '') {
+            max_same_density = MAX_SAME_DENSITY_DEFAULT;
+            return;
+        }
+        max_same_density = state;
+    }
+
+    function handleConfigClumpSizeStateChange(state) {
+        if(state < CLUMPDENSITY_MIN) {
+            clumpsize = CLUMPDENSITY_MIN;
+            return;
+        }
+        if(state > CLUMPDENSITY_MAX) {
+            clumpsize = CLUMPDENSITY_MAX;
+            return;
+        }
+        if(!state || state === '') {
+            clumpsize = CLUMPDENSITY_DEFAULT;
+            return;
+        }
+        clumpsize = state;
+    }
+
+    function handleConfigClumpImageSizeIncreaseStateChange(state) {
+        if(state < IMAGESIZE_INCREASE_MIN) {
+            clumpsize = IMAGESIZE_INCREASE_MIN;
+            return;
+        }
+        if(state > IMAGESIZE_INCREASE_MAX) {
+            clumpsize = IMAGESIZE_INCREASE_MAX;
+            return;
+        }
+        if(!state || state === '') {
+            clumpsize = IMAGESIZE_INCREASE_DEFAULT;
+            return;
+        }
+        imagesize_increase = state;
     }
 
     function handleConfigBackgroundStateChange(state) {
@@ -59,32 +159,46 @@
 
     async function handlePage(page) {
         if (!enabled) return;
+        console.log(page);
         reset();
-        if (page.type !== 'action') return;
+        if (!ENABLED_PAGES.includes(page.type)) return;
 
-        await ensureImagesLoaded(page.action);
+        //await ensureImagesLoaded(page.action);
 
         const initial = events.getLast('state-loot');
-        handleLoot(initial);
+        await handleLoot(initial);
     }
 
     async function handleLoot(lootState) {
         if (!enabled) return;
         if (!lootState) return;
-        const page = events.getLast('page');
-        if (lootState.action !== page.action) return;
-
-        const itemWrapper = $('#itemWrapper');
-        if (!itemWrapper.length) {
-            await createItemWrapper();
+        if (busy) {
+            console.log('skipped cuz busy');
+            return;
         }
+        try {
+            busy = true;
+            const page = events.getLast('page');
+            if (lootState.action !== page.action) return;
 
-        const delta = objDelta(lastLoot, lootState.loot);
-        //console.log('handleLoot', delta);
-        lastLoot = lootState.loot;
+            const itemWrapper = $('#itemWrapper');
+            if (!itemWrapper.length) {
+                await createItemWrapper();
+            }
 
-        for (const [id, val] of Object.entries(delta)) {
-            if (val > 0) addItem(id, val);
+            const delta = objDelta(lastLoot, lootState.loot);
+            //console.log('handleLoot', delta);
+            lastLoot = lootState.loot;
+
+            for (const [id, val] of Object.entries(delta)) {
+                if (val > 0) {
+                    await loadImage(id);
+                    addItem(id, val);
+                }
+            }
+        }
+        finally {
+            busy = false;
         }
     }
 
@@ -97,7 +211,6 @@
         }
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
         if(backgroundUrl) {
-            console.log(backgroundUrl);
             itemWrapper.css("background-image", 'url(' + backgroundUrl + ')');
         }
         lootCard.append(itemWrapper);
@@ -210,7 +323,7 @@
     }
 
     function reset() {
-        console.log('reset');
+        //console.log('reset');
         if (render) {
             Render.stop(render);
             World.clear(engine.world);
@@ -254,17 +367,17 @@
                     (i) => i.id === p.id && i.density == p.density
                 );
 
-                if (itemsWithIdAndDensity.length < MAX_SAME_DENSITY) {
+                if (itemsWithIdAndDensity.length < max_same_density) {
                     return;
                 }
 
                 clumpingOccurred = true;
 
-                const itemsToClump = itemsWithIdAndDensity.slice(0, CLUMPSIZE);
+                const itemsToClump = itemsWithIdAndDensity.slice(0, clumpsize);
 
                 items = items.filter((item) => !itemsToClump.includes(item));
 
-                const newItem = { id: itemId, density: p.density * CLUMPSIZE, ref: undefined };
+                const newItem = { id: itemId, density: p.density * clumpsize, ref: undefined };
                 items.push(newItem);
             });
         } while (clumpingOccurred);
@@ -290,7 +403,7 @@
         const matterContainer = document.querySelector('#itemWrapper');
         const spread = randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
 
-        const itemSize = DESIRED_IMAGESIZE + logBase(item.density, CLUMPSIZE) * IMAGESIZE_INCREASE;
+        const itemSize = DESIRED_IMAGESIZE + logBase(item.density, clumpsize) * (DESIRED_IMAGESIZE * imagesize_increase);
         const imageScale = itemSize / DESIRED_IMAGESIZE;
         const scaleCorrection = DESIRED_IMAGESIZE / ORIGINAL_IMAGESIZE;
 
@@ -313,18 +426,28 @@
 
     async function ensureImagesLoaded(action) {
         const itemIds = dropCache.byAction[action].map((d) => d.item);
-        const items = itemIds.reduce((acc, i) => [...acc, itemCache.byId[i]], []);
-        for (const item of items) {
-            await new Promise((res, rej) => {
-                let img = new Image();
-                img.onload = () => {
-                    console.log(`Successfully loaded image for ${item.name} (${item.id})`);
-                    res();
-                };
-                img.onerror = rej;
-                img.src = 'assets/' + item.image;
-            });
+        for (const itemId of itemIds) {
+            await loadImage(itemId)
         }
+    }
+
+    async function loadImage(itemId) {
+        const item = itemCache.byId[itemId];
+        if(!item) return;
+        if(loadedImages.includes(itemId)) {
+            console.log(`Already have image for ${item.name} (${item.id})`);
+            return;
+        }
+        await new Promise((res, rej) => {
+            let img = new Image();
+            img.onload = () => {
+                loadedImages.push(itemId);
+                console.log(`Successfully loaded image for ${item.name} (${item.id})`);
+                res();
+            };
+            img.onerror = rej;
+            img.src = 'assets/' + item.image;
+        });
     }
 
     function addStyles() {
