@@ -19,27 +19,42 @@
     var render;
     var killswitch;
     let enabled = false;
+    let backgroundUrl = undefined;
 
     var items = [];
     var lastLoot = {};
-
-    const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper');
 
     async function initialise() {
         addStyles();
         events.register('page', handlePage);
         events.register('state-loot', handleLoot);
         configuration.registerCheckbox({
-            category: 'Other',
-            key: 'animated-loot',
-            name: 'Animated Loot',
+            category: 'Animated Loot',
+            key: 'animated-loot-enabled',
+            name: 'Animated Loot Enabled',
             default: false,
-            handler: handleConfigStateChange,
+            handler: handleConfigEnabledStateChange,
+        });
+        configuration.registerInput({
+            category: 'Animated Loot',
+            key: 'animated-loot-background',
+            name: 'Background URL',
+            default: '',
+            inputType: 'text',
+            text: 'Background url',
+            layout: '1/3',
+            class: 'noPad_InheritHeigth',
+            noHeader: true,
+            handler: handleConfigBackgroundStateChange,
         });
     }
 
-    function handleConfigStateChange(state) {
+    function handleConfigEnabledStateChange(state) {
         enabled = state;
+    }
+
+    function handleConfigBackgroundStateChange(state) {
+        backgroundUrl = state;
     }
 
     async function handlePage(page) {
@@ -79,6 +94,11 @@
         const lootCard = $('skill-page .header > .name:contains("Loot")').closest('.card');
         if (!lootCard.length) {
             return;
+        }
+        const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
+        if(backgroundUrl) {
+            console.log(backgroundUrl);
+            itemWrapper.css("background-image", 'url(' + backgroundUrl + ')');
         }
         lootCard.append(itemWrapper);
 
@@ -354,11 +374,20 @@
             position: relative;
             border-radius: 0px 0px 4px 4px;
 
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+
             canvas {
                 border-radius: 0 0 4px 4px;
                 margin: -1px;
             }
 		}
+        .noPad_InheritHeigth {
+            padding: 0px !important;
+            height: inherit !important;
+            color: #aaa;
+        }
 	`;
 
     initialise();
