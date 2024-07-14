@@ -19,9 +19,9 @@
     const ORIGINAL_IMAGESIZE = 32;
     const DESIRED_IMAGESIZE = 24;
 
-    const IMAGESIZE_INCREASE_MIN = 0;
-    const IMAGESIZE_INCREASE_DEFAULT = 0.25;
-    const IMAGESIZE_INCREASE_MAX = 1;
+    const IMAGESIZE_INCREASE_MIN = 1;
+    const IMAGESIZE_INCREASE_DEFAULT = 1.25;
+    const IMAGESIZE_INCREASE_MAX = 2;
 
     const ENABLED_PAGES = ['action']; //,'taming','automation'
 
@@ -55,8 +55,8 @@
             name: `[${MAX_SAME_DENSITY_MIN} - ${MAX_SAME_DENSITY_MAX}]`,
             default: MAX_SAME_DENSITY_DEFAULT,
             inputType: 'number',
-            text: 'Max items of same density',
-            layout: '2/1',
+            text: 'Max amount of items of same type and weight before clumping occurs',
+            layout: '5/1',
             class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigMaxSameDensityStateChange,
@@ -67,8 +67,8 @@
             name: `[${CLUMPDENSITY_MIN} - ${CLUMPDENSITY_MAX}]`,
             default: CLUMPDENSITY_DEFAULT,
             inputType: 'number',
-            text: 'Clump density',
-            layout: '2/1',
+            text: 'Amount of items that will clump together when treshold is reached',
+            layout: '5/1',
             class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigClumpSizeStateChange,
@@ -79,8 +79,8 @@
             name: `[${IMAGESIZE_INCREASE_MIN} - ${IMAGESIZE_INCREASE_MAX}]`,
             default: IMAGESIZE_INCREASE_DEFAULT,
             inputType: 'number',
-            text: 'Clump size increase',
-            layout: '2/1',
+            text: 'Factor that determines how much larger a clumped item image will be',
+            layout: '5/1',
             class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigClumpImageSizeIncreaseStateChange,
@@ -106,6 +106,16 @@
     }
 
     function handleConfigMaxSameDensityStateChange(state) {
+        if(!state || state === '') {
+            max_same_density = MAX_SAME_DENSITY_DEFAULT;
+            return;
+        }
+        if(state < clumpsize) {
+            //just reset it to default to prevent stuck in while
+            max_same_density = MAX_SAME_DENSITY_DEFAULT;
+            clumpsize = CLUMPDENSITY_DEFAULT;
+            return;
+        }
         if(state < MAX_SAME_DENSITY_MIN) {
             max_same_density = MAX_SAME_DENSITY_MIN;
             return;
@@ -114,14 +124,20 @@
             max_same_density = MAX_SAME_DENSITY_MAX;
             return;
         }
-        if(!state || state === '') {
-            max_same_density = MAX_SAME_DENSITY_DEFAULT;
-            return;
-        }
         max_same_density = state;
     }
 
     function handleConfigClumpSizeStateChange(state) {
+        if(!state || state === '') {
+            clumpsize = CLUMPDENSITY_DEFAULT;
+            return;
+        }
+        if(state > max_same_density) {
+            //just reset it to default to prevent stuck in while
+            clumpsize = CLUMPDENSITY_DEFAULT;
+            max_same_density = MAX_SAME_DENSITY_DEFAULT;
+            return;
+        }
         if(state < CLUMPDENSITY_MIN) {
             clumpsize = CLUMPDENSITY_MIN;
             return;
@@ -130,24 +146,20 @@
             clumpsize = CLUMPDENSITY_MAX;
             return;
         }
-        if(!state || state === '') {
-            clumpsize = CLUMPDENSITY_DEFAULT;
-            return;
-        }
         clumpsize = state;
     }
 
     function handleConfigClumpImageSizeIncreaseStateChange(state) {
+        if(!state || state === '') {
+            clumpsize = IMAGESIZE_INCREASE_DEFAULT;
+            return;
+        }
         if(state < IMAGESIZE_INCREASE_MIN) {
             clumpsize = IMAGESIZE_INCREASE_MIN;
             return;
         }
         if(state > IMAGESIZE_INCREASE_MAX) {
             clumpsize = IMAGESIZE_INCREASE_MAX;
-            return;
-        }
-        if(!state || state === '') {
-            clumpsize = IMAGESIZE_INCREASE_DEFAULT;
             return;
         }
         imagesize_increase = state;
@@ -404,7 +416,7 @@
         const matterContainer = document.querySelector('#itemWrapper');
         const spread = randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
 
-        const itemSize = DESIRED_IMAGESIZE + logBase(item.density, clumpsize) * (DESIRED_IMAGESIZE * imagesize_increase);
+        const itemSize = DESIRED_IMAGESIZE + logBase(item.density, clumpsize) * (DESIRED_IMAGESIZE * (imagesize_increase - 1));
         const imageScale = itemSize / DESIRED_IMAGESIZE;
         const scaleCorrection = DESIRED_IMAGESIZE / ORIGINAL_IMAGESIZE;
 
