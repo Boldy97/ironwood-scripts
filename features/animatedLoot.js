@@ -210,7 +210,7 @@
         }
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
         if(backgroundUrl) {
-            itemWrapper.css("background-image", 'linear-gradient(0deg, rgba(58, 0, 255, 0) 50%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
+            itemWrapper.css("background-image", 'linear-gradient(0deg, rgba(0, 0, 0, 0) 66%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
         }
         lootCard.append(itemWrapper);
 
