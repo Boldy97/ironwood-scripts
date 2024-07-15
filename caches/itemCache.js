@@ -112,6 +112,10 @@
             technicalName: 'OWNED',
             name: 'Owned',
             image: '/assets/misc/inventory.png'
+        },{
+            technicalName: 'DROP_CHANCE',
+            name: 'Drop Chance',
+            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items

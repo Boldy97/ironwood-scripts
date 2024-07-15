@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ironwood RPG - Pancake-Scripts
 // @namespace    http://tampermonkey.net/
-// @version      4.5.4
+// @version      4.6.0
 // @description  A collection of scripts to enhance Ironwood RPG - https://github.com/Boldy97/ironwood-scripts
 // @author       Pancake
 // @match        https://ironwoodrpg.com/*
@@ -13,7 +13,7 @@
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
-window.PANCAKE_VERSION = '4.5.4';
+window.PANCAKE_VERSION = '4.6.0';
 (() => {
 
     if(window.moduleRegistry) {
@@ -140,7 +140,9 @@ window.moduleRegistry.add('colorMapper', () => {
         // component styling
         componentLight: '#393532',
         componentRegular: '#28211b',
-        componentDark: '#211a12'
+        componentDark: '#211a12',
+        componentHover: '#3c2f26',
+        componentSelected: '#1c1916'
     };
 
     function mapColor(color) {
@@ -1245,9 +1247,7 @@ window.moduleRegistry.add('elementWatcher', (Promise, polyfill) => {
 
     const $ = window.$;
 
-    async function exists(selector, delay, timeout, inverted) {
-        delay = delay !== undefined ? delay : 10;
-        timeout = timeout !== undefined ? timeout : 5000;
+    async function exists(selector, delay = 10, timeout = 5000, inverted = false) {
         const promiseWrapper = new Promise.Checking(() => {
             let result = $(selector)[0];
             return inverted ? !result : result;
@@ -1852,9 +1852,16 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
 
     async function initialise() {
         events.register('url', debouncedUpdate);
+        // taming - right menu
         $(document).on('click', 'taming-page .header:contains("Menu") ~ button', () => debouncedUpdate());
+        // taming - expedition page
         $(document).on('click', 'taming-page .header:contains("Expeditions") ~ button', () => debouncedUpdate());
+        // taming - expedition selection
         $(document).on('click', 'taming-page .header:contains("Expeditions") > button', () => debouncedUpdate());
+        // action - menu
+        $(document).on('click', 'skill-page actions-component .filters', () => debouncedUpdate());
+        // action - submenu
+        $(document).on('click', 'skill-page actions-component .sort > .container', () => debouncedUpdate());
     }
 
     async function update(url) {
@@ -1877,10 +1884,14 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
                 tier
             };
         } else if(url.includes('/skill/') && url.includes('/action/')) {
+            const menu = $('skill-page actions-component .filters > button[disabled]').text().toLowerCase() || null;
+            const submenu = $('skill-page actions-component .sort button[disabled]').text().toLowerCase() || null;
             result = {
                 type: 'action',
                 skill: +parts[parts.length-3],
-                action: +parts[parts.length-1]
+                action: +parts[parts.length-1],
+                menu,
+                submenu
             };
         } else if(url.includes('house/build')) {
             result = {
@@ -4227,6 +4238,43 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
     initialise();
 }
 );
+// actionEnabler
+window.moduleRegistry.add('actionEnabler', (configuration, events) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'action-enabler',
+            name: 'Action Enabler',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', handlePage);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function handlePage(page) {
+        if(!enabled || page.type !== 'action') {
+            return;
+        }
+        $('skill-page .header > .name:contains("Actions")')
+            .closest('.card')
+            .find('button[disabled]')
+            .not('.container > button')
+            .removeAttr('disabled')
+            .find('.level')
+            .css('color', '#db6565');
+    }
+
+    initialise();
+
+}
+);
 // authToast
 window.moduleRegistry.add('authToast', (toast) => {
 
@@ -4531,7 +4579,7 @@ window.moduleRegistry.add('dataForwarder', (configuration, events, request, disc
                 break;
             case 'reader-guild-event':
                 if(guildName && DATA[key].eventRunning) {
-                    forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
+                    request.forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
                 }
                 break;
             case 'estimator':
@@ -5135,6 +5183,57 @@ window.moduleRegistry.add('discord', (pages, components, configuration, request,
     };
 
     return initialise();
+
+}
+);
+// dropChanceDisplay
+window.moduleRegistry.add('dropChanceDisplay', (configuration, events, dropCache, itemCache, util) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'drop-chance-display',
+            name: 'Drop Chance Display',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', handlePage);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function handlePage(page) {
+        if(!enabled || page.type !== 'action') {
+            return;
+        }
+        const list = $('action-drops-component .item')
+            .toArray()
+            .map(element => ({
+                element,
+                name: $(element).find('.name').text()
+            }));
+        if(!list.length) {
+            return;
+        }
+        const drops = dropCache.byAction[page.action];
+        list.forEach(a => {
+            a.item = itemCache.byName[a.name];
+            a.drop = drops.find(b => b.item === a.item.id);
+        });
+        $('.pancakeChance').remove();
+        for(const a of list) {
+            $(a.element).find('.chance').after(
+                $(`<div class='pancakeChance'>&nbsp;(${util.formatNumber(100 * a.drop.chance)}%)</div>`)
+                    .css('color', '#aaa')
+            );
+        }
+    }
+
+    initialise();
 
 }
 );
@@ -6698,7 +6797,7 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore) => {
+window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore, dropCache, actionCache) => {
 
     let enabled = false;
     let entered = false;
@@ -6724,6 +6823,17 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
                 return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
             }
             return 2 * item.attributes.SELL_PRICE;
+        },
+        DROP_CHANCE: (val, item) => {
+            const chances = dropCache.byItem[item.id].map(a => a.chance);
+            if(!chances.length) {
+                return;
+            }
+            const max = chances.reduce((acc,val) => Math.max(acc,val));
+            if(max > 0.05) {
+                return;
+            }
+            return `${util.formatNumber(100 * max)}%`;
         }
     }
 
@@ -6862,9 +6972,9 @@ window.moduleRegistry.add('marketCompetition', (configuration, events, toast, ut
 
     function initialise() {
         configuration.registerCheckbox({
-            category: 'Data',
+            category: 'Market',
             key: 'market-competition',
-            name: 'Market competition indicator',
+            name: 'Competition indicator',
             default: false,
             handler: handleConfigStateChange
         });
@@ -6967,9 +7077,9 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 
     async function initialise() {
         configuration.registerCheckbox({
-            category: 'Data',
+            category: 'Market',
             key: 'market-filter',
-            name: 'Market filter',
+            name: 'Filters',
             default: true,
             handler: handleConfigStateChange
         });
@@ -7291,6 +7401,87 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 
 }
 );
+// marketPriceButtons
+window.moduleRegistry.add('marketPriceButtons', (configuration, util, elementWatcher, colorMapper) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Market',
+            key: 'market-price-buttons',
+            name: 'Price buttons',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        $(document).on('click', 'market-list-component .search ~ button.row', () => addPriceButtons('sell'));
+        $(document).on('click', 'market-order-component .search ~ button.row', () => addPriceButtons('order'));
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function createButton(text, getPrice, priceRowInput) {
+        const baseColor = colorMapper('componentRegular');
+        const hoverColor = colorMapper('componentHover');
+        const mouseDownColor = colorMapper('componentSelected');
+
+        const element = $(`<button class='myButton'>${text}</button>`)
+            .css('background-color', baseColor)
+            .css('display', 'inline-block')
+            .css('padding', '5px')
+            .css('margin', '5px')
+            .hover(
+                (event) => $(event.currentTarget).css('background-color', hoverColor),
+                (event) => $(event.currentTarget).css('background-color', baseColor),
+            )
+            .on('mousedown', (event) => $(event.currentTarget).css('background-color', mouseDownColor))
+            .on('mouseup mouseleave', (event) => $(event.currentTarget).css('background-color', baseColor));
+
+        element.click(() => {
+            const price = getPrice();
+            priceRowInput.val(price);
+            priceRowInput[0].dispatchEvent(new Event('input', {bubbles: true}));
+        });
+
+        return element;
+    }
+
+    function findPrice(name) {
+        return util.parseNumber($(`.modal .row:contains("${name}")`).text());
+    }
+
+    async function addPriceButtons(type) {
+        if(!enabled) {
+            return;
+        }
+        const priceRowInput = $(await elementWatcher.exists('.modal input[placeholder="Price"]', 200));
+        const priceRowButtonsContainer = $('#market-component-price-buttons');
+        if(priceRowButtonsContainer.length) {
+            return;
+        }
+
+        const buttonsContainer = $('<div/>')
+            .attr('id', 'market-component-price-buttons');
+
+        const minButton = createButton('Min', () => findPrice('Minimum'), priceRowInput);
+        buttonsContainer.append(minButton);
+        if(type === 'order') {
+            const marketHighestButton = createButton('High', () => findPrice('Market Highest'), priceRowInput);
+            buttonsContainer.append(marketHighestButton);
+        }
+        if(type === 'sell') {
+            const marketLowestButton = createButton('Low', () => findPrice('Market Lowest'), priceRowInput);
+            buttonsContainer.append(marketLowestButton);
+        }
+
+        $(priceRowInput).before(buttonsContainer);
+    }
+
+    initialise();
+}
+);
 // petHighlighter
 window.moduleRegistry.add('petHighlighter', (events) => {
 
@@ -7580,6 +7771,33 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
     initialise();
 
 });
+// questDisabler
+window.moduleRegistry.add('questDisabler', (configuration, elementWatcher) => {
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'UI Features',
+            key: 'quest-disabler',
+            name: 'Quest Disabler',
+            default: false,
+            handler: toggle
+        });
+    }
+
+    async function toggle(state) {
+        await elementWatcher.exists('nav-component button[routerLink="/quests"]');
+        $('nav-component button[routerLink="/quests"]')
+            .attr('disabled', state)
+            .css('pointer-events', state ? 'none' : '')
+            .find('.name')
+            .css('color', state ? '#db6565' : 'white')
+            .css('text-decoration', state ? 'line-through' : '');
+    }
+
+    initialise();
+
+}
+);
 // recipeClickthrough
 window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, util) => {
 
@@ -9324,6 +9542,10 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
             technicalName: 'OWNED',
             name: 'Owned',
             image: '/assets/misc/inventory.png'
+        },{
+            technicalName: 'DROP_CHANCE',
+            name: 'Drop Chance',
+            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
