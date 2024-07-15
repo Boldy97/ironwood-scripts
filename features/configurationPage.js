@@ -74,19 +74,30 @@
 
     function createRows_Input(item) {
         const value = item.value || item.default;
-        return [{
-            type: 'item',
-            name: item.name
-        },{
+        const result = [];
+
+        if (!item.noHeader) {
+            result.push({
+                type: 'item',
+                name: item.name
+            });
+        }
+
+        result.push({
             type: 'input',
             name: item.name,
             value: value,
             inputType: item.inputType,
             delay: 500,
+            text: item.text,
+            layout: item.layout,
+            class: item.class,
             action: (value) => {
                 item.handler(value);
             }
-        }]
+        });
+
+        return result;
     }
 
     function createRows_Dropdown(item) {
