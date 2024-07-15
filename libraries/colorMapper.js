@@ -11,7 +11,9 @@
         // component styling
         componentLight: '#393532',
         componentRegular: '#28211b',
-        componentDark: '#211a12'
+        componentDark: '#211a12',
+        componentHover: '#3c2f26',
+        componentSelected: '#1c1916'
     };
 
     function mapColor(color) {

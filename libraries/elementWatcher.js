@@ -11,9 +11,7 @@
 
     const $ = window.$;
 
-    async function exists(selector, delay, timeout, inverted) {
-        delay = delay !== undefined ? delay : 10;
-        timeout = timeout !== undefined ? timeout : 5000;
+    async function exists(selector, delay = 10, timeout = 5000, inverted = false) {
         const promiseWrapper = new Promise.Checking(() => {
             let result = $(selector)[0];
             return inverted ? !result : result;

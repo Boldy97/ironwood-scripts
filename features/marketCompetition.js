@@ -4,9 +4,9 @@
 
     function initialise() {
         configuration.registerCheckbox({
-            category: 'Data',
+            category: 'Market',
             key: 'market-competition',
-            name: 'Market competition indicator',
+            name: 'Competition indicator',
             default: false,
             handler: handleConfigStateChange
         });

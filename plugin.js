@@ -139,7 +139,9 @@ window.moduleRegistry.add('colorMapper', () => {
         // component styling
         componentLight: '#393532',
         componentRegular: '#28211b',
-        componentDark: '#211a12'
+        componentDark: '#211a12',
+        componentHover: '#3c2f26',
+        componentSelected: '#1c1916'
     };
 
     function mapColor(color) {
@@ -1244,9 +1246,7 @@ window.moduleRegistry.add('elementWatcher', (Promise, polyfill) => {
 
     const $ = window.$;
 
-    async function exists(selector, delay, timeout, inverted) {
-        delay = delay !== undefined ? delay : 10;
-        timeout = timeout !== undefined ? timeout : 5000;
+    async function exists(selector, delay = 10, timeout = 5000, inverted = false) {
         const promiseWrapper = new Promise.Checking(() => {
             let result = $(selector)[0];
             return inverted ? !result : result;
@@ -6441,9 +6441,9 @@ window.moduleRegistry.add('marketCompetition', (configuration, events, toast, ut
 
     function initialise() {
         configuration.registerCheckbox({
-            category: 'Data',
+            category: 'Market',
             key: 'market-competition',
-            name: 'Market competition indicator',
+            name: 'Competition indicator',
             default: false,
             handler: handleConfigStateChange
         });
@@ -6546,9 +6546,9 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 
     async function initialise() {
         configuration.registerCheckbox({
-            category: 'Data',
+            category: 'Market',
             key: 'market-filter',
-            name: 'Market filter',
+            name: 'Filters',
             default: true,
             handler: handleConfigStateChange
         });
@@ -6870,48 +6870,31 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
 
 }
 );
-// marketSellPriceButtons
-window.moduleRegistry.add('marketSellPriceButtons', (configuration, localDatabase, events) => {
-    let enabled = false;
-    let updateInterval = null;
-    let marketPageActive = false;
+// marketPriceButtons
+window.moduleRegistry.add('marketPriceButtons', (configuration, util, elementWatcher, colorMapper) => {
 
-    async function initialise() {
+    let enabled = false;
+
+    function initialise() {
         configuration.registerCheckbox({
-            category: 'UI Features',
-            key: 'market-sell-price-buttons',
-            name: 'Market sell-price buttons',
+            category: 'Market',
+            key: 'market-price-buttons',
+            name: 'Price buttons',
             default: true,
             handler: handleConfigStateChange
         });
-        events.register('page', pageChangeHandler);
+        $(document).on('click', 'market-list-component .search ~ button.row', () => addPriceButtons('sell'));
+        $(document).on('click', 'market-order-component .search ~ button.row', () => addPriceButtons('order'));
     }
 
     function handleConfigStateChange(state) {
         enabled = state;
     }
 
-    function pageChangeHandler(page) {
-        if (!enabled) {
-            return;
-        }
-
-        marketPageActive = page.type === 'market';
-
-        if (marketPageActive) {
-            if (updateInterval === null) {
-                updateInterval = setInterval(addPriceButtonsIfSellWindowOpen, 200);
-            }
-        } else {
-            clearInterval(updateInterval);
-            updateInterval = null;
-        }
-    }
-
     function createButton(text, getPrice, priceRowInput) {
-        const baseColor = '#28211b';
-        const hoverColor = '#3c2f26';
-        const mouseDownColor = '#1c1916';
+        const baseColor = colorMapper('componentRegular');
+        const hoverColor = colorMapper('componentHover');
+        const mouseDownColor = colorMapper('componentSelected');
 
         const element = $(`<button class='myButton'>${text}</button>`)
             .css('background-color', baseColor)
@@ -6934,30 +6917,35 @@ window.moduleRegistry.add('marketSellPriceButtons', (configuration, localDatabas
         return element;
     }
 
-    const ListingPrice = {
-        Min: 5,
-        MarketLowest: 6
+    function findPrice(name) {
+        return util.parseNumber($(`.modal .row:contains("${name}")`).text());
     }
 
-    function findPrice(listingRowIndex) {
-        return $(`market-list-component > div > div:nth-child(2) > div > div:nth-child(${listingRowIndex})`).contents().filter((_, node) => node.nodeType === 3).text().trim();
-    }
-
-    function addPriceButtonsIfSellWindowOpen() {
-        const priceRowInput = $('market-list-component div>input[placeholder="Price"]').first();
-        const priceRowButtonsContainer = $('#market-list-component-price-buttons');
-
-        if (priceRowInput.length > 0 && priceRowButtonsContainer.length === 0) {
-            const minButton = createButton('Min', () => findPrice(ListingPrice.Min), priceRowInput);
-            const marketLowestButton = createButton('Low', () => findPrice(ListingPrice.MarketLowest), priceRowInput);
-
-            const buttonsContainer = $('<div/>')
-                .attr('id', 'market-list-component-price-buttons')
-                .append(minButton)
-                .append(marketLowestButton);
-
-            $(priceRowInput).before(buttonsContainer);
+    async function addPriceButtons(type) {
+        if(!enabled) {
+            return;
         }
+        const priceRowInput = $(await elementWatcher.exists('.modal input[placeholder="Price"]', 200));
+        const priceRowButtonsContainer = $('#market-component-price-buttons');
+        if(priceRowButtonsContainer.length) {
+            return;
+        }
+
+        const buttonsContainer = $('<div/>')
+            .attr('id', 'market-component-price-buttons');
+
+        const minButton = createButton('Min', () => findPrice('Minimum'), priceRowInput);
+        buttonsContainer.append(minButton);
+        if(type === 'order') {
+            const marketHighestButton = createButton('High', () => findPrice('Market Highest'), priceRowInput);
+            buttonsContainer.append(marketHighestButton);
+        }
+        if(type === 'sell') {
+            const marketLowestButton = createButton('Low', () => findPrice('Market Lowest'), priceRowInput);
+            buttonsContainer.append(marketLowestButton);
+        }
+
+        $(priceRowInput).before(buttonsContainer);
     }
 
     initialise();
