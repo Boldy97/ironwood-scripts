@@ -17,6 +17,7 @@
         sleep,
         goToPage,
         compareObjects,
+        deltaObjects,
         debounce,
         distinct,
         getDuplicates,
@@ -26,7 +27,8 @@
         generateCombinations,
         roundToMultiple,
         compress,
-        decompress
+        decompress,
+        log
     };
 
     function levelToExp(level) {
@@ -225,6 +227,24 @@
         return true;
     }
 
+    function deltaObjects(object1, object2) {
+        const delta = {};
+
+        for (const key in object1) {
+            if (object1.hasOwnProperty(key)) {
+                delta[key] = object2[key] - object1[key];
+            }
+        }
+
+        for (const key in object2) {
+            if (object2.hasOwnProperty(key) && !object1.hasOwnProperty(key)) {
+                delta[key] = object2[key];
+            }
+        }
+
+        return delta;
+    }
+
     function debounce(callback, delay) {
         let timer;
         return function(...args) {
@@ -341,6 +361,10 @@
         writer.close();
         const byteArray = await new Response(cs.readable).arrayBuffer();
         return new TextDecoder().decode(byteArray);
+    }
+
+    function log(x, base) {
+        return Math.log(x) / Math.log(base);
     }
 
     return exports;

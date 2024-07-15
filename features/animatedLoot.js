@@ -1,4 +1,4 @@
-(events, elementWatcher, dropCache, itemCache, configuration) => {
+(events, elementWatcher, itemCache, configuration, util) => {
     const THICCNESS = 60;
 
     const Engine = Matter.Engine;
@@ -37,8 +37,8 @@
     let max_same_density = MAX_SAME_DENSITY_DEFAULT;
     let imagesize_increase = IMAGESIZE_INCREASE_DEFAULT;
 
-    var items = [];
-    var lastLoot = {};
+    let items = [];
+    let clumpCountsByItem = {};
 
     async function initialise() {
         addStyles();
@@ -184,7 +184,6 @@
         if (!enabled) return;
         if (!lootState) return;
         if (busy) {
-            //console.log('skipped cuz busy');
             return;
         }
         try {
@@ -197,14 +196,10 @@
                 await createItemWrapper();
             }
 
-            const delta = objDelta(lastLoot, lootState.loot);
-            //console.log('handleLoot', delta);
-            lastLoot = lootState.loot;
-
-            for (const [id, val] of Object.entries(delta)) {
+            for (const [id, val] of Object.entries(lootState.loot)) {
                 if (val > 0) {
                     await loadImage(id);
-                    addItem(id, val);
+                    updateItem(+id, val);
                 }
             }
         }
@@ -236,7 +231,6 @@
         }, 1000);
 
         const matterContainer = document.querySelector('#itemWrapper');
-        //console.log(matterContainer);
 
         const actualWidth = matterContainer.clientWidth + 2;
         const actualheigth = matterContainer.clientHeight + 2;
@@ -302,8 +296,6 @@
         );
         // Matter.Events.on(mouseConstraint, 'mousemove', function (event) {
         //     var foundPhysics = Matter.Query.point(items.map(i => i.ref), event.mouse.position);
-
-        //     console.log(foundPhysics[0]);
         // });
 
         Render.run(render);
@@ -334,7 +326,6 @@
     }
 
     function reset() {
-        //console.log('reset');
         if (render) {
             Render.stop(render);
             World.clear(engine.world);
@@ -349,59 +340,63 @@
             killswitch = undefined;
         }
         $('#itemWrapper').remove();
-        lastLoot = {};
         items = [];
+        clumpCountsByItem = {};
     }
 
-    function addItem(itemId, amount = 1) {
-        const initialDensity = 1;
-        const previousItemState = [...items];
+    function updateItem(itemId, amount) {
+        const clumps = calculateClumpCounts(amount);
 
-        for (let i = 0; i < amount; i++) {
-            const newItem = { id: itemId, density: initialDensity, ref: undefined };
-            items.push(newItem);
+        const previousClumps = clumpCountsByItem[itemId] || [];
+        const maxLength = Math.max(clumps.length, previousClumps.length);
+        for(let i=0;i<maxLength;i++) {
+            const density = Math.pow(clumpsize, i);
+            let diff = (clumps[i] || 0) - (previousClumps[i] || 0);
+            // cull
+            for(let j=0;j>diff;j--) {
+                const index = items.findIndex(item => item.id === itemId && item.density === density);
+                if(index === -1) {
+                    throw `Unexpected : could not cull itemId ${itemId} with density ${density} because no match found`;
+                }
+                const item = items.splice(index, 1)[0];
+                cullItem(item);
+            }
+            // spawn
+            for(let j=0;j<diff;j++) {
+                const item = {
+                    id: itemId,
+                    density
+                };
+                items.push(item);
+                spawnItem(item);
+            }
         }
 
-        var clumpingOccurred;
-        do {
-            clumpingOccurred = false;
-            const distinctPairs = Array.from(
-                items.reduce((set, item) => {
-                    const pair = JSON.stringify({ id: item.id, density: item.density });
-                    set.add(pair);
-                    return set;
-                }, new Set())
-            ).map((pair) => JSON.parse(pair));
+        clumpCountsByItem[itemId] = clumps;
+    }
 
-            distinctPairs.forEach((p) => {
-                const itemsWithIdAndDensity = items.filter(
-                    (i) => i.id === p.id && i.density == p.density
-                );
+    function calculateClumpCounts(amount) {
+        let index = Math.floor(util.log(amount, clumpsize));
+        let currentClumpSize = Math.pow(clumpsize, index);
 
-                if (itemsWithIdAndDensity.length < max_same_density) {
-                    return;
-                }
+        // minimal clump count first
+        const array = [];
+        while(currentClumpSize >= 1) {
+            array[index] = Math.floor(amount / currentClumpSize);
+            amount -= array[index] * currentClumpSize;
+            // TODO add to array
+            index--;
+            currentClumpSize /= clumpsize;
+        }
 
-                clumpingOccurred = true;
-
-                const itemsToClump = itemsWithIdAndDensity.slice(0, clumpsize);
-
-                items = items.filter((item) => !itemsToClump.includes(item));
-
-                const newItem = { id: itemId, density: p.density * clumpsize, ref: undefined };
-                items.push(newItem);
-            });
-        } while (clumpingOccurred);
-
-        const removed = previousItemState.filter((prevItem) => !items.includes(prevItem));
-        removed.forEach((removedItem) => {
-            if (removedItem.ref) cullItem(removedItem);
-        });
-
-        const added = items.filter((currItem) => !previousItemState.includes(currItem));
-        added.forEach((addedItem) => {
-            spawnItem(addedItem);
-        });
+        // then split to reach max_same_density
+        for(let i=array.length-2;i>=0;i--) {
+            let splitCount = Math.floor((max_same_density - array[i] - 1) / clumpsize);
+            splitCount = Math.min(splitCount, array[i+1]);
+            array[i+1] -= splitCount;
+            array[i] += splitCount * clumpsize;
+        }
+        return array;
     }
 
     function cullItem(item) {
@@ -414,7 +409,7 @@
         const matterContainer = document.querySelector('#itemWrapper');
         const spread = randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
 
-        const itemSize = DESIRED_IMAGESIZE + logBase(item.density, clumpsize) * (DESIRED_IMAGESIZE * (imagesize_increase - 1));
+        const itemSize = DESIRED_IMAGESIZE + util.log(item.density, clumpsize) * (DESIRED_IMAGESIZE * (imagesize_increase - 1));
         const imageScale = itemSize / DESIRED_IMAGESIZE;
         const scaleCorrection = DESIRED_IMAGESIZE / ORIGINAL_IMAGESIZE;
 
@@ -432,28 +427,18 @@
         });
         World.add(engine.world, itemObject);
         item.ref = itemObject;
-        //console.log(`spawning ${item.id} with density ${item.density}`);
-    }
-
-    async function ensureImagesLoaded(action) {
-        const itemIds = dropCache.byAction[action].map((d) => d.item);
-        for (const itemId of itemIds) {
-            await loadImage(itemId)
-        }
     }
 
     async function loadImage(itemId) {
         const item = itemCache.byId[itemId];
         if(!item) return;
         if(loadedImages.includes(itemId)) {
-            //console.log(`Already have image for ${item.name} (${item.id})`);
             return;
         }
         await new Promise((res, rej) => {
             let img = new Image();
             img.onload = () => {
                 loadedImages.push(itemId);
-                //console.log(`Successfully loaded image for ${item.name} (${item.id})`);
                 res();
             };
             img.onerror = rej;
@@ -474,28 +459,6 @@
 
     function randomIntFromInterval(min, max) {
         return Math.floor(Math.random() * (max - min + 1) + min);
-    }
-
-    function logBase(n, base) {
-        return Math.log(n) / Math.log(base);
-    }
-
-    function objDelta(obj1, obj2) {
-        const delta = {};
-
-        for (const key in obj1) {
-            if (obj1.hasOwnProperty(key)) {
-                delta[key] = obj2[key] - obj1[key];
-            }
-        }
-
-        for (const key in obj2) {
-            if (obj2.hasOwnProperty(key) && !obj1.hasOwnProperty(key)) {
-                delta[key] = obj2[key];
-            }
-        }
-
-        return delta;
     }
 
     //background-position: center center;
