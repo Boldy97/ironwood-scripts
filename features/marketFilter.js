@@ -20,9 +20,9 @@
 
     async function initialise() {
         configuration.registerCheckbox({
-            category: 'Data',
+            category: 'Market',
             key: 'market-filter',
-            name: 'Market filter',
+            name: 'Filters',
             default: true,
             handler: handleConfigStateChange
         });
