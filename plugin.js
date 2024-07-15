@@ -6908,7 +6908,7 @@ window.moduleRegistry.add('marketSellPriceButtons', (configuration, localDatabas
         }
     }
 
-    function createButton(text, onClick) {
+    function createButton(text, getPrice, priceRowInput) {
         const baseColor = '#28211b';
         const hoverColor = '#3c2f26';
         const mouseDownColor = '#1c1916';
@@ -6924,11 +6924,12 @@ window.moduleRegistry.add('marketSellPriceButtons', (configuration, localDatabas
             )
             .on('mousedown', (event) => $(event.currentTarget).css('background-color', mouseDownColor))
             .on('mouseup mouseleave', (event) => $(event.currentTarget).css('background-color', baseColor));
-        ;
 
-        if (onClick) {
-            element.click(onClick);
-        }
+        element.click(() => {
+            const price = getPrice();
+            priceRowInput.val(price);
+            priceRowInput[0].dispatchEvent(new Event('input', {bubbles: true}));
+        });
 
         return element;
     }
@@ -6947,15 +6948,8 @@ window.moduleRegistry.add('marketSellPriceButtons', (configuration, localDatabas
         const priceRowButtonsContainer = $('#market-list-component-price-buttons');
 
         if (priceRowInput.length > 0 && priceRowButtonsContainer.length === 0) {
-            const minButton = createButton('Min', () => {
-                const minPrice = findPrice(ListingPrice.Min);
-                priceRowInput.val(minPrice);
-            });
-
-            const marketLowestButton = createButton('Low', () => {
-                const marketLowestPrice = findPrice(ListingPrice.MarketLowest);
-                priceRowInput.val(marketLowestPrice);
-            });
+            const minButton = createButton('Min', () => findPrice(ListingPrice.Min), priceRowInput);
+            const marketLowestButton = createButton('Low', () => findPrice(ListingPrice.MarketLowest), priceRowInput);
 
             const buttonsContainer = $('<div/>')
                 .attr('id', 'market-list-component-price-buttons')
