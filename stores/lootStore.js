@@ -16,15 +16,13 @@
             return emit(event);
         }
         // check updated amounts
-        let updated = false;
-        for(const key in state.loot) {
-            if(event.loot[key] !== state.loot[key] || event.loot[key] < state.loot[key]) {
-                updated = true;
-                break;
-            }
-        }
-        if(updated) {
+        if(Object.keys(event.loot).length !== Object.keys(state.loot).length) {
             return emit(event);
+        }
+        for(const key in event.loot) {
+            if(event.loot[key] !== state.loot[key] || event.loot[key] !== state.loot[key]) {
+                return emit(event);
+            }
         }
     }
 

@@ -212,6 +212,7 @@
                     .attr('value', itemWithInputBlueprint.inputValue || '')
                     .css('flex', `${itemWithInputBlueprint.layout?.split('/')[1] || 1}`)
                     .css('max-width', itemWithInputBlueprint.inputMaxWidth ?? 'unset')
+                    .css('height', 'inherit')
                     .keyup(inputDelay(function(e) {
                         itemWithInputBlueprint.inputValue = e.target.value;
                         if(itemWithInputBlueprint.action) {

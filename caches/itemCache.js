@@ -26,7 +26,6 @@
             telescope: null,
             lantern: null,
             food: null,
-            pies: null,
             ammo: null,
             gatheringPotion: null,
             craftingPotion: null,
@@ -113,6 +112,10 @@
             technicalName: 'OWNED',
             name: 'Owned',
             image: '/assets/misc/inventory.png'
+        },{
+            technicalName: 'DROP_CHANCE',
+            name: 'Drop Chance',
+            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
         });
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         // we do not cover any event items
@@ -135,7 +138,6 @@
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
-        exports.specialIds.pies = exports.list.filter(a => a.name.endsWith('Pie') && !a.name.startsWith('Burnt')).map(a => a.id);
         exports.specialIds.ammo = getAllIdsEnding('Arrow');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);

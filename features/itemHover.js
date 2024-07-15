@@ -1,4 +1,4 @@
-(configuration, itemCache, util, statsStore) => {
+(configuration, itemCache, util, statsStore, dropCache, actionCache) => {
 
     let enabled = false;
     let entered = false;
@@ -17,13 +17,24 @@
             if(itemCache.specialIds.gem.includes(item.id)) {
                 return item.attributes.SELL_PRICE * 1.2;
             }
-            if(itemCache.specialIds.pies.includes(item.id)) {
-                return item.attributes.SELL_PRICE * 2 - 2;
+            if(itemCache.specialIds.food.includes(item.id)) {
+                return Math.round(0.8 * item.stats.global.HEAL);
             }
             if(itemCache.specialIds.smithing.includes(item.id)) {
                 return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
             }
             return 2 * item.attributes.SELL_PRICE;
+        },
+        DROP_CHANCE: (val, item) => {
+            const chances = dropCache.byItem[item.id].map(a => a.chance);
+            if(!chances.length) {
+                return;
+            }
+            const max = chances.reduce((acc,val) => Math.max(acc,val));
+            if(max > 0.05) {
+                return;
+            }
+            return `${util.formatNumber(100 * max)}%`;
         }
     }
 

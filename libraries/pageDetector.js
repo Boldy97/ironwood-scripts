@@ -5,9 +5,16 @@
 
     async function initialise() {
         events.register('url', debouncedUpdate);
+        // taming - right menu
         $(document).on('click', 'taming-page .header:contains("Menu") ~ button', () => debouncedUpdate());
+        // taming - expedition page
         $(document).on('click', 'taming-page .header:contains("Expeditions") ~ button', () => debouncedUpdate());
+        // taming - expedition selection
         $(document).on('click', 'taming-page .header:contains("Expeditions") > button', () => debouncedUpdate());
+        // action - menu
+        $(document).on('click', 'skill-page actions-component .filters', () => debouncedUpdate());
+        // action - submenu
+        $(document).on('click', 'skill-page actions-component .sort > .container', () => debouncedUpdate());
     }
 
     async function update(url) {
@@ -30,10 +37,14 @@
                 tier
             };
         } else if(url.includes('/skill/') && url.includes('/action/')) {
+            const menu = $('skill-page actions-component .filters > button[disabled]').text().toLowerCase() || null;
+            const submenu = $('skill-page actions-component .sort button[disabled]').text().toLowerCase() || null;
             result = {
                 type: 'action',
                 skill: +parts[parts.length-3],
-                action: +parts[parts.length-1]
+                action: +parts[parts.length-1],
+                menu,
+                submenu
             };
         } else if(url.includes('house/build')) {
             result = {
