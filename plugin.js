@@ -6909,11 +6909,22 @@ window.moduleRegistry.add('marketSellPriceButtons', (configuration, localDatabas
     }
 
     function createButton(text, onClick) {
+        const baseColor = '#28211b';
+        const hoverColor = '#3c2f26';
+        const mouseDownColor = '#1c1916';
+
         const element = $(`<button class='myButton'>${text}</button>`)
-            .css('background-color', '#28211b')
+            .css('background-color', baseColor)
             .css('display', 'inline-block')
             .css('padding', '5px')
-            .css('margin', '5px');
+            .css('margin', '5px')
+            .hover(
+                (event) => $(event.currentTarget).css('background-color', hoverColor),
+                (event) => $(event.currentTarget).css('background-color', baseColor),
+            )
+            .on('mousedown', (event) => $(event.currentTarget).css('background-color', mouseDownColor))
+            .on('mouseup mouseleave', (event) => $(event.currentTarget).css('background-color', baseColor));
+        ;
 
         if (onClick) {
             element.click(onClick);
