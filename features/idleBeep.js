@@ -4,6 +4,7 @@
     const sleepAmount = 2000;
     let enabled = false;
     let started = false;
+    let reviving = false;
 
     async function initialise() {
         configuration.registerCheckbox({
@@ -17,10 +18,23 @@
         elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'combat-component');
         elementWatcher.addReverseRecursiveObserver(actionStop, 'nav-component > div.nav', 'action-component');
         elementWatcher.addReverseRecursiveObserver(actionStop, 'nav-component > div.nav', 'combat-component');
+        setInterval(checkRevive, 1000);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         enabled = state;
+    }
+
+    function checkRevive() {
+        if(!enabled || reviving) {
+            return;
+        }
+        if($('.revive').length) {
+            reviving = true;
+            actionStop();
+        } else {
+            reviving = false;
+        }
     }
 
     function actionStart() {
