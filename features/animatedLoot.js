@@ -67,7 +67,7 @@
             name: `[${CLUMPDENSITY_MIN} - ${CLUMPDENSITY_MAX}]`,
             default: CLUMPDENSITY_DEFAULT,
             inputType: 'number',
-            text: 'Amount of items that will clump together when treshold is reached',
+            text: 'Amount of items that will clump together when threshold is reached',
             layout: '5/1',
             class: 'noPad_InheritHeigth',
             noHeader: true,
