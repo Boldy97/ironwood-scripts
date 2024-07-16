@@ -45,7 +45,7 @@
     }
 
     function findPrice(name) {
-        return util.parseNumber($(`.modal .row:contains("${name}")`).text());
+        return util.parseNumber($(`.modal .row:not(.item-description):contains("${name}")`).text());
     }
 
     async function addPriceButtons(type) {
