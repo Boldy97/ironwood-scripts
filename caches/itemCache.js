@@ -53,6 +53,13 @@
     };
 
     async function initialise() {
+        await loadItems();
+        await loadItemAttributes();
+        enrichItems();
+        return exports;
+    }
+
+    async function loadItems() {
         const enrichedItems = await fallbackCache.load('item');
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
@@ -65,12 +72,6 @@
                 exports.byImage[lastPart].duplicate = true;
             } else {
                 exports.byImage[lastPart] = item;
-            }
-            if(!item.attributes) {
-                item.attributes = {};
-            }
-            if(item.attributes.ATTACK_SPEED) {
-                item.attributes.ATTACK_SPEED /= 2;
             }
             for(const stat in item.stats.bySkill) {
                 if(item.stats.bySkill[stat].All) {
@@ -87,38 +88,8 @@
                 delete exports.byImage[image];
             }
         }
-        exports.attributes = await fallbackCache.load('itemAttribute');
-        exports.attributes.push({
-            technicalName: 'CHARCOAL',
-            name: 'Charcoal',
-            image: '/assets/items/charcoal.png'
-        },{
-            technicalName: 'COMPOST',
-            name: 'Compost',
-            image: '/assets/items/compost.png'
-        },{
-            technicalName: 'ARCANE_POWDER',
-            name: 'Arcane Powder',
-            image: '/assets/items/arcane-powder.png'
-        },{
-            technicalName: 'PET_SNACKS',
-            name: 'Pet Snacks',
-            image: '/assets/items/pet-snacks.png'
-        },{
-            technicalName: 'MIN_MARKET_PRICE',
-            name: 'Min Market Price',
-            image: '/assets/misc/market.png'
-        },{
-            technicalName: 'OWNED',
-            name: 'Owned',
-            image: '/assets/misc/inventory.png'
-        },{
-            technicalName: 'DROP_CHANCE',
-            name: 'Drop Chance',
-            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
-        });
+        // does not cover any event items
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
-        // we do not cover any event items
         exports.specialIds.coins = exports.byName['Coins'].id;
         exports.specialIds.stardust = exports.byName['Stardust'].id;
         exports.specialIds.mainHand = getAllIdsEnding('Sword', 'Hammer', 'Spear', 'Scythe', 'Bow', 'Boomerang');
@@ -177,7 +148,53 @@
             ...exports.specialIds.spade,
             ...exports.specialIds.rod
         ];
-        return exports;
+    }
+
+    async function loadItemAttributes() {
+        exports.attributes = await fallbackCache.load('itemAttribute');
+        exports.attributes.push({
+            technicalName: 'CHARCOAL',
+            name: 'Charcoal',
+            image: '/assets/items/charcoal.png'
+        },{
+            technicalName: 'COMPOST',
+            name: 'Compost',
+            image: '/assets/items/compost.png'
+        },{
+            technicalName: 'ARCANE_POWDER',
+            name: 'Arcane Powder',
+            image: '/assets/items/arcane-powder.png'
+        },{
+            technicalName: 'PET_SNACKS',
+            name: 'Pet Snacks',
+            image: '/assets/items/pet-snacks.png'
+        },{
+            technicalName: 'MIN_MARKET_PRICE',
+            name: 'Min Market Price',
+            image: '/assets/misc/market.png'
+        },{
+            technicalName: 'OWNED',
+            name: 'Owned',
+            image: '/assets/misc/inventory.png'
+        },{
+            technicalName: 'DROP_CHANCE',
+            name: 'Drop Chance',
+            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
+        });
+    }
+
+    function enrichItems() {
+        for(const item of exports.list) {
+            if(!item.attributes) {
+                item.attributes = {};
+            }
+            if(item.attributes.ATTACK_SPEED) {
+                item.attributes.ATTACK_SPEED /= 2;
+            }
+            if(item.attributes.SELL_PRICE) {
+                item.attributes.MIN_MARKET_PRICE = calcMarketPrice(item);
+            }
+        }
     }
 
     function getAllIdsEnding(...suffixes) {
@@ -188,8 +205,20 @@
         return exports.list.filter(a => new RegExp(`^(${prefixes.join('|')})`).exec(a.name)).map(a => a.id);
     }
 
-    function getAllIdsWithName(...names) {
-        return exports.list.filter(a => names.includes(a.name)).map(a => a.id);
+    function calcMarketPrice(item) {
+        if(item.attributes.UNTRADEABLE || !item.attributes.SELL_PRICE) {
+            return 0;
+        }
+        if(exports.specialIds.gem.includes(item.id)) {
+            return item.attributes.SELL_PRICE * 1.2;
+        }
+        if(exports.specialIds.food.includes(item.id)) {
+            return Math.round(0.8 * item.stats.global.HEAL);
+        }
+        if(exports.specialIds.smithing.includes(item.id)) {
+            return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
+        }
+        return 2 * item.attributes.SELL_PRICE;
     }
 
     return initialise();

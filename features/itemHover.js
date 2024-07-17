@@ -1,4 +1,4 @@
-(configuration, itemCache, util, statsStore, dropCache, actionCache) => {
+(configuration, itemCache, util, statsStore, dropCache) => {
 
     let enabled = false;
     let entered = false;
@@ -12,21 +12,12 @@
         ARCANE_POWDER: (val, item) => item.arcanePowder,
         PET_SNACKS: (val, item) => item.petSnacks,
         UNTRADEABLE: (val) => val ? 'Yes' : null,
-        MIN_MARKET_PRICE: (val, item) => {
-            // calcMarketPrice
-            if(itemCache.specialIds.gem.includes(item.id)) {
-                return item.attributes.SELL_PRICE * 1.2;
-            }
-            if(itemCache.specialIds.food.includes(item.id)) {
-                return Math.round(0.8 * item.stats.global.HEAL);
-            }
-            if(itemCache.specialIds.smithing.includes(item.id)) {
-                return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
-            }
-            return 2 * item.attributes.SELL_PRICE;
-        },
         DROP_CHANCE: (val, item) => {
-            const chances = dropCache.byItem[item.id].map(a => a.chance);
+            const drops = dropCache.byItem[item.id];
+            if(!drops) {
+                return;
+            }
+            const chances = drops.map(a => a.chance);
             if(!chances.length) {
                 return;
             }

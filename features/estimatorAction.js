@@ -13,7 +13,7 @@
     };
 
     function getDrops(skillId, actionId, isCombat, multiplier = 1) {
-        const drops = dropCache.byAction[actionId];
+        const drops = structuredClone(dropCache.byAction[actionId]);
         if(!drops) {
             return [];
         }
@@ -22,12 +22,8 @@
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
         if(shouldApplyCoinCraft(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            drops.push({
-                type: 'REGULAR',
-                item: mostCommonDrop,
-                amount: 1,
-                chance: statsStore.get('STARDUST_CRAFT_CHANCE') / 100
-            });
+            const match = drops.find(a => a.item === mostCommonDrop);
+            match.chance += statsStore.get('STARDUST_CRAFT_CHANCE') / 100;
         }
         return drops.map(drop => {
             let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
@@ -72,7 +68,7 @@
         }
         if(shouldApplyCoinCraft(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
+            const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
                 amount: value * statsStore.get('STARDUST_CRAFT_CHANCE') / 100

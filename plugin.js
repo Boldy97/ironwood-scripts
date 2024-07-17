@@ -5585,7 +5585,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
     };
 
     function getDrops(skillId, actionId, isCombat, multiplier = 1) {
-        const drops = dropCache.byAction[actionId];
+        const drops = structuredClone(dropCache.byAction[actionId]);
         if(!drops) {
             return [];
         }
@@ -5594,12 +5594,8 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
         if(shouldApplyCoinCraft(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            drops.push({
-                type: 'REGULAR',
-                item: mostCommonDrop,
-                amount: 1,
-                chance: statsStore.get('STARDUST_CRAFT_CHANCE') / 100
-            });
+            const match = drops.find(a => a.item === mostCommonDrop);
+            match.chance += statsStore.get('STARDUST_CRAFT_CHANCE') / 100;
         }
         return drops.map(drop => {
             let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
@@ -5644,7 +5640,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         }
         if(shouldApplyCoinCraft(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
+            const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
                 amount: value * statsStore.get('STARDUST_CRAFT_CHANCE') / 100
@@ -6798,7 +6794,7 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
 }
 );
 // itemHover
-window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore, dropCache, actionCache) => {
+window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsStore, dropCache) => {
 
     let enabled = false;
     let entered = false;
@@ -6812,21 +6808,12 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
         ARCANE_POWDER: (val, item) => item.arcanePowder,
         PET_SNACKS: (val, item) => item.petSnacks,
         UNTRADEABLE: (val) => val ? 'Yes' : null,
-        MIN_MARKET_PRICE: (val, item) => {
-            // calcMarketPrice
-            if(itemCache.specialIds.gem.includes(item.id)) {
-                return item.attributes.SELL_PRICE * 1.2;
-            }
-            if(itemCache.specialIds.food.includes(item.id)) {
-                return Math.round(0.8 * item.stats.global.HEAL);
-            }
-            if(itemCache.specialIds.smithing.includes(item.id)) {
-                return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
-            }
-            return 2 * item.attributes.SELL_PRICE;
-        },
         DROP_CHANCE: (val, item) => {
-            const chances = dropCache.byItem[item.id].map(a => a.chance);
+            const drops = dropCache.byItem[item.id];
+            if(!drops) {
+                return;
+            }
+            const chances = drops.map(a => a.chance);
             if(!chances.length) {
                 return;
             }
@@ -9444,6 +9431,13 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
     };
 
     async function initialise() {
+        await loadItems();
+        await loadItemAttributes();
+        enrichItems();
+        return exports;
+    }
+
+    async function loadItems() {
         const enrichedItems = await fallbackCache.load('item');
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
@@ -9456,12 +9450,6 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
                 exports.byImage[lastPart].duplicate = true;
             } else {
                 exports.byImage[lastPart] = item;
-            }
-            if(!item.attributes) {
-                item.attributes = {};
-            }
-            if(item.attributes.ATTACK_SPEED) {
-                item.attributes.ATTACK_SPEED /= 2;
             }
             for(const stat in item.stats.bySkill) {
                 if(item.stats.bySkill[stat].All) {
@@ -9478,38 +9466,8 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
                 delete exports.byImage[image];
             }
         }
-        exports.attributes = await fallbackCache.load('itemAttribute');
-        exports.attributes.push({
-            technicalName: 'CHARCOAL',
-            name: 'Charcoal',
-            image: '/assets/items/charcoal.png'
-        },{
-            technicalName: 'COMPOST',
-            name: 'Compost',
-            image: '/assets/items/compost.png'
-        },{
-            technicalName: 'ARCANE_POWDER',
-            name: 'Arcane Powder',
-            image: '/assets/items/arcane-powder.png'
-        },{
-            technicalName: 'PET_SNACKS',
-            name: 'Pet Snacks',
-            image: '/assets/items/pet-snacks.png'
-        },{
-            technicalName: 'MIN_MARKET_PRICE',
-            name: 'Min Market Price',
-            image: '/assets/misc/market.png'
-        },{
-            technicalName: 'OWNED',
-            name: 'Owned',
-            image: '/assets/misc/inventory.png'
-        },{
-            technicalName: 'DROP_CHANCE',
-            name: 'Drop Chance',
-            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
-        });
+        // does not cover any event items
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
-        // we do not cover any event items
         exports.specialIds.coins = exports.byName['Coins'].id;
         exports.specialIds.stardust = exports.byName['Stardust'].id;
         exports.specialIds.mainHand = getAllIdsEnding('Sword', 'Hammer', 'Spear', 'Scythe', 'Bow', 'Boomerang');
@@ -9568,7 +9526,53 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
             ...exports.specialIds.spade,
             ...exports.specialIds.rod
         ];
-        return exports;
+    }
+
+    async function loadItemAttributes() {
+        exports.attributes = await fallbackCache.load('itemAttribute');
+        exports.attributes.push({
+            technicalName: 'CHARCOAL',
+            name: 'Charcoal',
+            image: '/assets/items/charcoal.png'
+        },{
+            technicalName: 'COMPOST',
+            name: 'Compost',
+            image: '/assets/items/compost.png'
+        },{
+            technicalName: 'ARCANE_POWDER',
+            name: 'Arcane Powder',
+            image: '/assets/items/arcane-powder.png'
+        },{
+            technicalName: 'PET_SNACKS',
+            name: 'Pet Snacks',
+            image: '/assets/items/pet-snacks.png'
+        },{
+            technicalName: 'MIN_MARKET_PRICE',
+            name: 'Min Market Price',
+            image: '/assets/misc/market.png'
+        },{
+            technicalName: 'OWNED',
+            name: 'Owned',
+            image: '/assets/misc/inventory.png'
+        },{
+            technicalName: 'DROP_CHANCE',
+            name: 'Drop Chance',
+            image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
+        });
+    }
+
+    function enrichItems() {
+        for(const item of exports.list) {
+            if(!item.attributes) {
+                item.attributes = {};
+            }
+            if(item.attributes.ATTACK_SPEED) {
+                item.attributes.ATTACK_SPEED /= 2;
+            }
+            if(item.attributes.SELL_PRICE) {
+                item.attributes.MIN_MARKET_PRICE = calcMarketPrice(item);
+            }
+        }
     }
 
     function getAllIdsEnding(...suffixes) {
@@ -9579,8 +9583,20 @@ window.moduleRegistry.add('itemCache', (fallbackCache) => {
         return exports.list.filter(a => new RegExp(`^(${prefixes.join('|')})`).exec(a.name)).map(a => a.id);
     }
 
-    function getAllIdsWithName(...names) {
-        return exports.list.filter(a => names.includes(a.name)).map(a => a.id);
+    function calcMarketPrice(item) {
+        if(item.attributes.UNTRADEABLE || !item.attributes.SELL_PRICE) {
+            return 0;
+        }
+        if(exports.specialIds.gem.includes(item.id)) {
+            return item.attributes.SELL_PRICE * 1.2;
+        }
+        if(exports.specialIds.food.includes(item.id)) {
+            return Math.round(0.8 * item.stats.global.HEAL);
+        }
+        if(exports.specialIds.smithing.includes(item.id)) {
+            return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
+        }
+        return 2 * item.attributes.SELL_PRICE;
     }
 
     return initialise();
