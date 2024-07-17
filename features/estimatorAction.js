@@ -26,7 +26,7 @@
                 type: 'REGULAR',
                 item: mostCommonDrop,
                 amount: 1,
-                chance: statsStore.get('COIN_CRAFT_CHANCE') / 100
+                chance: statsStore.get('STARDUST_CRAFT_CHANCE') / 100
             });
         }
         return drops.map(drop => {
@@ -75,7 +75,7 @@
             const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
-                amount: value * statsStore.get('COIN_CRAFT_CHANCE') / 100
+                amount: value * statsStore.get('STARDUST_CRAFT_CHANCE') / 100
             });
         }
         return ingredients.map(ingredient => ({
@@ -136,7 +136,7 @@
 
     function shouldApplyCoinCraft(skillId) {
         return skillCache.byId[skillId].type === 'Crafting'
-            && statsStore.get('COIN_CRAFT_CHANCE')
+            && statsStore.get('STARDUST_CRAFT_CHANCE')
             && statsStore.getInventoryItem(itemCache.specialIds.stardust);
     }
 

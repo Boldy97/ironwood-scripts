@@ -5598,7 +5598,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
                 type: 'REGULAR',
                 item: mostCommonDrop,
                 amount: 1,
-                chance: statsStore.get('COIN_CRAFT_CHANCE') / 100
+                chance: statsStore.get('STARDUST_CRAFT_CHANCE') / 100
             });
         }
         return drops.map(drop => {
@@ -5647,7 +5647,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
             const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
-                amount: value * statsStore.get('COIN_CRAFT_CHANCE') / 100
+                amount: value * statsStore.get('STARDUST_CRAFT_CHANCE') / 100
             });
         }
         return ingredients.map(ingredient => ({
@@ -5708,7 +5708,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
 
     function shouldApplyCoinCraft(skillId) {
         return skillCache.byId[skillId].type === 'Crafting'
-            && statsStore.get('COIN_CRAFT_CHANCE')
+            && statsStore.get('STARDUST_CRAFT_CHANCE')
             && statsStore.getInventoryItem(itemCache.specialIds.stardust);
     }
 
@@ -5717,7 +5717,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
 }
 );
 // estimatorActivity
-window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimatorAction, statsStore, itemCache, dropCache) => {
+window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimatorAction, statsStore) => {
 
     const exports = {
         get
@@ -5735,19 +5735,6 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
         const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount);
         const ingredients = estimatorAction.getIngredients(skillId, actionId, ingredientCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId);
-
-        let statLowerTierChance;
-        if(skill.type === 'Gathering' && (statLowerTierChance = statsStore.get('LOWER_TIER_CHANCE', skill.technicalName) / 100)) {
-            for(const item in drops) {
-                const mappings = dropCache.lowerGatherMappings[item];
-                if(mappings) {
-                    for(const other of mappings) {
-                        drops[other] = (drops[other] || 0) + statLowerTierChance * drops[item] / mappings.length;
-                    }
-                    drops[item] *= 1 - statLowerTierChance;
-                }
-            }
-        }
 
         return {
             type: 'ACTIVITY',
@@ -9160,14 +9147,13 @@ window.moduleRegistry.add('actionCache', (fallbackCache) => {
 }
 );
 // dropCache
-window.moduleRegistry.add('dropCache', (fallbackCache, itemCache, actionCache, skillCache, ingredientCache) => {
+window.moduleRegistry.add('dropCache', (fallbackCache, itemCache, actionCache, ingredientCache) => {
 
     const exports = {
         list: [],
         byAction: {},
         byItem: {},
         boneCarveMappings: null,
-        lowerGatherMappings: null,
         conversionMappings: null,
         getMostCommonDrop
     };
@@ -9179,13 +9165,6 @@ window.moduleRegistry.add('dropCache', (fallbackCache, itemCache, actionCache, s
                 (rv[selector(x)] = rv[selector(x)] || []).push(x);
                 return rv;
             }, {}));
-        }
-    });
-
-    Object.defineProperty(Array.prototype, '_distinct', {
-        enumerable: false,
-        value: function(selector) {
-            return [...new Set(this)];
         }
     });
 
@@ -9203,7 +9182,6 @@ window.moduleRegistry.add('dropCache', (fallbackCache, itemCache, actionCache, s
             exports.byItem[drop.item].push(drop);
         }
         extractBoneCarvings();
-        extractLowerGathers();
         extractConversions();
         return exports;
     }
@@ -9225,37 +9203,6 @@ window.moduleRegistry.add('dropCache', (fallbackCache, itemCache, actionCache, s
                 from: item,
                 to: [].concat([all[i-1]]).concat([all[i-2]]).filter(a => a)
             }))
-            .reduce((a,b) => (a[b.from] = b.to, a), {});
-    }
-
-    function extractLowerGathers() {
-        exports.lowerGatherMappings = exports.list
-            // filtering
-            .filter(drop => drop.type === 'REGULAR')
-            .filter(drop => skillCache.byName[actionCache.byId[drop.action].skill].type === 'Gathering')
-            // sort
-            .sort((a,b) => actionCache.byId[a.action].level - actionCache.byId[b.action].level)
-            // per action, the highest chance drop
-            ._groupBy(drop => drop.action)
-            .map(a => a.reduce((a,b) => a.chance >= b.chance ? a : b))
-            // per skill, and for farming,
-            ._groupBy(drop => {
-                const action = actionCache.byId[drop.action];
-                let skill = action.skill
-                if(skill === 'Farming') {
-                    // add flower or vegetable suffix
-                    skill += `-${action.image.split('/')[1].split('-')[0]}`;
-                }
-                return skill;
-            })
-            .flatMap(a => a
-                ._groupBy(drop => actionCache.byId[drop.action].level)
-                .map(b => b.map(drop => drop.item)._distinct())
-                .flatMap((b,i,all) => b.map(item => ({
-                    from: item,
-                    to: [].concat(all[i-1]).concat(all[i-2]).filter(a => a)
-                })))
-            )
             .reduce((a,b) => (a[b.from] = b.to, a), {});
     }
 
@@ -9801,8 +9748,8 @@ window.moduleRegistry.add('statNameCache', () => {
         'DOUBLE_EXP',
         'DOUBLE_DROP',
         'EFFICIENCY',
-        'LOWER_TIER_CHANCE',
-        'COIN_CRAFT_CHANCE',
+        'EXTRA_HARVEST_CHANCE',
+        'STARDUST_CRAFT_CHANCE',
         'PRESERVATION',
         'SKILL_SPEED',
         // ITEM_ATTRIBUTE

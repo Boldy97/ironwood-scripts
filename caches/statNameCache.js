@@ -14,8 +14,8 @@
         'DOUBLE_EXP',
         'DOUBLE_DROP',
         'EFFICIENCY',
-        'LOWER_TIER_CHANCE',
-        'COIN_CRAFT_CHANCE',
+        'EXTRA_HARVEST_CHANCE',
+        'STARDUST_CRAFT_CHANCE',
         'PRESERVATION',
         'SKILL_SPEED',
         // ITEM_ATTRIBUTE

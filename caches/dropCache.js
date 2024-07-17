@@ -1,11 +1,10 @@
-(fallbackCache, itemCache, actionCache, skillCache, ingredientCache) => {
+(fallbackCache, itemCache, actionCache, ingredientCache) => {
 
     const exports = {
         list: [],
         byAction: {},
         byItem: {},
         boneCarveMappings: null,
-        lowerGatherMappings: null,
         conversionMappings: null,
         getMostCommonDrop
     };
@@ -17,13 +16,6 @@
                 (rv[selector(x)] = rv[selector(x)] || []).push(x);
                 return rv;
             }, {}));
-        }
-    });
-
-    Object.defineProperty(Array.prototype, '_distinct', {
-        enumerable: false,
-        value: function(selector) {
-            return [...new Set(this)];
         }
     });
 
@@ -41,7 +33,6 @@
             exports.byItem[drop.item].push(drop);
         }
         extractBoneCarvings();
-        extractLowerGathers();
         extractConversions();
         return exports;
     }
@@ -63,37 +54,6 @@
                 from: item,
                 to: [].concat([all[i-1]]).concat([all[i-2]]).filter(a => a)
             }))
-            .reduce((a,b) => (a[b.from] = b.to, a), {});
-    }
-
-    function extractLowerGathers() {
-        exports.lowerGatherMappings = exports.list
-            // filtering
-            .filter(drop => drop.type === 'REGULAR')
-            .filter(drop => skillCache.byName[actionCache.byId[drop.action].skill].type === 'Gathering')
-            // sort
-            .sort((a,b) => actionCache.byId[a.action].level - actionCache.byId[b.action].level)
-            // per action, the highest chance drop
-            ._groupBy(drop => drop.action)
-            .map(a => a.reduce((a,b) => a.chance >= b.chance ? a : b))
-            // per skill, and for farming,
-            ._groupBy(drop => {
-                const action = actionCache.byId[drop.action];
-                let skill = action.skill
-                if(skill === 'Farming') {
-                    // add flower or vegetable suffix
-                    skill += `-${action.image.split('/')[1].split('-')[0]}`;
-                }
-                return skill;
-            })
-            .flatMap(a => a
-                ._groupBy(drop => actionCache.byId[drop.action].level)
-                .map(b => b.map(drop => drop.item)._distinct())
-                .flatMap((b,i,all) => b.map(item => ({
-                    from: item,
-                    to: [].concat(all[i-1]).concat(all[i-2]).filter(a => a)
-                })))
-            )
             .reduce((a,b) => (a[b.from] = b.to, a), {});
     }
 

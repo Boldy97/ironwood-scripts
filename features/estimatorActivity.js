@@ -1,4 +1,4 @@
-(skillCache, actionCache, estimatorAction, statsStore, itemCache, dropCache) => {
+(skillCache, actionCache, estimatorAction, statsStore) => {
 
     const exports = {
         get
@@ -16,19 +16,6 @@
         const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount);
         const ingredients = estimatorAction.getIngredients(skillId, actionId, ingredientCount);
         const equipments = estimatorAction.getEquipmentUses(skillId, actionId);
-
-        let statLowerTierChance;
-        if(skill.type === 'Gathering' && (statLowerTierChance = statsStore.get('LOWER_TIER_CHANCE', skill.technicalName) / 100)) {
-            for(const item in drops) {
-                const mappings = dropCache.lowerGatherMappings[item];
-                if(mappings) {
-                    for(const other of mappings) {
-                        drops[other] = (drops[other] || 0) + statLowerTierChance * drops[item] / mappings.length;
-                    }
-                    drops[item] *= 1 - statLowerTierChance;
-                }
-            }
-        }
 
         return {
             type: 'ACTIVITY',
