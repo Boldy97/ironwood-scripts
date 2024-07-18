@@ -25,10 +25,11 @@
 
     const ENABLED_PAGES = ['action']; //,'taming','automation'
 
-    var loadedImages = [];
-    var engine;
-    var render;
-    var killswitch;
+    let loadedImages = [];
+    let engine;
+    let render;
+    let killswitch;
+    let lastPage;
 
     let busy = false;
     let enabled = false;
@@ -171,7 +172,10 @@
 
     async function handlePage(page) {
         if (!enabled) return;
-        reset();
+        if(isDifferentAction(page)) {
+            reset();
+        }
+        lastPage = page;
         if (!ENABLED_PAGES.includes(page.type)) return;
 
         //await ensureImagesLoaded(page.action);
@@ -247,7 +251,7 @@
             },
         });
 
-        var ground = Bodies.rectangle(
+        let ground = Bodies.rectangle(
             actualWidth / 2,
             actualheigth + THICCNESS / 2,
             27184,
@@ -295,12 +299,12 @@
             mouseConstraint.mouse.mousewheel
         );
         // Matter.Events.on(mouseConstraint, 'mousemove', function (event) {
-        //     var foundPhysics = Matter.Query.point(items.map(i => i.ref), event.mouse.position);
+        //     let foundPhysics = Matter.Query.point(items.map(i => i.ref), event.mouse.position);
         // });
 
         Render.run(render);
 
-        var runner = Runner.create();
+        let runner = Runner.create();
 
         Runner.run(runner, engine);
 
@@ -459,6 +463,10 @@
 
     function randomIntFromInterval(min, max) {
         return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+
+    function isDifferentAction(page) {
+        return !lastPage || !page || lastPage.skill !== page.skill || lastPage.action !== page.action;
     }
 
     //background-position: center center;
