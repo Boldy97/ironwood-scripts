@@ -1,10 +1,10 @@
-(Promise, configurationStore) => {
+(configurationStore) => {
 
     const exports = {
         registerCheckbox,
         registerInput,
         registerDropdown,
-        registerJson,
+        registerButton,
         items: []
     };
 
@@ -34,11 +34,11 @@
         }));
     }
 
-    const JSON_KEYS = ['key', 'default', 'handler'];
-    function registerJson(item) {
-        validate(item, JSON_KEYS);
+    const BUTTON_KEYS = ['category', 'key', 'name', 'handler'];
+    function registerButton(item) {
+        validate(item, BUTTON_KEYS);
         return register(Object.assign(item, {
-            type: 'json'
+            type: 'button'
         }));
     }
 
@@ -63,6 +63,9 @@
     }
 
     async function save(item, value) {
+        if(item.type === 'button') {
+            return;
+        }
         if(item.type === 'toggle') {
             value = !!value;
         }

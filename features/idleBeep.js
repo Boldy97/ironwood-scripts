@@ -12,7 +12,24 @@
             key: 'idle-beep-enabled',
             name: 'Idle beep',
             default: false,
-            handler: handleConfigStateChange
+            handler: handleEnabledChange
+        });
+        configuration.registerInput({
+            category: 'Other',
+            key: 'idle-beep-volume',
+            name: '[0 - 100]',
+            text: 'Idle beep volume',
+            default: 100,
+            inputType: 'number',
+            light: true,
+            noHeader: true,
+            handler: handleVolumeChange
+        });
+        configuration.registerButton({
+            category: 'Other',
+            key: 'idle-beep-test',
+            name: 'Idle beep test',
+            handler: handleTest
         });
         elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'action-component');
         elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'combat-component');
@@ -21,8 +38,18 @@
         setInterval(checkRevive, 1000);
     }
 
-    function handleConfigStateChange(state) {
+    function handleEnabledChange(state) {
         enabled = state;
+    }
+
+    function handleVolumeChange(state) {
+        audio.volume = state / 100;
+    }
+
+    function handleTest(_val, _key, isInitial) {
+        if(!isInitial) {
+            audio.play();
+        }
     }
 
     function checkRevive() {

@@ -54,7 +54,7 @@
             case 'checkbox': return createRows_Checkbox(item);
             case 'input': return createRows_Input(item);
             case 'dropdown': return createRows_Dropdown(item);
-            case 'json': break;
+            case 'button': return createRows_Button(item);
             default: throw `Unknown configuration type : ${item.type}`;
         }
     }
@@ -90,8 +90,10 @@
             inputType: item.inputType,
             delay: 500,
             text: item.text,
-            layout: item.layout,
+            layout: item.layout || '5/1',
             class: item.class,
+            light: true,
+            noHeader: true,
             action: (value) => {
                 item.handler(value);
             }
@@ -117,6 +119,17 @@
             action: (value) => {
                 item.handler(value);
             }
+        }]
+    }
+
+    function createRows_Button(item) {
+        return [{
+            type: 'buttons',
+            buttons: [{
+                text: item.name,
+                color: 'success',
+                action: () => item.handler()
+            }]
         }]
     }
 

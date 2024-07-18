@@ -312,32 +312,40 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     function createRow_Input(inputBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
         if(inputBlueprint.text) {
-            parentRow
-                .append(
-                    $('<div/>')
-                        .addClass('myItemInputText')
-                        .addClass(inputBlueprint.class || '')
-                        .text(inputBlueprint.text)
-                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
-                )
+            const text = $('<div/>')
+                .addClass('myItemInputText')
+                .addClass(inputBlueprint.class || '')
+                .text(inputBlueprint.text)
+                .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`);
+            if(inputBlueprint.light) {
+                text
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+            parentRow.append(text);
         }
-        parentRow
-            .append(
-                $('<input/>')
-                    .attr('id', inputBlueprint.id)
-                    .addClass('myItemInput')
-                    .addClass(inputBlueprint.class || '')
-                    .attr('type', inputBlueprint.inputType || 'text')
-                    .attr('placeholder', inputBlueprint.name)
-                    .attr('value', inputBlueprint.value || '')
-                    .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-                    .keyup(inputDelay(function(e) {
-                        inputBlueprint.value = e.target.value;
-                        if(inputBlueprint.action) {
-                            inputBlueprint.action(inputBlueprint.value);
-                        }
-                    }, inputBlueprint.delay || 0))
-            )
+        const input = $('<input/>')
+            .attr('id', inputBlueprint.id)
+            .addClass('myItemInput')
+            .addClass(inputBlueprint.class || '')
+            .attr('type', inputBlueprint.inputType || 'text')
+            .attr('placeholder', inputBlueprint.name)
+            .attr('value', inputBlueprint.value || '')
+            .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
+            .keyup(inputDelay(function(e) {
+                inputBlueprint.value = e.target.value;
+                if(inputBlueprint.action) {
+                    inputBlueprint.action(inputBlueprint.value);
+                }
+            }, inputBlueprint.delay || 0));
+            if(inputBlueprint.light) {
+                input
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+        parentRow.append(input)
         return parentRow;
     }
 
@@ -858,13 +866,13 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 }
 );
 // configuration
-window.moduleRegistry.add('configuration', (Promise, configurationStore) => {
+window.moduleRegistry.add('configuration', (configurationStore) => {
 
     const exports = {
         registerCheckbox,
         registerInput,
         registerDropdown,
-        registerJson,
+        registerButton,
         items: []
     };
 
@@ -894,11 +902,11 @@ window.moduleRegistry.add('configuration', (Promise, configurationStore) => {
         }));
     }
 
-    const JSON_KEYS = ['key', 'default', 'handler'];
-    function registerJson(item) {
-        validate(item, JSON_KEYS);
+    const BUTTON_KEYS = ['category', 'key', 'name', 'handler'];
+    function registerButton(item) {
+        validate(item, BUTTON_KEYS);
         return register(Object.assign(item, {
-            type: 'json'
+            type: 'button'
         }));
     }
 
@@ -923,6 +931,9 @@ window.moduleRegistry.add('configuration', (Promise, configurationStore) => {
     }
 
     async function save(item, value) {
+        if(item.type === 'button') {
+            return;
+        }
         if(item.type === 'toggle') {
             value = !!value;
         }
@@ -3840,8 +3851,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
             default: MAX_SAME_DENSITY_DEFAULT,
             inputType: 'number',
             text: 'Max amount of items of same type and weight before clumping occurs',
-            layout: '5/1',
-            class: 'noPad_InheritHeigth',
+            light: true,
             noHeader: true,
             handler: handleConfigMaxSameDensityStateChange,
         });
@@ -3852,8 +3862,6 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
             default: CLUMPDENSITY_DEFAULT,
             inputType: 'number',
             text: 'Amount of items that will clump together when threshold is reached',
-            layout: '5/1',
-            class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigClumpSizeStateChange,
         });
@@ -3864,8 +3872,6 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
             default: IMAGESIZE_INCREASE_DEFAULT,
             inputType: 'number',
             text: 'Factor that determines how much larger a clumped item image will be',
-            layout: '5/1',
-            class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigClumpImageSizeIncreaseStateChange,
         });
@@ -3877,7 +3883,6 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
             inputType: 'text',
             text: 'Background URL',
             layout: '1/3',
-            class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigBackgroundStateChange,
         });
@@ -4252,12 +4257,11 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         return !lastPage || !page || lastPage.skill !== page.skill || lastPage.action !== page.action;
     }
 
-    //background-position: center center;
     const styles = `
-		.itemWrapper {
-			width: 100%;
-			height: 350px;
-			background-color: transparent;
+        .itemWrapper {
+            width: 100%;
+            height: 350px;
+            background-color: transparent;
             overflow: hidden;
             position: relative;
             border-radius: 0px 0px 4px 4px;
@@ -4269,16 +4273,11 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
                 border-radius: 0 0 4px 4px;
                 margin: -1px;
             }
-		}
-        .noPad_InheritHeigth {
-            padding: 0px !important;
-            height: inherit !important;
-            color: #aaa;
         }
         .lineAboveCanvas {
             border-top: 1px solid #263849
         }
-	`;
+    `;
 
     initialise();
 }
@@ -4430,7 +4429,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
             case 'checkbox': return createRows_Checkbox(item);
             case 'input': return createRows_Input(item);
             case 'dropdown': return createRows_Dropdown(item);
-            case 'json': break;
+            case 'button': return createRows_Button(item);
             default: throw `Unknown configuration type : ${item.type}`;
         }
     }
@@ -4466,8 +4465,10 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
             inputType: item.inputType,
             delay: 500,
             text: item.text,
-            layout: item.layout,
+            layout: item.layout || '5/1',
             class: item.class,
+            light: true,
+            noHeader: true,
             action: (value) => {
                 item.handler(value);
             }
@@ -4493,6 +4494,17 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
             action: (value) => {
                 item.handler(value);
             }
+        }]
+    }
+
+    function createRows_Button(item) {
+        return [{
+            type: 'buttons',
+            buttons: [{
+                text: item.name,
+                color: 'success',
+                action: () => item.handler()
+            }]
         }]
     }
 
@@ -6752,7 +6764,24 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
             key: 'idle-beep-enabled',
             name: 'Idle beep',
             default: false,
-            handler: handleConfigStateChange
+            handler: handleEnabledChange
+        });
+        configuration.registerInput({
+            category: 'Other',
+            key: 'idle-beep-volume',
+            name: '[0 - 100]',
+            text: 'Idle beep volume',
+            default: 100,
+            inputType: 'number',
+            light: true,
+            noHeader: true,
+            handler: handleVolumeChange
+        });
+        configuration.registerButton({
+            category: 'Other',
+            key: 'idle-beep-test',
+            name: 'Idle beep test',
+            handler: handleTest
         });
         elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'action-component');
         elementWatcher.addRecursiveObserver(actionStart, 'nav-component > div.nav', 'combat-component');
@@ -6761,8 +6790,18 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
         setInterval(checkRevive, 1000);
     }
 
-    function handleConfigStateChange(state) {
+    function handleEnabledChange(state) {
         enabled = state;
+    }
+
+    function handleVolumeChange(state) {
+        audio.volume = state / 100;
+    }
+
+    function handleTest(_val, _key, isInitial) {
+        if(!isInitial) {
+            audio.play();
+        }
     }
 
     function checkRevive() {

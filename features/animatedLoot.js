@@ -57,8 +57,7 @@
             default: MAX_SAME_DENSITY_DEFAULT,
             inputType: 'number',
             text: 'Max amount of items of same type and weight before clumping occurs',
-            layout: '5/1',
-            class: 'noPad_InheritHeigth',
+            light: true,
             noHeader: true,
             handler: handleConfigMaxSameDensityStateChange,
         });
@@ -69,8 +68,6 @@
             default: CLUMPDENSITY_DEFAULT,
             inputType: 'number',
             text: 'Amount of items that will clump together when threshold is reached',
-            layout: '5/1',
-            class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigClumpSizeStateChange,
         });
@@ -81,8 +78,6 @@
             default: IMAGESIZE_INCREASE_DEFAULT,
             inputType: 'number',
             text: 'Factor that determines how much larger a clumped item image will be',
-            layout: '5/1',
-            class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigClumpImageSizeIncreaseStateChange,
         });
@@ -94,7 +89,6 @@
             inputType: 'text',
             text: 'Background URL',
             layout: '1/3',
-            class: 'noPad_InheritHeigth',
             noHeader: true,
             handler: handleConfigBackgroundStateChange,
         });
@@ -469,12 +463,11 @@
         return !lastPage || !page || lastPage.skill !== page.skill || lastPage.action !== page.action;
     }
 
-    //background-position: center center;
     const styles = `
-		.itemWrapper {
-			width: 100%;
-			height: 350px;
-			background-color: transparent;
+        .itemWrapper {
+            width: 100%;
+            height: 350px;
+            background-color: transparent;
             overflow: hidden;
             position: relative;
             border-radius: 0px 0px 4px 4px;
@@ -486,16 +479,11 @@
                 border-radius: 0 0 4px 4px;
                 margin: -1px;
             }
-		}
-        .noPad_InheritHeigth {
-            padding: 0px !important;
-            height: inherit !important;
-            color: #aaa;
         }
         .lineAboveCanvas {
             border-top: 1px solid #263849
         }
-	`;
+    `;
 
     initialise();
 }

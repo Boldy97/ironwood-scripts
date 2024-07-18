@@ -156,32 +156,40 @@
     function createRow_Input(inputBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
         if(inputBlueprint.text) {
-            parentRow
-                .append(
-                    $('<div/>')
-                        .addClass('myItemInputText')
-                        .addClass(inputBlueprint.class || '')
-                        .text(inputBlueprint.text)
-                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
-                )
+            const text = $('<div/>')
+                .addClass('myItemInputText')
+                .addClass(inputBlueprint.class || '')
+                .text(inputBlueprint.text)
+                .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`);
+            if(inputBlueprint.light) {
+                text
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+            parentRow.append(text);
         }
-        parentRow
-            .append(
-                $('<input/>')
-                    .attr('id', inputBlueprint.id)
-                    .addClass('myItemInput')
-                    .addClass(inputBlueprint.class || '')
-                    .attr('type', inputBlueprint.inputType || 'text')
-                    .attr('placeholder', inputBlueprint.name)
-                    .attr('value', inputBlueprint.value || '')
-                    .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-                    .keyup(inputDelay(function(e) {
-                        inputBlueprint.value = e.target.value;
-                        if(inputBlueprint.action) {
-                            inputBlueprint.action(inputBlueprint.value);
-                        }
-                    }, inputBlueprint.delay || 0))
-            )
+        const input = $('<input/>')
+            .attr('id', inputBlueprint.id)
+            .addClass('myItemInput')
+            .addClass(inputBlueprint.class || '')
+            .attr('type', inputBlueprint.inputType || 'text')
+            .attr('placeholder', inputBlueprint.name)
+            .attr('value', inputBlueprint.value || '')
+            .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
+            .keyup(inputDelay(function(e) {
+                inputBlueprint.value = e.target.value;
+                if(inputBlueprint.action) {
+                    inputBlueprint.action(inputBlueprint.value);
+                }
+            }, inputBlueprint.delay || 0));
+            if(inputBlueprint.light) {
+                input
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+        parentRow.append(input)
         return parentRow;
     }
 
