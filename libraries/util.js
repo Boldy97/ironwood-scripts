@@ -28,7 +28,8 @@
         roundToMultiple,
         compress,
         decompress,
-        log
+        log,
+        clamp
     };
 
     function levelToExp(level) {
@@ -365,6 +366,10 @@
 
     function log(x, base) {
         return Math.log(x) / Math.log(base);
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
     }
 
     return exports;

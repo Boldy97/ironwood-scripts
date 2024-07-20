@@ -2742,7 +2742,8 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
         roundToMultiple,
         compress,
         decompress,
-        log
+        log,
+        clamp
     };
 
     function levelToExp(level) {
@@ -3079,6 +3080,10 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function log(x, base) {
         return Math.log(x) / Math.log(base);
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
     }
 
     return exports;
@@ -5778,7 +5783,7 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
 }
 );
 // estimatorCombat
-window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCache, itemCache, dropCache, statsStore, Distribution, estimatorAction) => {
+window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCache, itemCache, dropCache, statsStore, Distribution, estimatorAction, util) => {
 
     const exports = {
         get,
@@ -6031,11 +6036,11 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
     }
 
     function getDamageScalingRatio(attacker, defender) {
-        const ratio = attacker.attackLevel / defender.defenseLevel;
         if(attacker.isPlayer) {
-            return Math.min(1, ratio);
+            return 1 / (1 + Math.max(defender.defenseLevel - attacker.attackLevel, 0) / 50);
+        } else {
+            return 1 + Math.max(attacker.attackLevel - defender.defenseLevel, 0) / 50;
         }
-        return Math.max(1, ratio);
     }
 
     function getDamageArmourRatio(attacker, defender) {
@@ -6048,8 +6053,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
 
     function getAccuracy(attacker, defender) {
         let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel) / 2.0;
-        accuracy = Math.max(60, accuracy);
-        accuracy = Math.min(90, accuracy);
+        accuracy = util.clamp(accuracy, 60, 90);
         return accuracy / 100;
     }
 
@@ -6200,7 +6204,7 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
         if(successChance < 1) {
           return 0;
         }
-        return Math.min(100, Math.max(0, successChance));
+        return util.clamp(successChance, 0, 100);
     }
 
     function preRender(estimation, blueprint) {

@@ -92,7 +92,7 @@
         if(successChance < 1) {
           return 0;
         }
-        return Math.min(100, Math.max(0, successChance));
+        return util.clamp(successChance, 0, 100);
     }
 
     function preRender(estimation, blueprint) {

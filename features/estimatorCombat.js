@@ -1,4 +1,4 @@
-(skillCache, actionCache, monsterCache, itemCache, dropCache, statsStore, Distribution, estimatorAction) => {
+(skillCache, actionCache, monsterCache, itemCache, dropCache, statsStore, Distribution, estimatorAction, util) => {
 
     const exports = {
         get,
@@ -251,11 +251,11 @@
     }
 
     function getDamageScalingRatio(attacker, defender) {
-        const ratio = attacker.attackLevel / defender.defenseLevel;
         if(attacker.isPlayer) {
-            return Math.min(1, ratio);
+            return 1 / (1 + Math.max(defender.defenseLevel - attacker.attackLevel, 0) / 50);
+        } else {
+            return 1 + Math.max(attacker.attackLevel - defender.defenseLevel, 0) / 50;
         }
-        return Math.max(1, ratio);
     }
 
     function getDamageArmourRatio(attacker, defender) {
@@ -268,8 +268,7 @@
 
     function getAccuracy(attacker, defender) {
         let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel) / 2.0;
-        accuracy = Math.max(60, accuracy);
-        accuracy = Math.min(90, accuracy);
+        accuracy = util.clamp(accuracy, 60, 90);
         return accuracy / 100;
     }
 
