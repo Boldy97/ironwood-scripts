@@ -72,7 +72,7 @@
                 break;
             case 'reader-guild-event':
                 if(guildName && DATA[key].eventRunning) {
-                    request.forwardDataGuildEventTime(guildName, DATA[key].eventStartMillis);
+                    request.forwardDataGuildEventTime(guildName, DATA[key].eventType, DATA[key].eventStartMillis);
                 }
                 break;
             case 'estimator':
