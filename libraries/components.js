@@ -13,6 +13,7 @@
         item: createRow_Item,
         input: createRow_Input,
         itemWithInput: createRow_ItemWithInput,
+        profitItem: createRow_ProfitItem,
         break: createRow_Break,
         buttons: createRow_Button,
         dropdown: createRow_Select,
@@ -244,6 +245,60 @@
                         .text(itemWithInputBlueprint.value)
                 )
         }
+        return parentRow;
+    }
+
+    function createRow_ProfitItem(profitItem) {
+        const parentRow = $('<div/>').addClass('customRow').css('display', 'flex');
+
+        if(profitItem.image) {
+            const image = createImage(profitItem)
+            image.css('width', '24px');
+            parentRow.append(image);
+        }
+
+        if(profitItem?.name) {
+            parentRow
+                .append(
+                    $('<div/>')
+                        .css('flex', '4')
+                        .text(profitItem.name)
+                );
+        }
+
+        parentRow
+            .append(
+                $('<input/>')
+                    .attr('id', profitItem.id)
+                    .addClass('myItemInput')
+                    .addClass(profitItem.class || '')
+                    .attr('type', profitItem.inputType || 'text')
+                    .attr('placeholder', profitItem.placeholder)
+                    .attr('value', profitItem.inputValue || '')
+                    .css('flex', '1')
+                    .css('height', 'inherit')
+                    .keyup(inputDelay(function(e) {
+                        profitItem.inputValue = e.target.value;
+                        if(profitItem.action) {
+                            profitItem.action(profitItem.inputValue);
+                        }
+                    }, profitItem.delay || 0))
+            );
+
+        parentRow.append(
+            $('<div/>')
+                .css('flex', '3')
+                .text(profitItem.itemsPerHour)
+        );
+
+        parentRow
+            .append(
+                $('<div/>')
+                    .addClass('myItemWorth')
+                    .css('flex', '3')
+                    .text(profitItem.value)
+            );
+
         return parentRow;
     }
 
