@@ -126,8 +126,8 @@
             = estimation.exp === 0 || estimation.timings.tier === 0;
         components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
-        components.search(blueprint, 'goalTime').value
-            = estimation.timings.goal > 0 ? util.secondsToDuration(estimation.timings.goal) : '0s';
+        components.search(blueprint, 'goalTime').value //                  Hours to reach level * Actions per hour = Actions to reach level
+            = estimation.timings.goal > 0 ? (util.formatNumber(Math.floor((estimation.timings.goal / 3600) * (estimatorAction.LOOPS_PER_HOUR / estimation.speed))) + ' actions / ' + util.secondsToDuration(estimation.timings.goal)) : 'Now';
         components.search(blueprint, 'dropValue').hidden
             = estimation.values.drop === 0;
         components.search(blueprint, 'dropValue').value
