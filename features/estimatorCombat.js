@@ -126,7 +126,7 @@
     function getInternalDamageDistribution(attacker, defender, isDungeon) {
         let damage = attacker.damage;
         damage *= getDamageTriangleModifier(attacker, defender);
-        damage *= getDamageScalingRatio(attacker, defender);
+        //damage *= getDamageScalingRatio(attacker, defender);
         damage *= getDamageArmourRatio(attacker, defender);
         damage *= !isDungeon ? 1 : attacker.dungeonDamage;
 
@@ -248,14 +248,6 @@
             return 1;
         }
         return getDamageTriangleModifier(attacker, defender) - 0.1;
-    }
-
-    function getDamageScalingRatio(attacker, defender) {
-        if(attacker.isPlayer) {
-            return 1 / (1 + Math.max(defender.defenseLevel - attacker.attackLevel, 0) / 50);
-        } else {
-            return 1 + Math.max(attacker.attackLevel - defender.defenseLevel, 0) / 50;
-        }
     }
 
     function getDamageArmourRatio(attacker, defender) {
