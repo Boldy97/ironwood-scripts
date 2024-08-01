@@ -4105,6 +4105,10 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         Runner.run(runner, engine);
 
         function handleResize(matterContainer) {
+            if(!render.canvas) {
+                return;
+            }
+
             const actualWidth = matterContainer.clientWidth + 2;
             const actualheigth = matterContainer.clientHeight + 2;
 
