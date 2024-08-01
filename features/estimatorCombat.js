@@ -168,6 +168,7 @@
         }
         // accuracy
         const accuracy = getAccuracy(attacker, defender);
+        const reverseAccuracy = getAccuracy(defender, attacker);
         result.convolution(
             Distribution.getRandomChance(accuracy),
             (dmg, accurate) => accurate ? dmg : 0
@@ -176,36 +177,28 @@
         const intermediateClone_ = result.clone();
         // parry attacker - deal back 25% of a regular attack
         if(attacker.parryChance) {
-            let parryChance = attacker.parryChance;
+            let parryChance = attacker.parryChance * accuracy;
             if(attacker.attackSpeed < defender.attackSpeed) {
                 parryChance *= attacker.attackSpeed / defender.attackSpeed;
             }
-            const parried_ = intermediateClone_.clone();
-            parried_.convolution(
-                Distribution.getRandomChance(parryChance),
-                (dmg, parried) => parried ? Math.round(dmg/4.0) : 0
-            );
+            const parriedDamage = Math.round(attacker.damage / attacker.attackSpeed * defender.attackSpeed * 0.3);
             result.convolution(
-                parried_,
-                (dmg, extra) => dmg + extra
+                Distribution.getRandomChance(parryChance),
+                (dmg, parried) => dmg + (parried ? parriedDamage : 0)
             );
             if(attacker.attackSpeed > defender.attackSpeed) {
                 // we can parry multiple times during one turn
                 parryChance *= (attacker.attackSpeed - defender.attackSpeed) / attacker.attackSpeed;
-                parried_.convolution(
-                    Distribution.getRandomChance(parryChance),
-                    (dmg, parried) => parried ? dmg : 0
-                );
                 result.convolution(
-                    parried_,
-                    (dmg, extra) => dmg + extra
+                    Distribution.getRandomChance(parryChance),
+                    (dmg, parried) => dmg + (parried ? parriedDamage : 0)
                 );
             }
         }
         // parry defender - deal 50% of a regular attack
         if(defender.parryChance) {
             result.convolution(
-                Distribution.getRandomChance(defender.parryChance),
+                Distribution.getRandomChance(defender.parryChance * reverseAccuracy),
                 (dmg, parried) => parried ? Math.round(dmg/2) : dmg
             );
         }
