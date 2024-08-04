@@ -8,6 +8,7 @@
         attributes: null,
         specialIds: {
             coins: null,
+            charcoal: null,
             stardust: null,
             mainHand: null,
             offHand: null,
@@ -91,6 +92,7 @@
         // does not cover any event items
         const potions = exports.list.filter(a => /(Potion|Mix)$/.exec(a.name));
         exports.specialIds.coins = exports.byName['Coins'].id;
+        exports.specialIds.charcoal = exports.byName['Charcoal'].id;
         exports.specialIds.stardust = exports.byName['Stardust'].id;
         exports.specialIds.mainHand = getAllIdsEnding('Sword', 'Hammer', 'Spear', 'Scythe', 'Bow', 'Boomerang');
         exports.specialIds.offHand = getAllIdsEnding('Shield');
