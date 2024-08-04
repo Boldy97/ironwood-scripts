@@ -27,6 +27,7 @@
             const survivalChance = estimatorCombat.getSurvivalChance(combatEstimation.player, combatEstimation.monster, combatEstimation.speed, 1);
 
             const exp = activityEstimation.exp * activityRatio;
+            const actionsPerHour = activityEstimation.actionsPerHour * activityRatio;
             const drops = {};
             merge(drops, activityEstimation.drops, activityRatio);
             merge(drops, combatEstimation.drops, combatRatio);
@@ -42,6 +43,7 @@
                 skill: skillId,
                 action: actionId,
                 speed: activityEstimation.speed,
+                actionsPerHour,
                 productionSpeed: activityEstimation.productionSpeed,
                 exp,
                 drops,

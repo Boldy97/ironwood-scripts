@@ -67,6 +67,7 @@
             skill: skillId,
             action: actionId,
             speed: loopsPerKill,
+            actionsPerHour: dropCount,
             productionSpeed: loopsPerKill * actionCount / dropCount,
             exp,
             drops,
