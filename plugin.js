@@ -5450,8 +5450,6 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
     }
 
     function preRender(estimation, blueprint) {
-        components.search(blueprint, 'actions').value
-            = util.formatNumber(estimatorAction.LOOPS_PER_HOUR / estimation.speed);
         components.search(blueprint, 'exp').hidden
             = estimation.exp === 0;
         components.search(blueprint, 'exp').value
@@ -5466,12 +5464,18 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             = estimation.exp === 0 || estimation.timings.level === 0;
         components.search(blueprint, 'levelTime').value
             = util.secondsToDuration(estimation.timings.level);
+        components.search(blueprint, 'levelTime').extra
+            = util.formatNumber(Math.ceil(estimation.timings.level / 3600 * estimation.actionsPerHour)) + ' actions';
         components.search(blueprint, 'tierTime').hidden
             = estimation.exp === 0 || estimation.timings.tier === 0;
         components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
+        components.search(blueprint, 'tierTime').extra
+            = util.formatNumber(Math.ceil(estimation.timings.tier / 3600 * estimation.actionsPerHour)) + ' actions';
         components.search(blueprint, 'goalTime').value
-            = estimation.timings.goal > 0 ? util.secondsToDuration(estimation.timings.goal) : '0s';
+            = estimation.timings.goal <= 0 ? 'Now' : util.secondsToDuration(estimation.timings.goal);
+        components.search(blueprint, 'goalTime').extra
+            = estimation.timings.goal <= 0 ? null : util.formatNumber(Math.ceil(estimation.timings.goal / 3600 * estimation.actionsPerHour)) + ' actions';
         components.search(blueprint, 'dropValue').hidden
             = estimation.values.drop === 0;
         components.search(blueprint, 'dropValue').value
@@ -5564,12 +5568,6 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
         tabs: [{
             title: 'Overview',
             rows: [{
-                type: 'item',
-                id: 'actions',
-                name: 'Actions/hour',
-                image: 'https://cdn-icons-png.flaticon.com/512/3563/3563395.png',
-                value: ''
-            },{
                 type: 'item',
                 id: 'exp',
                 name: 'Exp/hour',
@@ -5841,6 +5839,7 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
             skill: skillId,
             action: actionId,
             speed,
+            actionsPerHour: dropCount,
             productionSpeed: speed * actionCount / dropCount,
             exp,
             drops,
@@ -5928,6 +5927,7 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             skill: skillId,
             action: actionId,
             speed: loopsPerKill,
+            actionsPerHour: dropCount,
             productionSpeed: loopsPerKill * actionCount / dropCount,
             exp,
             drops,
@@ -6576,6 +6576,7 @@ window.moduleRegistry.add('estimatorOutskirts', (actionCache, itemCache, statsSt
             const survivalChance = estimatorCombat.getSurvivalChance(combatEstimation.player, combatEstimation.monster, combatEstimation.speed, 1);
 
             const exp = activityEstimation.exp * activityRatio;
+            const actionsPerHour = activityEstimation.actionsPerHour * activityRatio;
             const drops = {};
             merge(drops, activityEstimation.drops, activityRatio);
             merge(drops, combatEstimation.drops, combatRatio);
@@ -6591,6 +6592,7 @@ window.moduleRegistry.add('estimatorOutskirts', (actionCache, itemCache, statsSt
                 skill: skillId,
                 action: actionId,
                 speed: activityEstimation.speed,
+                actionsPerHour,
                 productionSpeed: activityEstimation.productionSpeed,
                 exp,
                 drops,
