@@ -41,15 +41,16 @@
     }
 
     async function set(id, price) {
-        prices[id] = price;
-        if(price === getDefault(id)) {
+        if(!price || price === getDefault(id)) {
             await localDatabase.removeEntry(STORE_NAME, id);
+            delete prices[id];
             return;
         }
         await localDatabase.saveEntry(STORE_NAME, {
             key: id,
             value: price
         });
+        prices[id] = price;
     }
 
     initialise();
