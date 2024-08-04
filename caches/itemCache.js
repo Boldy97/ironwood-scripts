@@ -193,9 +193,6 @@
             if(item.attributes.ATTACK_SPEED) {
                 item.attributes.ATTACK_SPEED /= 2;
             }
-            if(item.attributes.SELL_PRICE) {
-                item.attributes.MIN_MARKET_PRICE = calcMarketPrice(item);
-            }
         }
     }
 
@@ -205,22 +202,6 @@
 
     function getAllIdsStarting(...prefixes) {
         return exports.list.filter(a => new RegExp(`^(${prefixes.join('|')})`).exec(a.name)).map(a => a.id);
-    }
-
-    function calcMarketPrice(item) {
-        if(item.attributes.UNTRADEABLE || !item.attributes.SELL_PRICE) {
-            return 0;
-        }
-        if(exports.specialIds.gem.includes(item.id)) {
-            return item.attributes.SELL_PRICE * 1.2;
-        }
-        if(exports.specialIds.food.includes(item.id)) {
-            return Math.round(0.8 * item.stats.global.HEAL);
-        }
-        if(exports.specialIds.smithing.includes(item.id)) {
-            return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
-        }
-        return 2 * item.attributes.SELL_PRICE;
     }
 
     return initialise();

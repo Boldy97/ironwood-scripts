@@ -22,6 +22,7 @@
             skill: skillId,
             action: actionId,
             speed,
+            actionsPerHour: dropCount,
             productionSpeed: speed * actionCount / dropCount,
             exp,
             drops,
