@@ -40,6 +40,9 @@
     }
 
     async function addComponent(blueprint) {
+        if(blueprint?.meta?.focused) {
+            return; // delay until no longer having focus
+        }
         if($(blueprint.dependsOn).length) {
             actualAddComponent(blueprint);
             return;
@@ -52,7 +55,8 @@
         const component =
             $('<div/>')
                 .addClass('customComponent')
-                .attr('id', blueprint.componentId);
+                .attr('id', blueprint.componentId)
+                .append('<div class="componentStateMessage" style="display: none"></div>');
         if(blueprint.onClick) {
             component
                 .click(blueprint.onClick)
@@ -71,7 +75,7 @@
         // PAGE
         const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] || blueprint.tabs[0];
         selectedTabBlueprint.rows.forEach((rowBlueprint, index) => {
-            component.append(createRow(rowBlueprint));
+            component.append(createRow(rowBlueprint, blueprint));
         });
 
         const existing = $(`#${blueprint.componentId}`);
@@ -112,7 +116,7 @@
         return tabContainer;
     }
 
-    function createRow(rowBlueprint) {
+    function createRow(rowBlueprint, rootBlueprint) {
         if(!rowTypeMappings[rowBlueprint.type]) {
             console.warn(`Skipping unknown row type in blueprint: ${rowBlueprint.type}`, rowBlueprint);
             return;
@@ -120,7 +124,7 @@
         if(rowBlueprint.hidden) {
             return;
         }
-        return rowTypeMappings[rowBlueprint.type](rowBlueprint);
+        return rowTypeMappings[rowBlueprint.type](rowBlueprint, rootBlueprint);
     }
 
     function createRow_Item(itemBlueprint) {
@@ -153,7 +157,7 @@
         return parentRow;
     }
 
-    function createRow_Input(inputBlueprint) {
+    function createRow_Input(inputBlueprint, rootBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
         if(inputBlueprint.text) {
             const text = $('<div/>')
@@ -182,7 +186,9 @@
                 if(inputBlueprint.action) {
                     inputBlueprint.action(inputBlueprint.value);
                 }
-            }, inputBlueprint.delay || 0));
+            }, inputBlueprint.delay || 0))
+            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+            .on('focusout', onInputFocusOut.bind(null, rootBlueprint));
             if(inputBlueprint.light) {
                 input
                     .css('padding', '0')
@@ -193,7 +199,7 @@
         return parentRow;
     }
 
-    function createRow_ItemWithInput(itemWithInputBlueprint) {
+    function createRow_ItemWithInput(itemWithInputBlueprint, rootBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
 
         if(itemWithInputBlueprint.image) {
@@ -227,6 +233,8 @@
                             itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
                         }
                     }, itemWithInputBlueprint.delay || 0))
+                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint))
             )
 
         parentRow
@@ -245,6 +253,27 @@
                 )
         }
         return parentRow;
+    }
+
+    function onInputFocusIn(rootBlueprint) {
+        if(!rootBlueprint.meta) {
+            rootBlueprint.meta = {};
+        }
+        rootBlueprint.meta.focused = true;
+        $(`#${rootBlueprint.componentId}`)
+            .find('.componentStateMessage')
+            .text('Focused - interrupted updates')
+            .show();
+    }
+
+    function onInputFocusOut(rootBlueprint) {
+        if(!rootBlueprint.meta) {
+            rootBlueprint.meta = {};
+        }
+        rootBlueprint.meta.focused = false;
+        $(`#${rootBlueprint.componentId}`)
+            .find('.componentStateMessage')
+            .hide();
     }
 
     function createRow_Break(breakBlueprint) {
@@ -496,6 +525,7 @@
             --darker-color: ${colorMapper('componentDark')};
         }
         .customComponent {
+            position: relative;
             margin-top: var(--gap);
             background-color: var(--background-color);
             box-shadow: 0 6px 12px -6px #0006;
@@ -700,6 +730,21 @@
         }
         .myListLine {
             margin-left: 20px;
+        }
+        .componentStateMessage {
+            position: absolute;
+            top: .5em;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            font-family: Jost,Helvetica Neue,Arial,sans-serif;
+            flex-direction: column;
+            white-space: nowrap;
+            background-color: black;
+            padding: .4rem;
+            border: 1px solid #3e3e3e;
+            border-radius: .4em;
+            gap: .4em;
         }
     `;
 
