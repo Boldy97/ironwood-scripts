@@ -71,6 +71,9 @@ window.PANCAKE_VERSION = '4.8.0';
     }
 
     function visit(module, visited, stack = []) {
+        if(!module) {
+            return;
+        }
         if(stack.includes(module.name)) {
             stack.push(module.name);
             return stack;
