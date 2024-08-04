@@ -7412,7 +7412,7 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
         events.register('reader-pet', renderSingle);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         enabled = state;
     }
 
@@ -7433,7 +7433,11 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
         if(!enabled || event.type !== 'single') {
             return;
         }
-        const pets = events.getLast('redesign-pet').slice(0);
+        const redesignPetData = events.getLast('redesign-pet');
+        if(!redesignPetData) {
+            return;
+        }
+        const pets = redesignPetData.slice(0);
         pets.push(event.value);
         highestValues = getHighestValuesByFamily(pets);
         const color1 = colorMapper('success');

@@ -17,7 +17,7 @@
         events.register('reader-pet', renderSingle);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         enabled = state;
     }
 
@@ -38,7 +38,11 @@
         if(!enabled || event.type !== 'single') {
             return;
         }
-        const pets = events.getLast('redesign-pet').slice(0);
+        const redesignPetData = events.getLast('redesign-pet');
+        if(!redesignPetData) {
+            return;
+        }
+        const pets = redesignPetData.slice(0);
         pets.push(event.value);
         highestValues = getHighestValuesByFamily(pets);
         const color1 = colorMapper('success');
