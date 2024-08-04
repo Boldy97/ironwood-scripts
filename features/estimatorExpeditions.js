@@ -108,11 +108,11 @@
             = util.secondsToDuration(estimation.timings.level);
         components.search(blueprint, 'tierTime').value
             = util.secondsToDuration(estimation.timings.tier);
-        components.search(blueprint, 'dropValue').value
+        components.search(blueprint, 'profitDropValue').value
             = util.formatNumber(estimation.values.drop);
-        components.search(blueprint, 'ingredientValue').value
+        components.search(blueprint, 'profitIngredientValue').value
             = util.formatNumber(estimation.values.ingredient);
-        components.search(blueprint, 'netValue').value
+        components.search(blueprint, 'profitNetValue').value
             = util.formatNumber(estimation.values.net);
         components.search(blueprint, 'teamSize').value
             = util.formatNumber(estimation.teamStats.length);
@@ -222,27 +222,6 @@
                 name: 'Tier up',
                 image: 'https://cdn-icons-png.flaticon.com/512/4789/4789514.png',
                 value: ''
-            },{
-                type: 'item',
-                id: 'dropValue',
-                name: 'Gold/hour (loot)',
-                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
-                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                value: ''
-            },{
-                type: 'item',
-                id: 'ingredientValue',
-                name: 'Gold/hour (materials)',
-                image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
-                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                value: ''
-            },{
-                type: 'item',
-                id: 'netValue',
-                name: 'Gold/hour (total)',
-                image: 'https://cdn-icons-png.flaticon.com/512/11937/11937869.png',
-                imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                value: ''
             }]
         },{
             title: 'Items',
@@ -260,6 +239,50 @@
                 type: 'segment',
                 id: 'ingredientRows',
                 rows: []
+            }]
+        },{
+            title: 'Profit',
+            rows: [{
+                type: 'header',
+                title: 'Produced'
+            },{
+                type: 'segment',
+                id: 'profitProducedRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Consumed'
+            },{
+                type: 'segment',
+                id: 'profitConsumedRows',
+                rows: []
+            },{
+                type: 'header',
+                title: 'Profits'
+            },{
+                type: 'segment',
+                rows: [{
+                    type: 'item',
+                    id: 'profitDropValue',
+                    name: 'Gold/hour (produced)',
+                    image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
+                    imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                    value: ''
+                },{
+                    type: 'item',
+                    id: 'profitIngredientValue',
+                    name: 'Gold/hour (materials)',
+                    image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
+                    imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                    value: ''
+                },{
+                    type: 'item',
+                    id: 'profitNetValue',
+                    name: 'Gold/hour (total)',
+                    image: 'https://cdn-icons-png.flaticon.com/512/11937/11937869.png',
+                    imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
+                    value: ''
+                }]
             }]
         },{
             title: 'Time',

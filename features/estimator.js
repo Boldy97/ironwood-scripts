@@ -386,7 +386,6 @@
                     },
                     {
                         type: 'segment',
-                        id: 'profitProfitsRows',
                         rows: [
                             {
                                 type: 'item',
