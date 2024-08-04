@@ -1,4 +1,4 @@
-(configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore, customItemPriceStore) => {
+(configuration, events, skillCache, actionCache, itemCache, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore, customItemPriceStore) => {
 
     const emitEvent = events.emit.bind(null, 'estimator');
     let enabled = false;
@@ -132,8 +132,6 @@
             = estimation.timings.goal <= 0 ? 'Now' : util.secondsToDuration(estimation.timings.goal);
         components.search(blueprint, 'goalTime').extra
             = estimation.timings.goal <= 0 ? null : util.formatNumber(Math.ceil(estimation.timings.goal / 3600 * estimation.actionsPerHour)) + ' actions';
-        components.search(blueprint, 'dropValue').hidden
-            = estimation.values.drop === 0;
         components.search(blueprint, 'profitDropValue').value
             = util.formatNumber(estimation.values.drop);
         components.search(blueprint, 'profitIngredientValue').hidden

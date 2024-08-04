@@ -386,11 +386,11 @@
         return parentRow;
     }
 
-    function createRow_Segment(segmentBlueprint) {
+    function createRow_Segment(segmentBlueprint, rootBlueprint) {
         if(segmentBlueprint.hidden) {
             return;
         }
-        return segmentBlueprint.rows.flatMap(createRow);
+        return segmentBlueprint.rows.flatMap(a => createRow(a, rootBlueprint));
     }
 
     function createRow_Progress(progressBlueprint) {
