@@ -1,4 +1,4 @@
-(events, skillCache) => {
+(events) => {
 
     const emitEvent = events.emit.bind(null, 'state-various');
     const state = {};

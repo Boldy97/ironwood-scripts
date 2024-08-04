@@ -1,4 +1,4 @@
-(configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore) => {
+(configuration, events, skillCache, actionCache, itemCache, estimatorAction, estimatorOutskirts, estimatorActivity, estimatorCombat, components, util, statsStore, customItemPriceStore) => {
 
     const emitEvent = events.emit.bind(null, 'estimator');
     let enabled = false;
@@ -90,49 +90,17 @@
 
     function enrichValues(estimation) {
         estimation.values = {
-            drop: getSellPrice(estimation.drops),
-            minMarketDrop: getMinMarketPrice(estimation.drops, 'produced'),
-            ingredient: getSellPrice(estimation.ingredients),
-            minMarketIngredient: getMinMarketPrice(estimation.ingredients, 'consumed'),
-            equipment: getSellPrice(estimation.equipments),
-            minMarketEquipment: getMinMarketPrice(estimation.equipments, 'consumed'),
-            net: 0,
-            minMarketNet: 0
+            drop: getMinMarketPrice(estimation.drops),
+            ingredient: getMinMarketPrice(estimation.ingredients),
+            equipment: getMinMarketPrice(estimation.equipments),
+            net: 0
         };
         estimation.values.net = estimation.values.drop - estimation.values.ingredient - estimation.values.equipment;
-        estimation.values.minMarketNet = estimation.values.minMarketDrop - estimation.values.minMarketIngredient - estimation.values.minMarketEquipment;
     }
 
-    function getSellPrice(object) {
+    function getMinMarketPrice(object) {
         return Object.entries(object)
-            .map(a => a[1] * itemCache.byId[a[0]].attributes.SELL_PRICE)
-            .filter(a => a)
-            .reduce((a, b) => a + b, 0);
-    }
-
-    function getMinMarketPricePerUnit(itemId, producedOrConsumed) {
-        const item = itemCache.byId[itemId];
-
-        const row = document.getElementById(`profit-${producedOrConsumed}-row-${item.name}`);
-        const previouslyConfiguredPrice = row === null ? null : parseInt(row?.value);
-
-        if (previouslyConfiguredPrice !== null) {
-            return previouslyConfiguredPrice;
-        }
-
-        if (item.name === 'Coins') {
-            return 1;
-        }
-        if (item.name === 'Charcoal') {
-            return itemCache.byName['Pine Log'].attributes.MIN_MARKET_PRICE;
-        } else {
-            return item.attributes['UNTRADEABLE'] ? item.attributes.SELL_PRICE : item.attributes.MIN_MARKET_PRICE;
-        }
-    }
-
-    function getMinMarketPrice(object, producedOrConsumed) {
-        return Object.entries(object)
-            .map(([itemId, itemAmount]) => getMinMarketPricePerUnit(itemId, producedOrConsumed) * itemAmount)
+            .map(([itemId, itemAmount]) => customItemPriceStore.get(itemId) * itemAmount)
             .filter(Boolean)
             .reduce((sum, current) => sum + current, 0);
     }
@@ -160,38 +128,22 @@
             = util.secondsToDuration(estimation.timings.tier);
         components.search(blueprint, 'goalTime').value
             = estimation.timings.goal > 0 ? util.secondsToDuration(estimation.timings.goal) : '0s';
-        components.search(blueprint, 'dropValue').hidden
-            = estimation.values.drop === 0;
-        components.search(blueprint, 'dropValue').value
-            = util.formatNumber(estimation.values.drop);
         components.search(blueprint, 'profitDropValue').hidden
-            = estimation.values.minMarketDrop === 0;
+            = estimation.values.drop === 0;
         components.search(blueprint, 'profitDropValue').value
-            = util.formatNumber(estimation.values.minMarketDrop);
-        components.search(blueprint, 'ingredientValue').hidden
-            = estimation.values.ingredient === 0;
-        components.search(blueprint, 'ingredientValue').value
-            = util.formatNumber(estimation.values.ingredient);
+            = util.formatNumber(estimation.values.drop);
         components.search(blueprint, 'profitIngredientValue').hidden
-            = estimation.values.minMarketIngredient === 0;
+            = estimation.values.ingredient === 0;
         components.search(blueprint, 'profitIngredientValue').value
-            = util.formatNumber(estimation.values.minMarketIngredient);
-        components.search(blueprint, 'equipmentValue').hidden
-            = estimation.values.equipment === 0;
-        components.search(blueprint, 'equipmentValue').value
-            = util.formatNumber(estimation.values.equipment);
+            = util.formatNumber(estimation.values.ingredient);
         components.search(blueprint, 'profitEquipmentValue').hidden
-            = estimation.values.minMarketEquipment === 0;
+            = estimation.values.equipment === 0;
         components.search(blueprint, 'profitEquipmentValue').value
-            = util.formatNumber(estimation.values.minMarketEquipment);
-        components.search(blueprint, 'netValue').hidden
-            = estimation.values.net === 0;
-        components.search(blueprint, 'netValue').value
-            = util.formatNumber(estimation.values.net);
+            = util.formatNumber(estimation.values.equipment);
         components.search(blueprint, 'profitNetValue').hidden
-            = estimation.values.minMarketNet === 0;
+            = estimation.values.net === 0;
         components.search(blueprint, 'profitNetValue').value
-            = util.formatNumber(estimation.values.minMarketNet);
+            = util.formatNumber(estimation.values.net);
         components.search(blueprint, 'tabTime').hidden
             = (estimation.timings.inventory.length + estimation.timings.equipment.length) === 0;
     }
@@ -263,11 +215,11 @@
         profitProducedRows.rows = [];
         for (const id in estimation.drops) {
             const item = itemCache.byId[id];
-            const price = getMinMarketPricePerUnit(id, 'produced');
+            const price = customItemPriceStore.get(id);
             const itemsPerHour = estimation.drops[id];
             profitProducedRows.rows.push({
                 id: `profit-produced-row-${item.name}`,
-                type: 'profitItem',
+                type: 'itemWithInput',
                 image: `/assets/${item.image}`,
                 imagePixelated: true,
                 name: item.name,
@@ -276,7 +228,7 @@
                 value: `${util.formatNumber(itemsPerHour * price)} / hour`,
                 inputType: 'number',
                 delay: 1000,
-                action: () => update()
+                action: updateItemPrice.bind(null, item.id)
             });
         }
 
@@ -284,11 +236,11 @@
         profitConsumedRows.rows = [];
         for (const id in estimation.ingredients) {
             const item = itemCache.byId[id];
-            const price = getMinMarketPricePerUnit(id, 'consumed');
+            const price = customItemPriceStore.get(id);
             const itemsPerHour = estimation.ingredients[id];
             profitConsumedRows.rows.push({
                 id: `profit-consumed-row-${item.name}`,
-                type: 'profitItem',
+                type: 'itemWithInput',
                 image: `/assets/${item.image}`,
                 imagePixelated: true,
                 name: item.name,
@@ -297,16 +249,16 @@
                 value: `${util.formatNumber(itemsPerHour * price)} / hour`,
                 inputType: 'number',
                 delay: 1000,
-                action: () => update()
+                action: updateItemPrice.bind(null, item.id)
             });
         }
         for (const id in estimation.equipments) {
             const item = itemCache.byId[id];
-            const price = getMinMarketPricePerUnit(id, 'consumed');
+            const price = customItemPriceStore.get(id);
             const itemsPerHour = estimation.equipments[id];
             profitConsumedRows.rows.push({
                 id: `profit-consumed-row-${item.name}`,
-                type: 'profitItem',
+                type: 'itemWithInput',
                 image: `/assets/${item.image}`,
                 imagePixelated: true,
                 name: item.name,
@@ -315,9 +267,14 @@
                 value: `${util.formatNumber(itemsPerHour * price)} / hour`,
                 inputType: 'number',
                 delay: 1000,
-                action: () => update()
+                action: updateItemPrice.bind(null, item.id)
             });
         }
+    }
+
+    async function updateItemPrice(id, price) {
+        await customItemPriceStore.set(id, +price);
+        update();
     }
 
     const componentBlueprint = {
@@ -379,41 +336,8 @@
                         value: '',
                         inputValue: '100',
                         inputType: 'number',
-                        inputMaxWidth: '60px',
                         delay: 1000,
                         action: () => update()
-                    },
-                    {
-                        type: 'item',
-                        id: 'dropValue',
-                        name: 'Gold/hour (loot)',
-                        image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
-                        imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                        value: ''
-                    },
-                    {
-                        type: 'item',
-                        id: 'ingredientValue',
-                        name: 'Gold/hour (materials)',
-                        image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
-                        imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                        value: ''
-                    },
-                    {
-                        type: 'item',
-                        id: 'equipmentValue',
-                        name: 'Gold/hour (equipments)',
-                        image: 'https://cdn-icons-png.flaticon.com/512/9028/9028031.png',
-                        imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                        value: ''
-                    },
-                    {
-                        type: 'item',
-                        id: 'netValue',
-                        name: 'Gold/hour (total)',
-                        image: 'https://cdn-icons-png.flaticon.com/512/11937/11937869.png',
-                        imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
-                        value: ''
                     }
                 ]
             },
@@ -472,7 +396,7 @@
                             {
                                 type: 'item',
                                 id: 'profitDropValue',
-                                name: 'Gold/hour (loot)',
+                                name: 'Gold/hour (produced)',
                                 image: 'https://cdn-icons-png.flaticon.com/512/9028/9028024.png',
                                 imageFilter: 'invert(100%) sepia(47%) saturate(3361%) hue-rotate(313deg) brightness(106%) contrast(108%)',
                                 value: ''
