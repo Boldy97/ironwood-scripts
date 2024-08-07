@@ -3537,7 +3537,7 @@ window.moduleRegistry.add('lootReader', (events, itemUtil) => {
         if(!page || page.type !== 'action') {
             return;
         }
-        const lootCard = $('skill-page .header > .name:contains("Loot")')
+        const lootCard = $('skill-page .card:not(:first-child) .header > .name:contains("Loot")')
             .closest('.card');
         if(!lootCard.length) {
             return;
@@ -4091,7 +4091,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
     async function createItemWrapper() {
         await elementWatcher.exists('skill-page .header > .name:contains("Loot")');
 
-        const lootCard = $('skill-page .header > .name:contains("Loot")').closest('.card');
+        const lootCard = $('skill-page .card:not(:first-child) .header > .name:contains("Loot")').closest('.card');
         if (!lootCard.length) {
             return;
         }
@@ -6002,8 +6002,10 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
             let damage_ = getInternalDamageDistribution(playerStats, monsterStats, monsterIds.length > 1);
             const weight = damage_.expectedRollsUntill(monsterStats.health);
             playerStats.damage_.addDistribution(damage_, weight);
+            //playerStats.damage_ = damage_;
             damage_ = getInternalDamageDistribution(monsterStats, playerStats, monsterIds.length > 1);
             sampleMonsterStats.damage_.addDistribution(damage_, weight);
+            //sampleMonsterStats.damage_ = damage_;
         }
         playerStats.damage_.normalize();
         sampleMonsterStats.damage_.normalize();

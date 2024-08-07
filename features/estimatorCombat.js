@@ -19,8 +19,10 @@
             let damage_ = getInternalDamageDistribution(playerStats, monsterStats, monsterIds.length > 1);
             const weight = damage_.expectedRollsUntill(monsterStats.health);
             playerStats.damage_.addDistribution(damage_, weight);
+            //playerStats.damage_ = damage_;
             damage_ = getInternalDamageDistribution(monsterStats, playerStats, monsterIds.length > 1);
             sampleMonsterStats.damage_.addDistribution(damage_, weight);
+            //sampleMonsterStats.damage_ = damage_;
         }
         playerStats.damage_.normalize();
         sampleMonsterStats.damage_.normalize();

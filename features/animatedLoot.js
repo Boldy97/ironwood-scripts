@@ -209,7 +209,7 @@
     async function createItemWrapper() {
         await elementWatcher.exists('skill-page .header > .name:contains("Loot")');
 
-        const lootCard = $('skill-page .header > .name:contains("Loot")').closest('.card');
+        const lootCard = $('skill-page .card:not(:first-child) .header > .name:contains("Loot")').closest('.card');
         if (!lootCard.length) {
             return;
         }
