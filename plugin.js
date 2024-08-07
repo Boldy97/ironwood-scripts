@@ -4111,7 +4111,8 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         }
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
         if(backgroundUrl) {
-            itemWrapper.css("background-image", 'linear-gradient(0deg, rgba(0, 0, 0, 0) 66%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
+            itemWrapper.css('background-image', 'linear-gradient(0deg, rgba(0, 0, 0, 0) 66%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
+            itemWrapper.css('background-position', 'center');
         } else {
             itemWrapper.addClass('lineAboveCanvas');
         }
