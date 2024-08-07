@@ -21,20 +21,18 @@
         if(!enabled || page.type !== 'action') {
             return;
         }
-        const list = $('action-drops-component .item')
+        const drops = dropCache.byAction[page.action];
+        let list = $('action-drops-component .item')
             .toArray()
             .map(element => ({
                 element,
                 name: $(element).find('.name').text()
             }));
-        if(!list.length) {
-            return;
-        }
-        const drops = dropCache.byAction[page.action];
         list.forEach(a => {
             a.item = itemCache.byName[a.name];
             a.drop = drops.find(b => b.item === a.item.id);
         });
+        list = list.filter(a => a.drop);
         $('.pancakeChance').remove();
         for(const a of list) {
             $(a.element).find('.chance').after(
