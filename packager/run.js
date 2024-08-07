@@ -11,46 +11,7 @@ const directories = [
     '../caches'
 ];
 
-const caches = [{
-    name: 'ACTION_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/action'
-},{
-    name: 'DROP_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/drop'
-},{
-    name: 'EXPEDITION_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/expedition'
-},{
-    name: 'EXPEDITION_DROP_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/expeditionDrop'
-},{
-    name: 'INGREDIENT_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/ingredient'
-},{
-    name: 'ITEM_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/item'
-},{
-    name: 'ITEM_ATTRIBUTE_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/itemAttribute'
-},{
-    name: 'MONSTER_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/monster'
-},{
-    name: 'PET_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/pet'
-},{
-    name: 'PET_PASSIVE_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/petPassive'
-},{
-    name: 'RECIPE_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/recipe'
-},{
-    name: 'SKILL_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/skill'
-},{
-    name: 'STRUCTURE_CACHE_DATA',
-    endpoint: 'https://iwrpg.vectordungeon.com/public/list/structure'
-}];
+const REQUEST_HOST = 'https://iwrpg.vectordungeon.com/';
 
 async function run() {
     await cleanup();
@@ -84,8 +45,9 @@ window.moduleRegistry.add('${filename}', ${content});
 }
 
 async function fillPrefetchedCaches(text) {
-    for(const cache of caches) {
-        text = text.replace(`{${cache.name}}`, await request(cache.endpoint));
+    const matches = [...text.matchAll(/requestWithFallback\('(\{.*?\})', '(.*?)'/g)];
+    for(const match of matches) {
+        text = text.replaceAll(match[1], await request(REQUEST_HOST + match[2]));
     }
     return text;
 }

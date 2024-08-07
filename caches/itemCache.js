@@ -1,4 +1,4 @@
-(fallbackCache) => {
+(request) => {
 
     const exports = {
         list: [],
@@ -61,7 +61,7 @@
     }
 
     async function loadItems() {
-        const enrichedItems = await fallbackCache.load('item');
+        const enrichedItems = await request.listItems();
         for(const enrichedItem of enrichedItems) {
             const item = Object.assign(enrichedItem.item, enrichedItem);
             delete item.item;
@@ -153,7 +153,7 @@
     }
 
     async function loadItemAttributes() {
-        exports.attributes = await fallbackCache.load('itemAttribute');
+        exports.attributes = await request.listItemAttributes();
         exports.attributes.push({
             technicalName: 'CHARCOAL',
             name: 'Charcoal',

@@ -1,4 +1,4 @@
-(fallbackCache) => {
+(request) => {
 
     const exports = {
         list: [],
@@ -7,7 +7,7 @@
     };
 
     async function initialise() {
-        const ingredients = await fallbackCache.load('ingredient');
+        const ingredients = await request.listIngredients();
         for(const ingredient of ingredients) {
             if(!exports.byAction[ingredient.action]) {
                 exports.byAction[ingredient.action] = [];

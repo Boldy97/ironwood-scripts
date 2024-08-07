@@ -1,4 +1,4 @@
-(fallbackCache) => {
+(request) => {
 
     const exports = {
         list: [],
@@ -7,7 +7,7 @@
     };
 
     async function initialise() {
-        const structures = await fallbackCache.load('structure');
+        const structures = await request.listStructures();
         for(const structure of structures) {
             exports.list.push(structure);
             exports.byId[structure.id] = structure;

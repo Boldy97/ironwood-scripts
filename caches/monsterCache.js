@@ -1,4 +1,4 @@
-(fallbackCache) => {
+(request) => {
 
     const exports = {
         list: [],
@@ -7,7 +7,7 @@
     };
 
     async function initialise() {
-        const monsters = await fallbackCache.load('monster');
+        const monsters = await request.listMonsters();
         for(const monster of monsters) {
             exports.list.push(monster);
             exports.byId[monster.id] = monster;

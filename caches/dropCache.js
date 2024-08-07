@@ -1,4 +1,4 @@
-(fallbackCache, itemCache, actionCache, ingredientCache, skillCache) => {
+(request, itemCache, actionCache, ingredientCache) => {
 
     const exports = {
         list: [],
@@ -28,7 +28,7 @@
     });
 
     async function initialise() {
-        const drops = await fallbackCache.load('drop');
+        const drops = await request.listDrops();
         for(const drop of drops) {
             exports.list.push(drop);
             if(!exports.byAction[drop.action]) {

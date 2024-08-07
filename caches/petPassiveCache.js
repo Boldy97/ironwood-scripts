@@ -1,4 +1,4 @@
-(fallbackCache) => {
+(request) => {
 
     const exports = {
         list: [],
@@ -8,7 +8,7 @@
     };
 
     async function initialise() {
-        const petPassives = await fallbackCache.load('petPassive');
+        const petPassives = await request.listPetPassives();
         for(const petPassive of petPassives) {
             exports.list.push(petPassive);
             exports.byId[petPassive.id] = petPassive;

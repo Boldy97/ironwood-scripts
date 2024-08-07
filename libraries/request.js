@@ -1,4 +1,18 @@
-(logService) => {
+(logService, Promise) => {
+
+    async function requestWithFallback(fallback, url, body, headers) {
+        try {
+            const expiring = new Promise.Expiring(2000, 'requestWithFallback - ' + url);
+            request(url, body, headers)
+                .then(a => expiring.resolve(a))
+                .catch(a => expiring.reject(a));
+            const result = await expiring;
+            return result;
+        } catch(e) {
+            console.warn('Fetching fallback cache for ' + url, e);
+            return JSON.parse(fallback);
+        }
+    }
 
     async function request(url, body, headers) {
         if(!headers) {
@@ -46,24 +60,24 @@
     request.setEnabledDiscordRegistration = (id, enabled) => request(`public/discord/${id}/enabled`, enabled);
     request.unlinkDiscordRegistration = (id) => request(`public/discord/${id}/unlink`);
     request.deleteDiscordRegistration = (id) => request(`public/discord/${id}/delete`);
-    request.listActions = () => request('public/list/action');
-    request.listDrops = () => request('public/list/drop');
-    request.listExpeditions = () => request('public/list/expedition');
-    request.listExpeditionDrops = () => request('public/list/expeditionDrop');
-    request.listItems = () => request('public/list/item');
-    request.listItemAttributes = () => request('public/list/itemAttribute');
-    request.listIngredients = () => request('public/list/ingredient');
-    request.listMonsters = () => request('public/list/monster');
-    request.listPets = () => request('public/list/pet');
-    request.listPetPassives = () => request('public/list/petPassive');
-    request.listRecipes = () => request('public/list/recipe');
-    request.listSkills = () => request('public/list/skill');
-    request.listStructures = () => request('public/list/structure');
+    request.listActions = () => requestWithFallback('{ACTION_CACHE_DATA}', 'public/list/action');
+    request.listDrops = () => requestWithFallback('{DROP_CACHE_DATA}', 'public/list/drop');
+    request.listExpeditions = () => requestWithFallback('{EXPEDITION_CACHE_DATA}', 'public/list/expedition');
+    request.listExpeditionDrops = () => requestWithFallback('{EXPEDITION_DROP_CACHE_DATA}', 'public/list/expeditionDrop');
+    request.listIngredients = () => requestWithFallback('{INGREDIENT_CACHE_DATA}', 'public/list/ingredient');
+    request.listItems = () => requestWithFallback('{ITEM_CACHE_DATA}', 'public/list/item');
+    request.listItemAttributes = () => requestWithFallback('{ITEM_ATTRIBUTE_CACHE_DATA}', 'public/list/itemAttribute');
+    request.listMonsters = () => requestWithFallback('{MONSTER_CACHE_DATA}', 'public/list/monster');
+    request.listPets = () => requestWithFallback('{PET_CACHE_DATA}', 'public/list/pet');
+    request.listPetPassives = () => requestWithFallback('{PET_PASSIVE_CACHE_DATA}', 'public/list/petPassive');
+    request.listRecipes = () => requestWithFallback('{RECIPE_CACHE_DATA}', 'public/list/recipe');
+    request.listSkills = () => requestWithFallback('{SKILL_CACHE_DATA}', 'public/list/skill');
+    request.listStructures = () => requestWithFallback('{STRUCTURE_CACHE_DATA}', 'public/list/structure');
 
     request.report = (data) => request('public/report', data);
 
     request.getChangelogs = () => request('public/settings/changelog');
-    request.getPetVersion = () => request('public/settings/petVersion');
+    request.getPetVersion = () => requestWithFallback('{PET_VERSION_CACHE_DATA}', 'public/settings/petVersion');
     request.getVersion = () => request('public/settings/version');
 
     return request;
