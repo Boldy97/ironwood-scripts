@@ -4,7 +4,8 @@
     let inProgress = false;
 
     const exports = {
-        trigger: update
+        trigger: update,
+        forceTrigger: forceUpdate //forceTrigger will read the market even if a search has been applied
     };
 
     function initialise() {
@@ -12,17 +13,20 @@
         window.setInterval(update, 10000);
     }
 
-    function update() {
+    function forceUpdate(){update(true);}
+
+    function update(readEvenIfSearching = false) {
         const page = events.getLast('page');
         if(!page) {
+            
             return;
         }
         if(page.type === 'market') {
-            readMarketScreen();
+            readMarketScreen(readEvenIfSearching);
         }
     }
 
-    async function readMarketScreen() {
+    async function readMarketScreen(readEvenIfSearching = false) {
         if(inProgress) {
             return;
         }
@@ -31,7 +35,7 @@
             await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
             const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
-            if($('market-listings-component .search > input').val()) {
+            if(!readEvenIfSearching && $('market-listings-component .search > input').val()) {
                 return;
             }
             const listings = [];

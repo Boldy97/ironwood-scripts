@@ -1,5 +1,4 @@
-(configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator) => {
-
+(configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast) => {
     const STORE_NAME = 'market-filters';
     const TYPE_TO_ITEM = {
         'Food': itemCache.byName['Health'].id,
@@ -17,6 +16,7 @@
     };
     let pageInitialised = false;
     let listingsUpdatePromise = null;
+    const SAVED_FILTER_MAX_SEARCH_LENGTH = 25;
 
     async function initialise() {
         configuration.registerCheckbox({
@@ -30,6 +30,7 @@
         events.register('state-market', update);
 
         savedFilters = await localDatabase.getAllEntries(STORE_NAME);
+        syncCustomView();
 
         // detect elements changing
 
@@ -40,15 +41,15 @@
         // Buy tab -> trigger update
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(1)', function() {
             showComponent();
-            marketReader.trigger();
+            marketReader.forceTrigger();
         });
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(2)', function() {
             showComponent();
-            marketReader.trigger();
+            marketReader.forceTrigger();
         });
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(3)', function() {
             hideComponent();
-            marketReader.trigger();
+            marketReader.forceTrigger();
         });
 
         elementCreator.addStyles(`
@@ -119,9 +120,16 @@
         Object.assign(currentFilter, {search:null}, filter);
         currentFilter.key = `${currentFilter.listingType}-${currentFilter.type}`;
         if(currentFilter.type && currentFilter.type !== 'None') {
-            await clearSearch();
+            // await clearSearch();
+            let builder = '';
+            Object.entries(dropCache.conversionMappings[TYPE_TO_ITEM[currentFilter.type]]).map(entry => {let v = entry[1]; builder += ('^' + itemCache.byId[v.from].name + '$|');})
+            if(builder.charAt(builder.length - 1) === '|') builder = builder.slice(0, -1); 
+            setSearch(builder);
+
+            workaround_variable = true;
+            marketReader.forceTrigger();
         }
-        syncListingsView();
+        else syncListingsView();
     }
 
     async function clearSearch() {
@@ -131,7 +139,7 @@
         listingsUpdatePromise = new Promise.Expiring(5000, 'marketFilter - clearSearch');
         setSearch('');
         await listingsUpdatePromise;
-        marketReader.trigger();
+        marketReader.forceTrigger();
     }
 
     function setSearch(value) {
@@ -147,6 +155,15 @@
             if(!filter.search) {
                 return;
             }
+            if(filter.search.length > SAVED_FILTER_MAX_SEARCH_LENGTH){
+                toast.create({
+                    text: 'Could not save filter, search text is too long (' + filter.search.length + '/'+ SAVED_FILTER_MAX_SEARCH_LENGTH + ')',
+                    image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
+                });        
+                return;
+            }
+        } else {
+            filter.search = undefined;
         }
         if(filter.search) {
             filter.key = `SEARCH-${filter.search}`;
@@ -157,6 +174,10 @@
             localDatabase.saveEntry(STORE_NAME, filter);
             savedFilters.push(filter);
         }
+        toast.create({
+            text: 'Saved filter',
+            image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
+        });        
         componentBlueprint.selectedTabIndex = 0;
         syncCustomView();
     }
@@ -177,12 +198,14 @@
             resetListingsView(marketData);
             return;
         }
+
         // search
         if(currentFilter.search) {
             resetListingsView(marketData);
             setSearch(currentFilter.search);
             return;
         }
+
         // no type
         if(currentFilter.type === 'None') {
             resetListingsView(marketData);
@@ -191,7 +214,11 @@
         // type
         const itemId = TYPE_TO_ITEM[currentFilter.type];
         const conversionsByItem = dropCache.conversionMappings[itemId].reduce((a,b) => (a[b.from] = b, a), {});
+
+        //*HERE
+        
         let matchingListings = marketData.last.filter(listing => listing.item in conversionsByItem);
+
         for(const listing of matchingListings) {
             listing.ratio = listing.price / conversionsByItem[listing.item].amount;
         }
@@ -341,5 +368,4 @@
     };
 
     initialise();
-
 }
