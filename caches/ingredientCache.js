@@ -9,6 +9,7 @@
     async function initialise() {
         const ingredients = await request.listIngredients();
         for(const ingredient of ingredients) {
+            exports.list.push(ingredient);
             if(!exports.byAction[ingredient.action]) {
                 exports.byAction[ingredient.action] = [];
             }

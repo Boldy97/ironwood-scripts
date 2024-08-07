@@ -1,4 +1,4 @@
-(configuration, itemCache, util, statsStore, dropCache) => {
+(configuration, itemCache, util, statsStore, dropCache, elementCreator) => {
 
     let enabled = false;
     let entered = false;
@@ -66,7 +66,7 @@
         }
     }
 
-    function handleMouseLeave(event) {
+    function handleMouseLeave() {
         if(!enabled || !itemCache.byId) {
             return;
         }
@@ -107,40 +107,7 @@
         const attributesHtml = itemCache.attributes
             .map(a => `<div class='${a.technicalName}-row'><img src='${a.image}'/><span>${a.name}</span><span class='${a.technicalName}'/></div>`)
             .join('');
-        $('head').append(`
-            <style>
-                #custom-item-hover {
-                    position: fixed;
-                    right: .5em;
-                    top: .5em;
-                    display: flex;
-                    font-family: Jost,Helvetica Neue,Arial,sans-serif;
-                    flex-direction: column;
-                    white-space: nowrap;
-                    z-index: 1;
-                    background-color: black;
-                    padding: .4rem;
-                    border: 1px solid #3e3e3e;
-                    border-radius: .4em;
-                    gap: .4em;
-                }
-                #custom-item-hover > div {
-                    display: flex;
-                    gap: .4em;
-                }
-                #custom-item-hover > div > *:last-child {
-                    margin-left: auto;
-                }
-                #custom-item-hover img {
-                    width: 24px;
-                    height: 24px;
-                    image-rendering: auto;
-                }
-                #custom-item-hover img.pixelated {
-                    image-rendering: pixelated;
-                }
-            </style>
-        `);
+        elementCreator.addStyles(styles);
         element = $(`
             <div id='custom-item-hover' style='display:none'>
                 <div>
@@ -152,6 +119,39 @@
         `);
         $('body').append(element);
     }
+
+    const styles = `
+        #custom-item-hover {
+            position: fixed;
+            right: .5em;
+            top: .5em;
+            display: flex;
+            font-family: Jost,Helvetica Neue,Arial,sans-serif;
+            flex-direction: column;
+            white-space: nowrap;
+            z-index: 1;
+            background-color: black;
+            padding: .4rem;
+            border: 1px solid #3e3e3e;
+            border-radius: .4em;
+            gap: .4em;
+        }
+        #custom-item-hover > div {
+            display: flex;
+            gap: .4em;
+        }
+        #custom-item-hover > div > *:last-child {
+            margin-left: auto;
+        }
+        #custom-item-hover img {
+            width: 24px;
+            height: 24px;
+            image-rendering: auto;
+        }
+        #custom-item-hover img.pixelated {
+            image-rendering: pixelated;
+        }
+    `;
 
     initialise();
 
