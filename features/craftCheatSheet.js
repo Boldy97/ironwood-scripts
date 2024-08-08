@@ -39,15 +39,14 @@
             handler: handleConfigStateChange
         });
         element = setup();
-        elementWatcher.addRecursiveObserver(onAmountModalOpen, 'app-component > div.scroll div.wrapper', 'skill-page', 'modal-component');
-        elementWatcher.addReverseRecursiveObserver(onAmountModalClose, 'app-component > div.scroll div.wrapper', 'skill-page', 'modal-component');
+        elementWatcher.addRecursiveObserver(onModal, 'app-component > div.scroll div.wrapper', 'skill-page', 'modal-component');
     }
 
     function handleConfigStateChange(state) {
         enabled = state;
     }
 
-    function onAmountModalOpen(modal) {
+    function onModal(modal) {
         if(!enabled) {
             return;
         }
@@ -59,11 +58,7 @@
         if(!SKILLS.includes(skill)) {
             return; // only for whitelisted skills
         }
-        element.show();
-    }
-
-    function onAmountModalClose() {
-        element.hide();
+        $(modal).append(element);
     }
 
     function setup() {
@@ -75,14 +70,13 @@
             <span>${util.formatNumber(3*tier.amount)}</span>
         `).join('');
         const element = $(`
-            <div id='custom-craft-cheat-sheet' style='display:none'>
+            <div id='custom-craft-cheat-sheet'>
                 <b style="grid-column:span 2">Tier</b>
                 <b>One</b>
                 <b>All</b>
                 ${html}
             </div>
         `);
-        $('body').append(element);
         return element;
     }
 
@@ -92,7 +86,7 @@
             right: .5em;
             bottom: .5em;
             font-family: Jost,Helvetica Neue,Arial,sans-serif;
-            z-index: 1;
+            z-index: 3;
             background-color: black;
             padding: .4rem;
             border: 1px solid #3e3e3e;
