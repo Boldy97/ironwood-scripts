@@ -10,6 +10,7 @@
     function initialise() {
         events.register('page', trigger);
         window.setInterval(trigger, 10000);
+        $(document).on('keyup', 'market-page input', util.debounce(trigger, 300));
     }
 
     function trigger() {
