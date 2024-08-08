@@ -1,5 +1,4 @@
-(configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator) => {
-
+(configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast) => {
     const STORE_NAME = 'market-filters';
     const TYPE_TO_ITEM = {
         'Food': itemCache.byName['Health'].id,
@@ -17,6 +16,7 @@
     };
     let pageInitialised = false;
     let listingsUpdatePromise = null;
+    const SAVED_FILTER_MAX_SEARCH_LENGTH = 25;
 
     async function initialise() {
         configuration.registerCheckbox({
@@ -27,9 +27,10 @@
             handler: handleConfigStateChange
         });
         events.register('page', update);
-        events.register('state-market', update);
+        events.register('reader-market', update);
 
         savedFilters = await localDatabase.getAllEntries(STORE_NAME);
+        syncCustomView();
 
         // detect elements changing
 
@@ -118,10 +119,17 @@
     async function applyFilter(filter) {
         Object.assign(currentFilter, {search:null}, filter);
         currentFilter.key = `${currentFilter.listingType}-${currentFilter.type}`;
-        if(currentFilter.type && currentFilter.type !== 'None') {
-            await clearSearch();
+        if(!currentFilter.type ||currentFilter.type === 'None') {
+            syncListingsView();
+            return;
         }
-        syncListingsView();
+        const search = Object.values(dropCache.conversionMappings[TYPE_TO_ITEM[currentFilter.type]])
+            .map(conversion => conversion.from)
+            .map(id => itemCache.byId[id].name)
+            .map(name => `^${name}$`)
+            .join('|');
+        setSearch(search);
+        marketReader.trigger();
     }
 
     async function clearSearch() {
@@ -147,6 +155,15 @@
             if(!filter.search) {
                 return;
             }
+            if(filter.search.length > SAVED_FILTER_MAX_SEARCH_LENGTH){
+                toast.create({
+                    text: 'Could not save filter, search text is too long (' + filter.search.length + '/'+ SAVED_FILTER_MAX_SEARCH_LENGTH + ')',
+                    image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
+                });
+                return;
+            }
+        } else {
+            filter.search = undefined;
         }
         if(filter.search) {
             filter.key = `SEARCH-${filter.search}`;
@@ -157,6 +174,10 @@
             localDatabase.saveEntry(STORE_NAME, filter);
             savedFilters.push(filter);
         }
+        toast.create({
+            text: 'Saved filter',
+            image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
+        });        
         componentBlueprint.selectedTabIndex = 0;
         syncCustomView();
     }
@@ -168,30 +189,34 @@
     }
 
     function syncListingsView() {
-        const marketData = events.getLast('state-market');
+        const marketData = events.getLast('reader-market');
         if(!marketData) {
             return;
         }
         // do nothing on own listings tab
-        if(marketData.lastType === 'OWN') {
+        if(marketData.type === 'OWN') {
             resetListingsView(marketData);
             return;
         }
+
         // search
         if(currentFilter.search) {
             resetListingsView(marketData);
             setSearch(currentFilter.search);
             return;
         }
+
         // no type
         if(currentFilter.type === 'None') {
             resetListingsView(marketData);
             return;
         }
+
         // type
         const itemId = TYPE_TO_ITEM[currentFilter.type];
         const conversionsByItem = dropCache.conversionMappings[itemId].reduce((a,b) => (a[b.from] = b, a), {});
-        let matchingListings = marketData.last.filter(listing => listing.item in conversionsByItem);
+
+        let matchingListings = marketData.listings.filter(listing => listing.item in conversionsByItem);
         for(const listing of matchingListings) {
             listing.ratio = listing.price / conversionsByItem[listing.item].amount;
         }
@@ -199,7 +224,7 @@
         if(currentFilter.amount) {
             matchingListings = matchingListings.slice(0, currentFilter.amount);
         }
-        for(const listing of marketData.last) {
+        for(const listing of marketData.listings) {
             if(matchingListings.includes(listing)) {
                 listing.element.show();
                 if(!listing.element.find('.ratio').length) {
@@ -212,7 +237,7 @@
     }
 
     function resetListingsView(marketData) {
-        for(const element of marketData.last.map(a => a.element)) {
+        for(const element of marketData.listings.map(a => a.element)) {
             element.find('.ratio').remove();
             element.show();
         }
@@ -341,5 +366,4 @@
     };
 
     initialise();
-
 }

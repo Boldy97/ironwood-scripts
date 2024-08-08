@@ -4,15 +4,15 @@
     let inProgress = false;
 
     const exports = {
-        trigger: update
+        trigger
     };
 
     function initialise() {
-        events.register('page', update);
-        window.setInterval(update, 10000);
+        events.register('page', trigger);
+        window.setInterval(trigger, 10000);
     }
 
-    function update() {
+    function trigger() {
         const page = events.getLast('page');
         if(!page) {
             return;
@@ -31,11 +31,9 @@
             await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
             const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
-            if($('market-listings-component .search > input').val()) {
-                return;
-            }
+            const count = util.parseNumber($('market-listings-component .count').text());
             const listings = [];
-            $('market-listings-component .search ~ button').each((i,element) => {
+            $('market-listings-component .search ~ button').each((_i,element) => {
                 element = $(element);
                 const name = element.find('.name').text();
                 const item = itemCache.byName[name];
@@ -57,6 +55,7 @@
             });
             emitEvent({
                 type,
+                count,
                 listings,
             });
         } catch(e) {
