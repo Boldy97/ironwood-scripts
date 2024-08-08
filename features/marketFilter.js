@@ -27,7 +27,7 @@
             handler: handleConfigStateChange
         });
         events.register('page', update);
-        events.register('state-market', update);
+        events.register('reader-market', update);
 
         savedFilters = await localDatabase.getAllEntries(STORE_NAME);
         syncCustomView();
@@ -41,15 +41,15 @@
         // Buy tab -> trigger update
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(1)', function() {
             showComponent();
-            marketReader.forceTrigger();
+            marketReader.trigger();
         });
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(2)', function() {
             showComponent();
-            marketReader.forceTrigger();
+            marketReader.trigger();
         });
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(3)', function() {
             hideComponent();
-            marketReader.forceTrigger();
+            marketReader.trigger();
         });
 
         elementCreator.addStyles(`
@@ -119,17 +119,17 @@
     async function applyFilter(filter) {
         Object.assign(currentFilter, {search:null}, filter);
         currentFilter.key = `${currentFilter.listingType}-${currentFilter.type}`;
-        if(currentFilter.type && currentFilter.type !== 'None') {
-            // await clearSearch();
-            let builder = '';
-            Object.entries(dropCache.conversionMappings[TYPE_TO_ITEM[currentFilter.type]]).map(entry => {let v = entry[1]; builder += ('^' + itemCache.byId[v.from].name + '$|');})
-            if(builder.charAt(builder.length - 1) === '|') builder = builder.slice(0, -1); 
-            setSearch(builder);
-
-            workaround_variable = true;
-            marketReader.forceTrigger();
+        if(!currentFilter.type ||currentFilter.type === 'None') {
+            syncListingsView();
+            return;
         }
-        else syncListingsView();
+        const search = Object.values(dropCache.conversionMappings[TYPE_TO_ITEM[currentFilter.type]])
+            .map(conversion => conversion.from)
+            .map(id => itemCache.byId[id].name)
+            .map(name => `^${name}$`)
+            .join('|');
+        setSearch(search);
+        marketReader.trigger();
     }
 
     async function clearSearch() {
@@ -139,7 +139,7 @@
         listingsUpdatePromise = new Promise.Expiring(5000, 'marketFilter - clearSearch');
         setSearch('');
         await listingsUpdatePromise;
-        marketReader.forceTrigger();
+        marketReader.trigger();
     }
 
     function setSearch(value) {
@@ -159,7 +159,7 @@
                 toast.create({
                     text: 'Could not save filter, search text is too long (' + filter.search.length + '/'+ SAVED_FILTER_MAX_SEARCH_LENGTH + ')',
                     image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
-                });        
+                });
                 return;
             }
         } else {
@@ -189,12 +189,12 @@
     }
 
     function syncListingsView() {
-        const marketData = events.getLast('state-market');
+        const marketData = events.getLast('reader-market');
         if(!marketData) {
             return;
         }
         // do nothing on own listings tab
-        if(marketData.lastType === 'OWN') {
+        if(marketData.type === 'OWN') {
             resetListingsView(marketData);
             return;
         }
@@ -211,14 +211,12 @@
             resetListingsView(marketData);
             return;
         }
+
         // type
         const itemId = TYPE_TO_ITEM[currentFilter.type];
         const conversionsByItem = dropCache.conversionMappings[itemId].reduce((a,b) => (a[b.from] = b, a), {});
 
-        //*HERE
-        
-        let matchingListings = marketData.last.filter(listing => listing.item in conversionsByItem);
-
+        let matchingListings = marketData.listings.filter(listing => listing.item in conversionsByItem);
         for(const listing of matchingListings) {
             listing.ratio = listing.price / conversionsByItem[listing.item].amount;
         }
@@ -226,7 +224,7 @@
         if(currentFilter.amount) {
             matchingListings = matchingListings.slice(0, currentFilter.amount);
         }
-        for(const listing of marketData.last) {
+        for(const listing of marketData.listings) {
             if(matchingListings.includes(listing)) {
                 listing.element.show();
                 if(!listing.element.find('.ratio').length) {
@@ -239,7 +237,7 @@
     }
 
     function resetListingsView(marketData) {
-        for(const element of marketData.last.map(a => a.element)) {
+        for(const element of marketData.listings.map(a => a.element)) {
             element.find('.ratio').remove();
             element.show();
         }

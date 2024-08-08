@@ -3578,29 +3578,25 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
     let inProgress = false;
 
     const exports = {
-        trigger: update,
-        forceTrigger: forceUpdate //forceTrigger will read the market even if a search has been applied
+        trigger
     };
 
     function initialise() {
-        events.register('page', update);
-        window.setInterval(update, 10000);
+        events.register('page', trigger);
+        window.setInterval(trigger, 10000);
     }
 
-    function forceUpdate(){update(true);}
-
-    function update(readEvenIfSearching = false) {
+    function trigger() {
         const page = events.getLast('page');
         if(!page) {
-            
             return;
         }
         if(page.type === 'market') {
-            readMarketScreen(readEvenIfSearching);
+            readMarketScreen();
         }
     }
 
-    async function readMarketScreen(readEvenIfSearching = false) {
+    async function readMarketScreen() {
         if(inProgress) {
             return;
         }
@@ -3609,11 +3605,9 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
             await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
             const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
-            if(!readEvenIfSearching && $('market-listings-component .search > input').val()) {
-                return;
-            }
+            const count = util.parseNumber($('market-listings-component .count').text());
             const listings = [];
-            $('market-listings-component .search ~ button').each((i,element) => {
+            $('market-listings-component .search ~ button').each((_i,element) => {
                 element = $(element);
                 const name = element.find('.name').text();
                 const item = itemCache.byName[name];
@@ -3635,6 +3629,7 @@ window.moduleRegistry.add('marketReader', (events, elementWatcher, itemCache, ut
             });
             emitEvent({
                 type,
+                count,
                 listings,
             });
         } catch(e) {
@@ -7390,7 +7385,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             handler: handleConfigStateChange
         });
         events.register('page', update);
-        events.register('state-market', update);
+        events.register('reader-market', update);
 
         savedFilters = await localDatabase.getAllEntries(STORE_NAME);
         syncCustomView();
@@ -7404,15 +7399,15 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         // Buy tab -> trigger update
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(1)', function() {
             showComponent();
-            marketReader.forceTrigger();
+            marketReader.trigger();
         });
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(2)', function() {
             showComponent();
-            marketReader.forceTrigger();
+            marketReader.trigger();
         });
         $(document).on('click', 'market-listings-component .card > .tabs > :nth-child(3)', function() {
             hideComponent();
-            marketReader.forceTrigger();
+            marketReader.trigger();
         });
 
         elementCreator.addStyles(`
@@ -7482,17 +7477,17 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
     async function applyFilter(filter) {
         Object.assign(currentFilter, {search:null}, filter);
         currentFilter.key = `${currentFilter.listingType}-${currentFilter.type}`;
-        if(currentFilter.type && currentFilter.type !== 'None') {
-            // await clearSearch();
-            let builder = '';
-            Object.entries(dropCache.conversionMappings[TYPE_TO_ITEM[currentFilter.type]]).map(entry => {let v = entry[1]; builder += ('^' + itemCache.byId[v.from].name + '$|');})
-            if(builder.charAt(builder.length - 1) === '|') builder = builder.slice(0, -1); 
-            setSearch(builder);
-
-            workaround_variable = true;
-            marketReader.forceTrigger();
+        if(!currentFilter.type ||currentFilter.type === 'None') {
+            syncListingsView();
+            return;
         }
-        else syncListingsView();
+        const search = Object.values(dropCache.conversionMappings[TYPE_TO_ITEM[currentFilter.type]])
+            .map(conversion => conversion.from)
+            .map(id => itemCache.byId[id].name)
+            .map(name => `^${name}$`)
+            .join('|');
+        setSearch(search);
+        marketReader.trigger();
     }
 
     async function clearSearch() {
@@ -7502,7 +7497,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         listingsUpdatePromise = new Promise.Expiring(5000, 'marketFilter - clearSearch');
         setSearch('');
         await listingsUpdatePromise;
-        marketReader.forceTrigger();
+        marketReader.trigger();
     }
 
     function setSearch(value) {
@@ -7522,7 +7517,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
                 toast.create({
                     text: 'Could not save filter, search text is too long (' + filter.search.length + '/'+ SAVED_FILTER_MAX_SEARCH_LENGTH + ')',
                     image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
-                });        
+                });
                 return;
             }
         } else {
@@ -7552,12 +7547,12 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
     }
 
     function syncListingsView() {
-        const marketData = events.getLast('state-market');
+        const marketData = events.getLast('reader-market');
         if(!marketData) {
             return;
         }
         // do nothing on own listings tab
-        if(marketData.lastType === 'OWN') {
+        if(marketData.type === 'OWN') {
             resetListingsView(marketData);
             return;
         }
@@ -7574,14 +7569,12 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             resetListingsView(marketData);
             return;
         }
+
         // type
         const itemId = TYPE_TO_ITEM[currentFilter.type];
         const conversionsByItem = dropCache.conversionMappings[itemId].reduce((a,b) => (a[b.from] = b, a), {});
 
-        //*HERE
-        
-        let matchingListings = marketData.last.filter(listing => listing.item in conversionsByItem);
-
+        let matchingListings = marketData.listings.filter(listing => listing.item in conversionsByItem);
         for(const listing of matchingListings) {
             listing.ratio = listing.price / conversionsByItem[listing.item].amount;
         }
@@ -7589,7 +7582,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         if(currentFilter.amount) {
             matchingListings = matchingListings.slice(0, currentFilter.amount);
         }
-        for(const listing of marketData.last) {
+        for(const listing of marketData.listings) {
             if(matchingListings.includes(listing)) {
                 listing.element.show();
                 if(!listing.element.find('.ratio').length) {
@@ -7602,7 +7595,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
     }
 
     function resetListingsView(marketData) {
-        for(const element of marketData.last.map(a => a.element)) {
+        for(const element of marketData.listings.map(a => a.element)) {
             element.find('.ratio').remove();
             element.show();
         }
@@ -9021,34 +9014,6 @@ window.moduleRegistry.add('lootStore', (events, util) => {
         }
         state = event;
         events.emit('state-loot', state);
-    }
-
-    initialise();
-
-}
-);
-// marketStore
-window.moduleRegistry.add('marketStore', (events) => {
-
-    const emitEvent = events.emit.bind(null, 'state-market');
-    let state = {};
-
-    function initialise() {
-        events.register('page', handlePage);
-        events.register('reader-market', handleMarketReader);
-    }
-
-    function handlePage(event) {
-        if(event.type == 'market') {
-            state = {};
-        }
-    }
-
-    function handleMarketReader(event) {
-        state[event.type] = event.listings;
-        state.lastType = event.type;
-        state.last = event.listings;
-        emitEvent(state);
     }
 
     initialise();

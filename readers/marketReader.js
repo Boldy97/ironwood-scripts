@@ -4,29 +4,25 @@
     let inProgress = false;
 
     const exports = {
-        trigger: update,
-        forceTrigger: forceUpdate //forceTrigger will read the market even if a search has been applied
+        trigger
     };
 
     function initialise() {
-        events.register('page', update);
-        window.setInterval(update, 10000);
+        events.register('page', trigger);
+        window.setInterval(trigger, 10000);
     }
 
-    function forceUpdate(){update(true);}
-
-    function update(readEvenIfSearching = false) {
+    function trigger() {
         const page = events.getLast('page');
         if(!page) {
-            
             return;
         }
         if(page.type === 'market') {
-            readMarketScreen(readEvenIfSearching);
+            readMarketScreen();
         }
     }
 
-    async function readMarketScreen(readEvenIfSearching = false) {
+    async function readMarketScreen() {
         if(inProgress) {
             return;
         }
@@ -35,11 +31,9 @@
             await elementWatcher.exists('market-listings-component .search ~ button', undefined, 10000);
             const selectedTab = $('market-listings-component .card > .tabs > button.tab-active').text().toLowerCase();
             const type = selectedTab === 'orders' ? 'BUY' : selectedTab === 'listings' ? 'OWN' : 'SELL';
-            if(!readEvenIfSearching && $('market-listings-component .search > input').val()) {
-                return;
-            }
+            const count = util.parseNumber($('market-listings-component .count').text());
             const listings = [];
-            $('market-listings-component .search ~ button').each((i,element) => {
+            $('market-listings-component .search ~ button').each((_i,element) => {
                 element = $(element);
                 const name = element.find('.name').text();
                 const item = itemCache.byName[name];
@@ -61,6 +55,7 @@
             });
             emitEvent({
                 type,
+                count,
                 listings,
             });
         } catch(e) {
