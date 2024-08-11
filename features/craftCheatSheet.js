@@ -77,6 +77,14 @@
                 ${html}
             </div>
         `);
+        $(element).on('click', () => {
+            const old = element.css('opacity');
+            if(old === '1') {
+                element.css('opacity', 0.05);
+            } else {
+                element.css('opacity', 1);
+            }
+        });
         return element;
     }
 
