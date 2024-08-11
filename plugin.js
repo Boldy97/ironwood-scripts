@@ -1271,6 +1271,10 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
         getTag
     };
 
+    function initialise() {
+        addStyles(styles);
+    }
+
     function addStyles(css) {
         const head = document.getElementsByTagName('head')[0]
         if(!head) {
@@ -1278,7 +1282,6 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
             return;
         }
         const style = document.createElement('style');
-        style.type = 'text/css';
         style.innerHTML = css;
         head.appendChild(style);
     }
@@ -1296,24 +1299,38 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
     }
 
     function getTag(text, image, clazz) {
-        const element = $(`<div>${text}</div>`)
-            .css('border-radius', '4px')
-            .css('padding', '2px 6px')
-            .css('border', '1px solid #263849')
-            .css('font-size', '14px')
-            .css('color', '#aaa')
-            .css('display', 'flex')
-            .css('align-items', 'center')
+        const element = $(`<div class='custom-element-creator-tag'>${text}</div>`)
             .addClass(clazz);
         if(image) {
-            const imageElement = $(`<img src='${image}'/>`)
-                .css('width', '16px')
-                .css('height', '16px')
-                .css('image-rendering', 'auto');
+            const imageElement = $(`<img src='${image}'/>`);
             element.prepend(imageElement);
         }
         return element;
     }
+
+    const styles = `
+        .custom-element-creator-tag {
+            border-radius: 4px;
+            padding: 0 2px;
+            border: 1px solid #263849;
+            font-size: 14px;
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            margin: 2px;
+        }
+
+        .custom-element-creator-tag > img {
+            width: 15px;
+            height: 15px;
+            filter: brightness(0.9);
+            image-rendering: auto;
+        }
+    `;
+
+    initialise();
 
     return exports;
 
@@ -2297,21 +2314,27 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
 }
 );
 // petUtil
-window.moduleRegistry.add('petUtil', (petCache, petPassiveCache, expeditionCache, util, request, Promise) => {
+window.moduleRegistry.add('petUtil', (petCache, petPassiveCache, expeditionCache, itemCache, util, request, Promise) => {
 
     const STATS_BASE = ['health', 'attack', 'defense'];
     const STATS_SPECIAL = ['meleeAttack', 'meleeDefense', 'rangedAttack', 'rangedDefense', 'magicAttack', 'magicDefense', 'hunger', 'eggFind', 'itemFind'];
     const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
     const IMAGES = {
         health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
-        attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
-        defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
+        attack: 'https://img.icons8.com/?size=48&id=16672',
+        defense: 'https://img.icons8.com/?size=48&id=I2lKi8lyTaJD',
         itemFind: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8',
         eggFind: 'https://img.icons8.com/?size=48&id=Ybx2AvxzyUfH',
         hunger: 'https://img.icons8.com/?size=48&id=AXExnoyylJdK',
-        melee: 'https://img.icons8.com/?size=48&id=16672',
+        melee: 'https://img.icons8.com/?size=48&id=I2lKi8lyTaJD',
         magic: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
-        ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y'
+        ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y',
+        wood: `/assets/${itemCache.byName['Pine Log'].image}`,
+        ore: `/assets/${itemCache.byName['Copper Ore'].image}`,
+        veges: `/assets/${itemCache.byName['Peony'].image}`,
+        flowers: `/assets/${itemCache.byName['Potato'].image}`,
+        fish: `/assets/${itemCache.byName['Raw Shrimp'].image}`,
+        bones: `/assets/${itemCache.byName['Bone'].image}`
     };
     const ROTATION_NAMES = [
         'melee',
@@ -2347,6 +2370,23 @@ window.moduleRegistry.add('petUtil', (petCache, petPassiveCache, expeditionCache
     async function initialise() {
         exports.VERSION = +(await request.getPetVersion());
         SPECIAL_CHAR = exports.VERSION + '';
+        for(const petPassive of petPassiveCache.list) {
+            if(petPassive.name.startsWith('Melee')) {
+                petPassive.image = IMAGES.melee;
+            } else if(petPassive.name.startsWith('Ranged')) {
+                petPassive.image = IMAGES.ranged;
+            } else if(petPassive.name.startsWith('Magic')) {
+                petPassive.image = IMAGES.magic;
+            } else if(petPassive.name.startsWith('Hunger')) {
+                petPassive.image = IMAGES.hunger;
+            } else if(petPassive.name.startsWith('Egg Find')) {
+                petPassive.image = IMAGES.eggFind;
+            } else if(petPassive.name.startsWith('Loot Find')) {
+                petPassive.image = IMAGES.itemFind;
+            } else {
+                console.error(`Unmapped pet passive name, please fix : ${petPassive.name}`);
+            }
+        }
         initialised.resolve(exports);
     }
 
@@ -8008,7 +8048,7 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
     function highlight(pet, color1, color2, root) {
         for(const stat of stats) {
             if(pet[stat] === highestValues[pet.family][stat]) {
-                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${color1}`);
+                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 6px 0px ${color1}`);
             } else {
                 root.find(`.stat-${stat}`).css('box-shadow', '');
             }
@@ -8016,9 +8056,9 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
         for(const id of pet.passives) {
             const passive = petPassiveCache.byId[id].stats;
             if(passive.name === 'hunger') {
-                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color2}`);
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 6px 0px ${color2}`);
             } else if(passive.value === highestValues[pet.family][passive.name]) {
-                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color1}`);
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 6px 0px ${color1}`);
             } else {
                 root.find(`.passive-${passive.name}`).css('box-shadow', '');
             }
@@ -8057,9 +8097,10 @@ window.moduleRegistry.add('petStatHighlighter', (configuration, events, util, co
 }
 );
 // petStatRedesign
-window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petPassiveCache, colorMapper, petUtil) => {
+window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCreator, petPassiveCache, petCache, colorMapper, petUtil) => {
 
     let enabled = false;
+    let showLootTypeEnabled = false;
     const emitEvent = events.emit.bind(null, 'redesign-pet');
 
     function initialise() {
@@ -8070,11 +8111,24 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
             default: true,
             handler: handleConfigStateChange
         });
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-stat-redesign-loot-type',
+            name: 'Stat redesign - loot type',
+            default: true,
+            handler: handleConfigStateChange
+        });
         events.register('state-pet', update);
+        elementCreator.addStyles(styles);
     }
 
-    function handleConfigStateChange(state) {
-        enabled = state;
+    function handleConfigStateChange(state, name) {
+        if(name === 'pet-stat-redesign') {
+            enabled = state;
+        }
+        if(name === 'pet-stat-redesign-loot-type') {
+            showLootTypeEnabled = state;
+        }
     }
 
     function update(state) {
@@ -8129,23 +8183,50 @@ window.moduleRegistry.add('petStatRedesign', (configuration, events, elementCrea
             return false;
         }
         tags.empty();
-        const table = $(`<div style='display:inline-grid;grid-template-rows:1fr 1fr;grid-auto-flow:column'></div>`);
+        const table = $(`<div class='custom-pet-stat-redesign-table'></div>`);
         tags.append(table);
+        if(showLootTypeEnabled) {
+            // abilities
+            const basepet = petCache.byId[pet.species];
+            for(const ability of basepet.abilities) {
+                const name = Object.keys(ability)[0];
+                const value = Object.values(ability)[0];
+                table.append(elementCreator.getTag(value, petUtil.IMAGES[name]));
+            }
+            // spacing
+            table.append(`<div class='spacing'></div>`);
+        }
         // stats
         table.append(elementCreator.getTag(`${pet.health}%`, petUtil.IMAGES.health, 'stat-health'));
         table.append(elementCreator.getTag(`${pet.attack}%`, petUtil.IMAGES.attack, 'stat-attack'));
         table.append(elementCreator.getTag(`${pet.defense}%`, petUtil.IMAGES.defense, 'stat-defense'));
         // spacing
-        table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
+        table.append(`<div class='spacing'></div>`);
         // passives
         for(const id of pet.passives) {
             const passive = petPassiveCache.byId[id];
-            table.append(elementCreator.getTag(passive.name, null, `passive-${passive.stats.name}`));
+            table.append(elementCreator.getTag(passive.stats.level, passive.image, `passive-${passive.stats.name}`));
         }
         return true;
     }
+
+    const styles = `
+        .custom-pet-stat-redesign-table {
+            display: flex;
+        }
+
+        .custom-pet-stat-redesign-table > .spacing {
+            padding: 5px;
+        }
+
+        .custom-pet-stat-redesign-table > div[class*="stat-"] {
+            color: #ccc;
+        }
+
+        .custom-pet-stat-redesign-table > div[class*="passive-"] {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    `;
 
     initialise();
 
@@ -10134,7 +10215,7 @@ window.moduleRegistry.add('petCache', (request) => {
 }
 );
 // petPassiveCache
-window.moduleRegistry.add('petPassiveCache', (request) => {
+window.moduleRegistry.add('petPassiveCache', (util, request) => {
 
     const exports = {
         list: [],
@@ -10152,7 +10233,8 @@ window.moduleRegistry.add('petPassiveCache', (request) => {
             exports.idToIndex[petPassive.id] = exports.list.length-1;
             petPassive.stats = {
                 name: petPassive.statName,
-                value: petPassive.statValue
+                value: petPassive.statValue,
+                level: util.parseNumber(petPassive.name)
             };
             delete petPassive.statName;
             delete petPassive.statValue;

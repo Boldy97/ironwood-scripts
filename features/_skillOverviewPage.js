@@ -70,7 +70,7 @@
         });
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         if(state) {
             pages.show(PAGE_NAME);
         } else {

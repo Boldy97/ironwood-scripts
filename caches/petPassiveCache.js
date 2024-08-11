@@ -1,4 +1,4 @@
-(request) => {
+(util, request) => {
 
     const exports = {
         list: [],
@@ -16,7 +16,8 @@
             exports.idToIndex[petPassive.id] = exports.list.length-1;
             petPassive.stats = {
                 name: petPassive.statName,
-                value: petPassive.statValue
+                value: petPassive.statValue,
+                level: util.parseNumber(petPassive.name)
             };
             delete petPassive.statName;
             delete petPassive.statValue;

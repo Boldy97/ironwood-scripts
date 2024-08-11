@@ -53,7 +53,7 @@
     function highlight(pet, color1, color2, root) {
         for(const stat of stats) {
             if(pet[stat] === highestValues[pet.family][stat]) {
-                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 8px 0px ${color1}`);
+                root.find(`.stat-${stat}`).css('box-shadow', `inset 0px 0px 6px 0px ${color1}`);
             } else {
                 root.find(`.stat-${stat}`).css('box-shadow', '');
             }
@@ -61,9 +61,9 @@
         for(const id of pet.passives) {
             const passive = petPassiveCache.byId[id].stats;
             if(passive.name === 'hunger') {
-                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color2}`);
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 6px 0px ${color2}`);
             } else if(passive.value === highestValues[pet.family][passive.name]) {
-                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 8px 0px ${color1}`);
+                root.find(`.passive-${passive.name}`).css('box-shadow', `inset 0px 0px 6px 0px ${color1}`);
             } else {
                 root.find(`.passive-${passive.name}`).css('box-shadow', '');
             }

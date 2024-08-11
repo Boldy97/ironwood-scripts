@@ -1,6 +1,7 @@
-(configuration, events, elementCreator, petPassiveCache, colorMapper, petUtil) => {
+(configuration, events, elementCreator, petPassiveCache, petCache, colorMapper, petUtil) => {
 
     let enabled = false;
+    let showLootTypeEnabled = false;
     const emitEvent = events.emit.bind(null, 'redesign-pet');
 
     function initialise() {
@@ -11,11 +12,24 @@
             default: true,
             handler: handleConfigStateChange
         });
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-stat-redesign-loot-type',
+            name: 'Stat redesign - loot type',
+            default: true,
+            handler: handleConfigStateChange
+        });
         events.register('state-pet', update);
+        elementCreator.addStyles(styles);
     }
 
-    function handleConfigStateChange(state) {
-        enabled = state;
+    function handleConfigStateChange(state, name) {
+        if(name === 'pet-stat-redesign') {
+            enabled = state;
+        }
+        if(name === 'pet-stat-redesign-loot-type') {
+            showLootTypeEnabled = state;
+        }
     }
 
     function update(state) {
@@ -70,23 +84,50 @@
             return false;
         }
         tags.empty();
-        const table = $(`<div style='display:inline-grid;grid-template-rows:1fr 1fr;grid-auto-flow:column'></div>`);
+        const table = $(`<div class='custom-pet-stat-redesign-table'></div>`);
         tags.append(table);
+        if(showLootTypeEnabled) {
+            // abilities
+            const basepet = petCache.byId[pet.species];
+            for(const ability of basepet.abilities) {
+                const name = Object.keys(ability)[0];
+                const value = Object.values(ability)[0];
+                table.append(elementCreator.getTag(value, petUtil.IMAGES[name]));
+            }
+            // spacing
+            table.append(`<div class='spacing'></div>`);
+        }
         // stats
         table.append(elementCreator.getTag(`${pet.health}%`, petUtil.IMAGES.health, 'stat-health'));
         table.append(elementCreator.getTag(`${pet.attack}%`, petUtil.IMAGES.attack, 'stat-attack'));
         table.append(elementCreator.getTag(`${pet.defense}%`, petUtil.IMAGES.defense, 'stat-defense'));
         // spacing
-        table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
-        table.append(`<div style='padding:5px'></div>`);
+        table.append(`<div class='spacing'></div>`);
         // passives
         for(const id of pet.passives) {
             const passive = petPassiveCache.byId[id];
-            table.append(elementCreator.getTag(passive.name, null, `passive-${passive.stats.name}`));
+            table.append(elementCreator.getTag(passive.stats.level, passive.image, `passive-${passive.stats.name}`));
         }
         return true;
     }
+
+    const styles = `
+        .custom-pet-stat-redesign-table {
+            display: flex;
+        }
+
+        .custom-pet-stat-redesign-table > .spacing {
+            padding: 5px;
+        }
+
+        .custom-pet-stat-redesign-table > div[class*="stat-"] {
+            color: #ccc;
+        }
+
+        .custom-pet-stat-redesign-table > div[class*="passive-"] {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    `;
 
     initialise();
 

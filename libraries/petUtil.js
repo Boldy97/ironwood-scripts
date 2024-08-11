@@ -1,18 +1,24 @@
-(petCache, petPassiveCache, expeditionCache, util, request, Promise) => {
+(petCache, petPassiveCache, expeditionCache, itemCache, util, request, Promise) => {
 
     const STATS_BASE = ['health', 'attack', 'defense'];
     const STATS_SPECIAL = ['meleeAttack', 'meleeDefense', 'rangedAttack', 'rangedDefense', 'magicAttack', 'magicDefense', 'hunger', 'eggFind', 'itemFind'];
     const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
     const IMAGES = {
         health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
-        attack: 'https://cdn-icons-png.flaticon.com/512/9743/9743017.png',
-        defense: 'https://cdn-icons-png.flaticon.com/512/2592/2592488.png',
+        attack: 'https://img.icons8.com/?size=48&id=16672',
+        defense: 'https://img.icons8.com/?size=48&id=I2lKi8lyTaJD',
         itemFind: 'https://img.icons8.com/?size=48&id=M2yQkpBAlIS8',
         eggFind: 'https://img.icons8.com/?size=48&id=Ybx2AvxzyUfH',
         hunger: 'https://img.icons8.com/?size=48&id=AXExnoyylJdK',
-        melee: 'https://img.icons8.com/?size=48&id=16672',
+        melee: 'https://img.icons8.com/?size=48&id=I2lKi8lyTaJD',
         magic: 'https://img.icons8.com/?size=48&id=CWksSHWEtOtX',
-        ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y'
+        ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y',
+        wood: `/assets/${itemCache.byName['Pine Log'].image}`,
+        ore: `/assets/${itemCache.byName['Copper Ore'].image}`,
+        veges: `/assets/${itemCache.byName['Peony'].image}`,
+        flowers: `/assets/${itemCache.byName['Potato'].image}`,
+        fish: `/assets/${itemCache.byName['Raw Shrimp'].image}`,
+        bones: `/assets/${itemCache.byName['Bone'].image}`
     };
     const ROTATION_NAMES = [
         'melee',
@@ -48,6 +54,23 @@
     async function initialise() {
         exports.VERSION = +(await request.getPetVersion());
         SPECIAL_CHAR = exports.VERSION + '';
+        for(const petPassive of petPassiveCache.list) {
+            if(petPassive.name.startsWith('Melee')) {
+                petPassive.image = IMAGES.melee;
+            } else if(petPassive.name.startsWith('Ranged')) {
+                petPassive.image = IMAGES.ranged;
+            } else if(petPassive.name.startsWith('Magic')) {
+                petPassive.image = IMAGES.magic;
+            } else if(petPassive.name.startsWith('Hunger')) {
+                petPassive.image = IMAGES.hunger;
+            } else if(petPassive.name.startsWith('Egg Find')) {
+                petPassive.image = IMAGES.eggFind;
+            } else if(petPassive.name.startsWith('Loot Find')) {
+                petPassive.image = IMAGES.itemFind;
+            } else {
+                console.error(`Unmapped pet passive name, please fix : ${petPassive.name}`);
+            }
+        }
         initialised.resolve(exports);
     }
 
