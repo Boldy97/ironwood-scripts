@@ -1364,7 +1364,7 @@ window.moduleRegistry.add('elementWatcher', (Promise, polyfill) => {
 
     async function childAddedContinuous(selector, callback) {
         const parent = await exists(selector);
-        const observer = new MutationObserver(function(mutations, observer) {
+        const observer = new MutationObserver(function(mutations) {
             if(mutations.find(a => a.addedNodes?.length)) {
                 callback();
             }
@@ -1374,13 +1374,13 @@ window.moduleRegistry.add('elementWatcher', (Promise, polyfill) => {
 
     async function addRecursiveObserver(callback, ...chain) {
         const root = await exists(chain[0]);
-        chain = chain.slice(1).map(a => a.toUpperCase());
+        chain = chain.slice(1);
         _addRecursiveObserver(callback, root, chain, false, true);
     }
 
     async function addReverseRecursiveObserver(callback, ...chain) {
         const root = await exists(chain[0]);
-        chain = chain.slice(1).map(a => a.toUpperCase());
+        chain = chain.slice(1);
         _addRecursiveObserver(callback, root, chain, true, true);
     }
 
@@ -1390,17 +1390,17 @@ window.moduleRegistry.add('elementWatcher', (Promise, polyfill) => {
                 callback(element);
             }
         }
-        const observer = new MutationObserver(function(mutations, observer) {
+        const observer = new MutationObserver(function(mutations) {
             const match = mutations
                 .flatMap(a => Array.from(reverse ? a.removedNodes : a.addedNodes))
-                .find(a => a.tagName === chain[0]);
+                .find(a => $(a).is(chain[0]));
             if(match) {
                 _addRecursiveObserver(callback, match, chain.slice(1), reverse, false);
             }
         });
         observer.observe(element, { childList: true });
         for(const child of element.children) {
-            if(child.tagName === chain[0]) {
+            if($(child).is(chain[0])) {
                 _addRecursiveObserver(callback, child, chain.slice(1), reverse, true);
             }
         }
@@ -8526,8 +8526,8 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
 
 }
 );
-// targetCraftAmount
-window.moduleRegistry.add('targetCraftAmount', (configuration, elementWatcher, util, colorMapper) => {
+// targetAmountCrafting
+window.moduleRegistry.add('targetAmountCrafting', (configuration, elementWatcher, util, colorMapper) => {
 
     let enabled = false;
 
@@ -8556,7 +8556,7 @@ window.moduleRegistry.add('targetCraftAmount', (configuration, elementWatcher, u
         const ownedAmount = getOwnedAmount(modal);
         const input = getInput(modal);
         const craftButton = getCraftButton(modal);
-        const targetButton = createTargetButton(modal, craftButton);
+        const targetButton = createTargetButton(craftButton);
         attachInputListener(input, targetButton, ownedAmount);
         attachTargetButtonListener(input, targetButton, craftButton, ownedAmount);
     }
@@ -8577,7 +8577,7 @@ window.moduleRegistry.add('targetCraftAmount', (configuration, elementWatcher, u
         return $(modal).find('button.craft[type=submit]');
     }
 
-    function createTargetButton(modal, craftButton) {
+    function createTargetButton(craftButton) {
         const targetButton = craftButton.clone()
             .text('Target')
             .css('background-color', colorMapper('componentLight'));
@@ -8602,6 +8602,98 @@ window.moduleRegistry.add('targetCraftAmount', (configuration, elementWatcher, u
             input.val(value - ownedAmount);
             input[0].dispatchEvent(new Event('input'));
             craftButton.click();
+            return false;
+        });
+    }
+
+    initialise();
+
+}
+);
+// targetAmountMarket
+window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, util, colorMapper) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Market',
+            key: 'target-market-amount',
+            name: 'Target Amount',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        elementWatcher.addRecursiveObserver(onListingOpened, 'app-component > div.scroll div.wrapper', 'market-page', 'market-listings-component', 'div.groups', 'div.sticky', 'div.preview');
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function onListingOpened(element) {
+        if(!enabled) {
+            return;
+        }
+        const buyButton = getBuyButton(element);
+        if(!buyButton.length) {
+            return; // avoid triggering on other elements
+        }
+        const ownedAmount = getOwnedAmount(element);
+        const availableAmount = getAvailableAmount(element);
+        const input = getInput(element);
+        const targetButton = createTargetButton(buyButton);
+        attachInputListener(input, targetButton, ownedAmount, availableAmount);
+        attachTargetButtonListener(input, targetButton, ownedAmount);
+    }
+
+    function getOwnedAmount(element) {
+        return util.parseNumber($(element).find('.row:contains("Owned")')
+            .contents()
+            .filter(function() {
+                return this.nodeType === Node.TEXT_NODE;
+            }).text());
+    }
+
+    function getAvailableAmount(element) {
+        return util.parseNumber($(element).find('.row:contains("Available")')
+            .contents()
+            .filter(function() {
+                return this.nodeType === Node.TEXT_NODE;
+            }).text());
+    }
+
+    function getInput(element) {
+        return $(element).find('input[placeholder=Quantity]');
+    }
+
+    function getBuyButton(element) {
+        return $(element).find('button.action:contains("Buy")');
+    }
+
+    function createTargetButton(buyButton) {
+        const targetButton = buyButton.clone()
+            .text('Target')
+            .css('background-color', colorMapper('componentLight'));
+        buyButton.before(targetButton);
+        return targetButton;
+    }
+
+    function attachInputListener(input, targetButton, ownedAmount, availableAmount) {
+        input.on('change paste keyup', function() {
+            const value = +input.val();
+            if(!!value && value > ownedAmount && value - ownedAmount <= availableAmount) {
+                targetButton.removeAttr('disabled');
+            } else {
+                targetButton.attr('disabled', true);
+            }
+        });
+    }
+
+    function attachTargetButtonListener(input, targetButton, ownedAmount) {
+        targetButton.on('click', function() {
+            const value = +input.val();
+            input.val(value - ownedAmount);
+            input[0].dispatchEvent(new Event('input'));
             return false;
         });
     }

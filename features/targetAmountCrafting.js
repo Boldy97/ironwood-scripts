@@ -27,7 +27,7 @@
         const ownedAmount = getOwnedAmount(modal);
         const input = getInput(modal);
         const craftButton = getCraftButton(modal);
-        const targetButton = createTargetButton(modal, craftButton);
+        const targetButton = createTargetButton(craftButton);
         attachInputListener(input, targetButton, ownedAmount);
         attachTargetButtonListener(input, targetButton, craftButton, ownedAmount);
     }
@@ -48,7 +48,7 @@
         return $(modal).find('button.craft[type=submit]');
     }
 
-    function createTargetButton(modal, craftButton) {
+    function createTargetButton(craftButton) {
         const targetButton = craftButton.clone()
             .text('Target')
             .css('background-color', colorMapper('componentLight'));

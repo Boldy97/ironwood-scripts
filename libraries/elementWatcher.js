@@ -42,7 +42,7 @@
 
     async function childAddedContinuous(selector, callback) {
         const parent = await exists(selector);
-        const observer = new MutationObserver(function(mutations, observer) {
+        const observer = new MutationObserver(function(mutations) {
             if(mutations.find(a => a.addedNodes?.length)) {
                 callback();
             }
@@ -52,13 +52,13 @@
 
     async function addRecursiveObserver(callback, ...chain) {
         const root = await exists(chain[0]);
-        chain = chain.slice(1).map(a => a.toUpperCase());
+        chain = chain.slice(1);
         _addRecursiveObserver(callback, root, chain, false, true);
     }
 
     async function addReverseRecursiveObserver(callback, ...chain) {
         const root = await exists(chain[0]);
-        chain = chain.slice(1).map(a => a.toUpperCase());
+        chain = chain.slice(1);
         _addRecursiveObserver(callback, root, chain, true, true);
     }
 
@@ -68,17 +68,17 @@
                 callback(element);
             }
         }
-        const observer = new MutationObserver(function(mutations, observer) {
+        const observer = new MutationObserver(function(mutations) {
             const match = mutations
                 .flatMap(a => Array.from(reverse ? a.removedNodes : a.addedNodes))
-                .find(a => a.tagName === chain[0]);
+                .find(a => $(a).is(chain[0]));
             if(match) {
                 _addRecursiveObserver(callback, match, chain.slice(1), reverse, false);
             }
         });
         observer.observe(element, { childList: true });
         for(const child of element.children) {
-            if(child.tagName === chain[0]) {
+            if($(child).is(chain[0])) {
                 _addRecursiveObserver(callback, child, chain.slice(1), reverse, true);
             }
         }
