@@ -8985,10 +8985,11 @@ window.moduleRegistry.add('expStateStore', (events, util) => {
                     level: 1
                 };
             }
-            if(skill.exp > state[skill.id].exp) {
+            const level = util.expToLevel(skill.exp);
+            if(skill.exp > state[skill.id].exp || level !== state[skill.id].level) {
                 updated = true;
                 state[skill.id].exp = skill.exp;
-                state[skill.id].level = util.expToLevel(skill.exp);
+                state[skill.id].level = level;
             }
         }
         if(updated) {
