@@ -14,3 +14,18 @@
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
 window.PANCAKE_VERSION = '4.11.0';
+Object.defineProperty(Array.prototype, '_groupBy', {
+    enumerable: false,
+    value: function(selector) {
+        return Object.values(this.reduce(function(rv, x) {
+            (rv[selector(x)] = rv[selector(x)] || []).push(x);
+            return rv;
+        }, {}));
+    }
+});
+Object.defineProperty(Array.prototype, '_distinct', {
+    enumerable: false,
+    value: function() {
+        return [...new Set(this)];
+    }
+});

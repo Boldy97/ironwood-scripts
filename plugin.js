@@ -14,6 +14,21 @@
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
 window.PANCAKE_VERSION = '4.11.0';
+Object.defineProperty(Array.prototype, '_groupBy', {
+    enumerable: false,
+    value: function(selector) {
+        return Object.values(this.reduce(function(rv, x) {
+            (rv[selector(x)] = rv[selector(x)] || []).push(x);
+            return rv;
+        }, {}));
+    }
+});
+Object.defineProperty(Array.prototype, '_distinct', {
+    enumerable: false,
+    value: function() {
+        return [...new Set(this)];
+    }
+});
 (() => {
 
     if(window.moduleRegistry) {
@@ -498,7 +513,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                 }
             }, selectBlueprint.delay || 0));
         for(const option of selectBlueprint.options) {
-            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''}>${option.text}</option>`);
+            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}>${option.text}</option>`);
         }
         parentRow.append(select);
         return parentRow;
@@ -3712,6 +3727,7 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, eleme
             const name = element.find('.image').next().find('.flex > :nth-child(1)')[0].textContent;
             const level = util.parseNumber(element.find('.image').next().find('.flex > :nth-child(2)')[0].textContent);
             const partOfTeam = !!element.closest('.card').find('.header:contains("Expedition Team")').length;
+            const partOfRanch = !!element.closest('.card').find('.header:contains("Ranch")').length;
             values.push({
                 parsed: false,
                 version: petUtil.VERSION,
@@ -3720,7 +3736,8 @@ window.moduleRegistry.add('petReader', (events, petCache, petPassiveCache, eleme
                 name,
                 level,
                 partOfTeam,
-                element: element.get()
+                partOfRanch,
+                element: element[0]
             });
         }
         emitEvent({
@@ -7897,6 +7914,97 @@ window.moduleRegistry.add('marketPriceButtons', (configuration, util, elementWat
     initialise();
 }
 );
+// petFilter
+window.moduleRegistry.add('petFilter', (configuration, events, components, elementCreator, petCache) => {
+
+    let enabled = false;
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Pets',
+            key: 'pet-filter',
+            name: 'Pet filter',
+            default: true,
+            handler: handleConfigStateChange
+        });
+        events.register('page', handlePage);
+        events.register('state-pet', update);
+        elementCreator.addStyles(styles);
+        const options = [{
+            text: 'None',
+            value: 'None',
+            selected: true
+        }];
+        options.push(
+            ...petCache.list
+                .map(a => a.family)
+                ._distinct()
+                .map(a => ({
+                    family: a,
+                    tier: petCache.list
+                        .filter(b => b.family === a)
+                        .map(b => b.tier)
+                        .sort()[0]
+                }))
+                ._groupBy(a => a.tier)
+                .flatMap(a => {
+                    a.unshift({family:`--- Tier ${a[0].tier} ---`});
+                    return a.map(b => ({
+                        value: b.family,
+                        text: b.family,
+                        disabled: b.family.startsWith('---')
+                    }));
+                })
+        );
+        components.search(componentBlueprint, 'dropdown').options = options;
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function handlePage(page) {
+        if(!enabled || page.type !== 'taming' || page.menu !== 'pets') {
+            return;
+        }
+        components.addComponent(componentBlueprint);
+    }
+
+    function update() {
+        const value = components.search(componentBlueprint, 'dropdown').options.find(a => a.selected).value;
+        for(const pet of events.getLast('state-pet')) {
+            if(pet.partOfTeam || pet.partOfRanch) {
+                continue;
+            }
+            $(pet.element).css('display', value === 'None' || pet.family === value ? 'flex' : 'none');
+        }
+    }
+
+    const componentBlueprint = {
+        componentId: 'petFilterComponent',
+        dependsOn: '.header:contains("Pets") ~ .sort',
+        parent: '.header:contains("Pets") ~ .sort',
+        selectedTabIndex: 0,
+        tabs: [{
+            rows: [{
+                id: 'dropdown',
+                type: 'dropdown',
+                action: update,
+                options: []
+            }]
+        }]
+    };
+
+    const styles = `
+        #petFilterComponent {
+            width: auto;
+        }
+    `;
+
+    initialise();
+
+}
+);
 // petHighlighter
 window.moduleRegistry.add('petHighlighter', (events) => {
 
@@ -7957,7 +8065,7 @@ window.moduleRegistry.add('petRenamer', (configuration, events, petUtil, element
         pasteButton = elementCreator.getButton('Paste encoded name', pasteName);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         enabled = state;
     }
 
@@ -9744,23 +9852,6 @@ window.moduleRegistry.add('dropCache', (request, itemCache, actionCache, ingredi
         produceItems: null,
         getMostCommonDrop
     };
-
-    Object.defineProperty(Array.prototype, '_groupBy', {
-        enumerable: false,
-        value: function(selector) {
-            return Object.values(this.reduce(function(rv, x) {
-                (rv[selector(x)] = rv[selector(x)] || []).push(x);
-                return rv;
-            }, {}));
-        }
-    });
-
-    Object.defineProperty(Array.prototype, '_distinct', {
-        enumerable: false,
-        value: function() {
-            return [...new Set(this)];
-        }
-    });
 
     async function initialise() {
         const drops = await request.listDrops();

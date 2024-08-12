@@ -17,7 +17,7 @@
         pasteButton = elementCreator.getButton('Paste encoded name', pasteName);
     }
 
-    function handleConfigStateChange(state, name) {
+    function handleConfigStateChange(state) {
         enabled = state;
     }
 

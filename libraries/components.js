@@ -312,7 +312,7 @@
                 }
             }, selectBlueprint.delay || 0));
         for(const option of selectBlueprint.options) {
-            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''}>${option.text}</option>`);
+            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}>${option.text}</option>`);
         }
         parentRow.append(select);
         return parentRow;

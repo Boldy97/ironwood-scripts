@@ -22,6 +22,7 @@
             const name = element.find('.image').next().find('.flex > :nth-child(1)')[0].textContent;
             const level = util.parseNumber(element.find('.image').next().find('.flex > :nth-child(2)')[0].textContent);
             const partOfTeam = !!element.closest('.card').find('.header:contains("Expedition Team")').length;
+            const partOfRanch = !!element.closest('.card').find('.header:contains("Ranch")').length;
             values.push({
                 parsed: false,
                 version: petUtil.VERSION,
@@ -30,7 +31,8 @@
                 name,
                 level,
                 partOfTeam,
-                element: element.get()
+                partOfRanch,
+                element: element[0]
             });
         }
         emitEvent({

@@ -1,4 +1,4 @@
-(pages, components, elementWatcher, skillCache, userStore, events, util, configuration) => {
+(pages, components, skillCache, userStore, events, util, configuration) => {
 
     const registerUserStoreHandler = events.register.bind(null, 'userStore');
 
