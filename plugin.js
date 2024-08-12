@@ -2331,8 +2331,8 @@ window.moduleRegistry.add('petUtil', (petCache, petPassiveCache, expeditionCache
         ranged: 'https://img.icons8.com/?size=48&id=5ndWrWDbTE2Y',
         wood: `/assets/${itemCache.byName['Pine Log'].image}`,
         ore: `/assets/${itemCache.byName['Copper Ore'].image}`,
-        veges: `/assets/${itemCache.byName['Peony'].image}`,
-        flowers: `/assets/${itemCache.byName['Potato'].image}`,
+        veges: `/assets/${itemCache.byName['Potato'].image}`,
+        flowers: `/assets/${itemCache.byName['Peony'].image}`,
         fish: `/assets/${itemCache.byName['Raw Shrimp'].image}`,
         bones: `/assets/${itemCache.byName['Bone'].image}`
     };
