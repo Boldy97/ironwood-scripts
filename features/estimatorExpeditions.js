@@ -138,7 +138,7 @@
         if(!combinations.length) {
             return;
         }
-        console.debug(`Calculating ${combinations.length} team combinations`);
+        if (window['log-debug-messages']) console.debug(`Calculating ${combinations.length} team combinations`);
         const tier = events.getLast('page').tier;
         const expedition = petUtil.getExpeditionStats(tier);
         let bestSuccessChance = 0;

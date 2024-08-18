@@ -41,7 +41,7 @@
         page.category = page.category?.toUpperCase() || 'MISC';
         page.columns = page.columns || 1;
         pages.push(page);
-        console.debug('Registered pages', pages);
+        if (window['log-debug-messages']) console.debug('Registered pages', pages);
         await setupNavigation(page);
     }
 

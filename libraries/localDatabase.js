@@ -23,7 +23,7 @@
         request.onupgradeneeded = function(event) {
             const db = event.target.result;
             if(event.oldVersion <= 0) {
-                console.debug('Creating IndexedDB');
+                if (window['log-debug-messages']) console.debug('Creating IndexedDB');
                 db
                     .createObjectStore('settings', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });

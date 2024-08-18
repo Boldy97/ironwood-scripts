@@ -1740,13 +1740,13 @@ window.moduleRegistry.add('interceptor', (events) => {
         const pushState = history.pushState;
         history.pushState = function() {
             pushState.apply(history, arguments);
-            console.debug(`Detected page ${arguments[2]}`);
+            if (window['log-debug-messages']) console.debug(`Detected page ${arguments[2]}`);
             events.emit('url', arguments[2]);
         };
         const replaceState = history.replaceState;
         history.replaceState = function() {
             replaceState.apply(history, arguments);
-            console.debug(`Detected page ${arguments[2]}`);
+            if (window['log-debug-messages']) console.debug(`Detected page ${arguments[2]}`);
             events.emit('url', arguments[2]);
         }
     }
@@ -1837,7 +1837,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         request.onupgradeneeded = function(event) {
             const db = event.target.result;
             if(event.oldVersion <= 0) {
-                console.debug('Creating IndexedDB');
+                if (window['log-debug-messages']) console.debug('Creating IndexedDB');
                 db
                     .createObjectStore('settings', { keyPath: 'key' })
                     .createIndex('key', 'key', { unique: true });
@@ -2088,7 +2088,7 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
         page.category = page.category?.toUpperCase() || 'MISC';
         page.columns = page.columns || 1;
         pages.push(page);
-        console.debug('Registered pages', pages);
+        if (window['log-debug-messages']) console.debug('Registered pages', pages);
         await setupNavigation(page);
     }
 
@@ -6633,7 +6633,7 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
         if(!combinations.length) {
             return;
         }
-        console.debug(`Calculating ${combinations.length} team combinations`);
+        if (window['log-debug-messages']) console.debug(`Calculating ${combinations.length} team combinations`);
         const tier = events.getLast('page').tier;
         const expedition = petUtil.getExpeditionStats(tier);
         let bestSuccessChance = 0;
@@ -7237,7 +7237,7 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
 
     async function actionStop() {
         started = false;
-        console.debug(`Triggering beep in ${sleepAmount}ms`);
+        if (window['log-debug-messages']) console.debug(`Triggering beep in ${sleepAmount}ms`);
         await util.sleep(sleepAmount);
         beep();
     }
@@ -7415,6 +7415,25 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
 
 }
 );
+// logOptions
+window.moduleRegistry.add('logOptions', (configuration) => {
+
+    function initialise() {
+        configuration.registerCheckbox({
+            category: 'Logging',
+            key: 'log-debug-messages',
+            name: 'Log Debug Messages',
+            default: true,
+            handler: handleConfigStateChange
+        });
+    }
+
+    function handleConfigStateChange(state) {
+        window['log-debug-messages'] = state;
+    }
+
+    initialise();
+});
 // marketFilter
 window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast) => {
     const STORE_NAME = 'market-filters';
@@ -8523,7 +8542,7 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
     }
 
     async function migrate_v1(entries) {
-        console.log('Migrating sync-state to v1');
+        if (window['log-debug-messages']) console.log('Migrating sync-state to v1');
         for(const entry of entries) {
             await localDatabase.removeEntry(STORE_NAME, entry.key);
         }
