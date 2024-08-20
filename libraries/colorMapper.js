@@ -8,6 +8,8 @@
         warning: '#f0ad4e',
         danger: '#d9534f',
         inverse: '#292b2c',
+        // custom
+        focus: '#fff021',
         // component styling
         componentLight: '#393532',
         componentRegular: '#28211b',
