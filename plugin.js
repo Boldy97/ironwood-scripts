@@ -6626,8 +6626,9 @@ window.moduleRegistry.add('estimatorExpeditions', (events, estimator, components
                 pet,
                 stats: petUtil.petToStats(pet)
             }));
-        // make all combinations of 3 pets of different species (same family is allowed)
-        const combinations = util.generateCombinations(petsAndStats, 3, object => object.pet.species);
+        // make all combinations of 3 pets of different family
+        console.log(petsAndStats);
+        const combinations = util.generateCombinations(petsAndStats, 3, object => object.pet.family);
         if(!combinations.length) {
             return;
         }
