@@ -9520,7 +9520,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     }
 
     function getAttackStyle() {
-        return stats.attackStyle;
+        return stats.attackStyle || 'OneHanded';
     }
 
     function update(excludedItemIds) {

@@ -84,7 +84,7 @@
     }
 
     function getAttackStyle() {
-        return stats.attackStyle;
+        return stats.attackStyle || 'OneHanded';
     }
 
     function update(excludedItemIds) {
