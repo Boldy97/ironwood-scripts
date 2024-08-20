@@ -2346,7 +2346,7 @@ window.moduleRegistry.add('petUtil', (petCache, petPassiveCache, expeditionCache
         ore: `/assets/${itemCache.byName['Copper Ore'].image}`,
         veges: `/assets/${itemCache.byName['Potato'].image}`,
         flowers: `/assets/${itemCache.byName['Peony'].image}`,
-        fish: `/assets/${itemCache.byName['Raw Shrimp'].image}`,
+        fish: `/assets/${itemCache.byName['Raw Cod'].image}`,
         bones: `/assets/${itemCache.byName['Bone'].image}`
     };
     const ROTATION_NAMES = [
