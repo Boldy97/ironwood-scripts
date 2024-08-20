@@ -7911,7 +7911,7 @@ window.moduleRegistry.add('marketPriceButtons', (configuration, util, elementWat
 }
 );
 // petFilter
-window.moduleRegistry.add('petFilter', (configuration, events, components, elementCreator, petCache) => {
+window.moduleRegistry.add('petFilter', (configuration, events, components, elementCreator, petCache, colorMapper) => {
 
     let enabled = false;
 
@@ -7994,6 +7994,11 @@ window.moduleRegistry.add('petFilter', (configuration, events, components, eleme
     const styles = `
         #petFilterComponent {
             width: auto;
+            visibility: hidden;
+        }
+        #petFilterComponent .myItemSelect {
+            background-color: ${colorMapper('componentRegular')};
+            visibility: visible;
         }
     `;
 

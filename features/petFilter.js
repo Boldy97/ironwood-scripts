@@ -1,4 +1,4 @@
-(configuration, events, components, elementCreator, petCache) => {
+(configuration, events, components, elementCreator, petCache, colorMapper) => {
 
     let enabled = false;
 
@@ -81,6 +81,11 @@
     const styles = `
         #petFilterComponent {
             width: auto;
+            visibility: hidden;
+        }
+        #petFilterComponent .myItemSelect {
+            background-color: ${colorMapper('componentRegular')};
+            visibility: visible;
         }
     `;
 
