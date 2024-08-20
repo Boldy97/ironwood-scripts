@@ -70,7 +70,6 @@
 
     async function actionStop() {
         started = false;
-        console.debug(`Triggering beep in ${sleepAmount}ms`);
         await util.sleep(sleepAmount);
         beep();
     }

@@ -104,7 +104,7 @@
     }
 
     async function migrate_v1(entries) {
-        console.log('Migrating sync-state to v1');
+        console.debug('Migrating sync-state to v1');
         for(const entry of entries) {
             await localDatabase.removeEntry(STORE_NAME, entry.key);
         }
