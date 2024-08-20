@@ -7921,8 +7921,6 @@ window.moduleRegistry.add('petFilter', (configuration, events, components, eleme
             default: true,
             handler: handleConfigStateChange
         });
-        events.register('page', handlePage);
-        events.register('state-pet', update);
         elementCreator.addStyles(styles);
         const options = [{
             text: 'None',
@@ -7951,6 +7949,8 @@ window.moduleRegistry.add('petFilter', (configuration, events, components, eleme
                 })
         );
         components.search(componentBlueprint, 'dropdown').options = options;
+        events.register('page', handlePage);
+        events.register('state-pet', update);
     }
 
     function handleConfigStateChange(state) {
@@ -7967,7 +7967,7 @@ window.moduleRegistry.add('petFilter', (configuration, events, components, eleme
     function update() {
         const value = components.search(componentBlueprint, 'dropdown').options.find(a => a.selected).value;
         for(const pet of events.getLast('state-pet')) {
-            if(pet.partOfTeam || pet.partOfRanch) {
+            if(pet.partOfTeam || pet.partOfRanch || !pet.element) {
                 continue;
             }
             $(pet.element).css('display', value === 'None' || pet.family === value ? 'flex' : 'none');
