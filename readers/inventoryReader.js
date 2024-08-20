@@ -25,7 +25,7 @@
 
     function readInventoryScreen() {
         const inventory = {};
-        $('inventory-page .items > .item').each((i,element) => {
+        $('inventory-page .items > .item').each((_i,element) => {
             itemUtil.extractItem(element, inventory, true);
         });
         emitEvent({
@@ -36,7 +36,7 @@
 
     function readActionScreen() {
         const inventory = {};
-        $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((i,element) => {
+        $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((_i,element) => {
             itemUtil.extractItem(element, inventory);
         });
         emitEvent({
@@ -47,7 +47,7 @@
 
     function readExpeditionsScreen() {
         const inventory = {};
-        $('taming-page .heading:contains("Materials") + button').each((i,element) => {
+        $('taming-page .heading:contains("Materials") + button').each((_i,element) => {
             itemUtil.extractItem(element, inventory);
         });
         emitEvent({

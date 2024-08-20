@@ -124,7 +124,7 @@
         if(text.endsWith('M')) {
             multiplier = 1_000_000;
         }
-        return (parseFloat(text) || 0) * multiplier;
+        return roundToMultiple((parseFloat(text) || 0) * multiplier, 1 / 100);
     }
 
     function secondsToDuration(seconds) {

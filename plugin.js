@@ -2985,7 +2985,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
         if(text.endsWith('M')) {
             multiplier = 1_000_000;
         }
-        return (parseFloat(text) || 0) * multiplier;
+        return roundToMultiple((parseFloat(text) || 0) * multiplier, 1 / 100);
     }
 
     function secondsToDuration(seconds) {
@@ -3556,7 +3556,7 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
 
     function readInventoryScreen() {
         const inventory = {};
-        $('inventory-page .items > .item').each((i,element) => {
+        $('inventory-page .items > .item').each((_i,element) => {
             itemUtil.extractItem(element, inventory, true);
         });
         emitEvent({
@@ -3567,7 +3567,7 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
 
     function readActionScreen() {
         const inventory = {};
-        $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((i,element) => {
+        $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((_i,element) => {
             itemUtil.extractItem(element, inventory);
         });
         emitEvent({
@@ -3578,7 +3578,7 @@ window.moduleRegistry.add('inventoryReader', (events, itemCache, util, itemUtil)
 
     function readExpeditionsScreen() {
         const inventory = {};
-        $('taming-page .heading:contains("Materials") + button').each((i,element) => {
+        $('taming-page .heading:contains("Materials") + button').each((_i,element) => {
             itemUtil.extractItem(element, inventory);
         });
         emitEvent({
