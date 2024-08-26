@@ -6,25 +6,20 @@
 
     const statNames = new Set([
         // ITEM_STAT_ATTRIBUTE
-        'AMMO_PRESERVATION_CHANCE',
-        'ATTACK_SPEED',
         'BONUS_LEVEL',
-        'COIN_SNATCH',
         'COMBAT_EXP',
         'DOUBLE_EXP',
         'DOUBLE_DROP',
         'EFFICIENCY',
-        'EXTRA_HARVEST_CHANCE',
-        'STARDUST_CRAFT_CHANCE',
         'PRESERVATION',
         'SKILL_SPEED',
         // ITEM_ATTRIBUTE
+        'ATTACK_SPEED',
         'ARMOUR',
         'BLEED_CHANCE',
         'BLOCK_CHANCE',
         'CARVE_CHANCE',
         'COIN_SNATCH',
-        'COMBAT_EXP',
         'CRIT_CHANCE',
         'DAMAGE',
         'DAMAGE_PERCENT',
@@ -41,7 +36,10 @@
         'PASSIVE_FOOD_CONSUMPTION',
         'STUN_CHANCE',
         'DUNGEON_TIME',
+        'OPULENT_CHANCE',
+        'TIER_VARIETY_CHANCE',
         // FRONTEND ONLY
+        'AMMO_PRESERVATION_CHANCE',
         'MAX_AMOUNT'
     ]);
 

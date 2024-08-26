@@ -1,4 +1,4 @@
-(request, itemCache, actionCache, ingredientCache) => {
+(request, itemCache, actionCache, ingredientCache, skillCache) => {
 
     const exports = {
         list: [],
@@ -6,6 +6,7 @@
         byItem: {},
         boneCarveMappings: null,
         conversionMappings: null,
+        tierVarietyMappings: null,
         produceItems: null,
         getMostCommonDrop
     };
@@ -25,6 +26,7 @@
         }
         extractBoneCarvings();
         extractConversions();
+        extractTierVariety();
         extractProduceItems();
         enrichItems();
         return exports;
@@ -60,6 +62,22 @@
             }))
             ._groupBy(a => a.to)
             .reduce((a,b) => (a[b[0].to] = b, a), {});
+    }
+
+    function extractTierVariety() {
+        exports.tierVarietyMappings = exports.list
+            .filter(drop => drop.type === 'REGULAR')
+            .filter(drop => drop.chance >= 0.8)
+            .filter(drop => skillCache.byName[actionCache.byId[drop.action].skill].type === 'Gathering')
+            ._groupBy(drop => actionCache.byId[drop.action].level)
+            .flatMap(drops => drops
+                .map(drop => drop.item)
+                ._distinct()
+                .flatMap((item, _i, arr) => ({
+                    from: item,
+                    to: arr.filter(a => a !== item)
+                }))
+            ).reduce((a,b) => (a[b.from] = b.to, a), {});
     }
 
     function extractProduceItems() {

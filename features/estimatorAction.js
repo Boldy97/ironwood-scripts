@@ -20,10 +20,27 @@
         const hasFailDrops = !!drops.find(a => a.type === 'FAILED');
         const hasMonsterDrops = !!drops.find(a => a.type === 'MONSTER');
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
-        if(shouldApplyCoinCraft(skillId)) {
+        if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const match = drops.find(a => a.item === mostCommonDrop);
-            match.chance += statsStore.get('STARDUST_CRAFT_CHANCE') / 100;
+            match.chance += statsStore.get('OPULENT_CHANCE') / 100;
+        }
+        if(shouldApplyTierVariety(skillId)) {
+            for(const drop of drops.slice(0)) {
+                const mapping = dropCache.tierVarietyMappings[drop.item];
+                if(!mapping) {
+                    continue;
+                }
+                for(const other of mapping) {
+                    drops.push({
+                        type: 'REGULAR',
+                        item: other,
+                        amount: drop.amount,
+                        chance: drop.chance * statsStore.get('TIER_VARIETY_CHANCE') / 100 / mapping.length
+                    });
+                }
+                drop.chance *= 1 - statsStore.get('TIER_VARIETY_CHANCE') / 100;
+            }
         }
         return drops.map(drop => {
             let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
@@ -66,12 +83,12 @@
         if(!ingredients) {
             return [];
         }
-        if(shouldApplyCoinCraft(skillId)) {
+        if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
-                amount: value * statsStore.get('STARDUST_CRAFT_CHANCE') / 100
+                amount: value * statsStore.get('OPULENT_CHANCE') / 100
             });
         }
         return ingredients.map(ingredient => ({
@@ -130,10 +147,15 @@
         return result;
     }
 
-    function shouldApplyCoinCraft(skillId) {
+    function shouldApplyOpulence(skillId) {
         return skillCache.byId[skillId].type === 'Crafting'
-            && statsStore.get('STARDUST_CRAFT_CHANCE')
+            && statsStore.get('OPULENT_CHANCE')
             && statsStore.getInventoryItem(itemCache.specialIds.stardust);
+    }
+
+    function shouldApplyTierVariety(skillId) {
+        return skillCache.byId[skillId].type === 'Gathering'
+            && statsStore.get('TIER_VARIETY_CHANCE');
     }
 
     return exports;
