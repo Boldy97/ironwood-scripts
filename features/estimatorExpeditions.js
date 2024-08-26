@@ -66,7 +66,7 @@
         const expeditionDrops = expeditionDropCache.byExpedition[expedition.id];
         for(const drop of expeditionDrops) {
             if(totalStats[drop.type]) {
-                drops[drop.item] = drop.amount * totalStats[drop.type];
+                drops[drop.item] = drop.amount * totalStats[drop.type] * successChance / 100;
             }
         }
 
@@ -77,7 +77,7 @@
             drops,
             teamStats,
             totalStats,
-            exp: expedition.exp,
+            exp: expedition.exp * successChance / 100,
             skill: skillCache.byName['Taming'].id,
             equipments: {}
         };
@@ -97,11 +97,9 @@
 
     function preRender(estimation, blueprint) {
         components.search(blueprint, 'successChance').value
-            = util.formatNumber(estimation.successChance);
+            = util.formatNumber(estimation.successChance) + ' %';
         components.search(blueprint, 'exp').value
             = util.formatNumber(estimation.exp);
-        components.search(blueprint, 'expActual').value
-            = util.formatNumber(estimation.exp * estimation.successChance / 100);
         components.search(blueprint, 'finishedTime').value
             = util.secondsToDuration(estimation.timings.finished);
         components.search(blueprint, 'levelTime').value
@@ -134,7 +132,6 @@
                 stats: petUtil.petToStats(pet)
             }));
         // make all combinations of 3 pets of different family
-        console.log(petsAndStats);
         const combinations = util.generateCombinations(petsAndStats, 3, object => object.pet.family);
         if(!combinations.length) {
             return;
@@ -196,12 +193,6 @@
                 type: 'item',
                 id: 'exp',
                 name: 'Exp/hour',
-                image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
-                value: ''
-            },{
-                type: 'item',
-                id: 'expActual',
-                name: 'Exp/hour (weighted)',
                 image: 'https://cdn-icons-png.flaticon.com/512/616/616490.png',
                 value: ''
             },{
