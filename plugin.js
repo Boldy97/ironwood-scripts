@@ -3898,6 +3898,10 @@ window.moduleRegistry.add('variousReader', (events, util) => {
         various.maxAmount = {
             [skillId]: amountValue
         };
+        const opulenceMode = $('skill-page .header > .name:contains("Consumables")').closest('.card').find('.checkbox').prev().text();
+        if(opulenceMode) {
+            various.opulenceMode = opulenceMode;
+        }
     }
 
     function readSettingsScreen(various) {
@@ -6015,8 +6019,18 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         multiplier *= 1 + statsStore.get('MULTICRAFT') / 100;
         if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            const match = drops.find(a => a.item === mostCommonDrop);
-            match.chance += statsStore.get('OPULENT_CHANCE') / 100;
+            if(isOpulenceItemsMode()) {
+                const match = drops.find(a => a.item === mostCommonDrop);
+                match.chance += statsStore.get('OPULENT_CHANCE') / 100;
+            } else {
+                const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
+                drops.push({
+                    type: 'REGULAR',
+                    item: itemCache.specialIds.coins,
+                    amount: 1,
+                    chance: value * statsStore.get('OPULENT_CHANCE') / 100
+                });
+            }
         }
         if(shouldApplyTierVariety(skillId)) {
             for(const drop of drops.slice(0)) {
@@ -6082,7 +6096,7 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
-                amount: value * statsStore.get('OPULENT_CHANCE') / 100
+                amount: value * statsStore.get('OPULENT_CHANCE') / 100 / 2
             });
         }
         return ingredients.map(ingredient => ({
@@ -6145,6 +6159,10 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         return skillCache.byId[skillId].type === 'Crafting'
             && statsStore.get('OPULENT_CHANCE')
             && statsStore.getInventoryItem(itemCache.specialIds.stardust);
+    }
+
+    function isOpulenceItemsMode() {
+        return statsStore.getOpulenceMode() === 'Items';
     }
 
     function shouldApplyTierVariety(skillId) {
@@ -9483,6 +9501,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         getManyEquipmentItems,
         getWeapon,
         getAttackStyle,
+        getOpulenceMode,
         update
     };
 
@@ -9558,6 +9577,10 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
 
     function getAttackStyle() {
         return stats.attackStyle || 'OneHanded';
+    }
+
+    function getOpulenceMode() {
+        return stats.opulenceMode || 'Items';
     }
 
     function update(excludedItemIds) {
@@ -9718,6 +9741,9 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
                 }
             }
             addStats(stats);
+        }
+        if(various.opulenceMode) {
+            stats.opulenceMode = various.opulenceMode;
         }
     }
 

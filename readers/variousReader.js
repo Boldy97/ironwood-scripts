@@ -28,6 +28,10 @@
         various.maxAmount = {
             [skillId]: amountValue
         };
+        const opulenceMode = $('skill-page .header > .name:contains("Consumables")').closest('.card').find('.checkbox').prev().text();
+        if(opulenceMode) {
+            various.opulenceMode = opulenceMode;
+        }
     }
 
     function readSettingsScreen(various) {

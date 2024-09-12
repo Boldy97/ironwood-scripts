@@ -10,6 +10,7 @@
         getManyEquipmentItems,
         getWeapon,
         getAttackStyle,
+        getOpulenceMode,
         update
     };
 
@@ -85,6 +86,10 @@
 
     function getAttackStyle() {
         return stats.attackStyle || 'OneHanded';
+    }
+
+    function getOpulenceMode() {
+        return stats.opulenceMode || 'Items';
     }
 
     function update(excludedItemIds) {
@@ -245,6 +250,9 @@
                 }
             }
             addStats(stats);
+        }
+        if(various.opulenceMode) {
+            stats.opulenceMode = various.opulenceMode;
         }
     }
 

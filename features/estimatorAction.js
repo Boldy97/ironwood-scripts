@@ -23,8 +23,18 @@
         multiplier *= 1 + statsStore.get('MULTICRAFT') / 100;
         if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            const match = drops.find(a => a.item === mostCommonDrop);
-            match.chance += statsStore.get('OPULENT_CHANCE') / 100;
+            if(isOpulenceItemsMode()) {
+                const match = drops.find(a => a.item === mostCommonDrop);
+                match.chance += statsStore.get('OPULENT_CHANCE') / 100;
+            } else {
+                const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
+                drops.push({
+                    type: 'REGULAR',
+                    item: itemCache.specialIds.coins,
+                    amount: 1,
+                    chance: value * statsStore.get('OPULENT_CHANCE') / 100
+                });
+            }
         }
         if(shouldApplyTierVariety(skillId)) {
             for(const drop of drops.slice(0)) {
@@ -90,7 +100,7 @@
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
-                amount: value * statsStore.get('OPULENT_CHANCE') / 100
+                amount: value * statsStore.get('OPULENT_CHANCE') / 100 / 2
             });
         }
         return ingredients.map(ingredient => ({
@@ -153,6 +163,10 @@
         return skillCache.byId[skillId].type === 'Crafting'
             && statsStore.get('OPULENT_CHANCE')
             && statsStore.getInventoryItem(itemCache.specialIds.stardust);
+    }
+
+    function isOpulenceItemsMode() {
+        return statsStore.getOpulenceMode() === 'Items';
     }
 
     function shouldApplyTierVariety(skillId) {
