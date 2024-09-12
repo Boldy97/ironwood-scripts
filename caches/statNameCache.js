@@ -38,6 +38,7 @@
         'DUNGEON_TIME',
         'OPULENT_CHANCE',
         'TIER_VARIETY_CHANCE',
+        'MULTICRAFT',
         // FRONTEND ONLY
         'AMMO_PRESERVATION_CHANCE',
         'MAX_AMOUNT'

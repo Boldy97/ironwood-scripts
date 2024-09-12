@@ -20,6 +20,7 @@
         const hasFailDrops = !!drops.find(a => a.type === 'FAILED');
         const hasMonsterDrops = !!drops.find(a => a.type === 'MONSTER');
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
+        multiplier *= 1 + statsStore.get('MULTICRAFT') / 100;
         if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const match = drops.find(a => a.item === mostCommonDrop);
@@ -83,6 +84,7 @@
         if(!ingredients) {
             return [];
         }
+        multiplier *= 1 + statsStore.get('MULTICRAFT') / 100;
         if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
