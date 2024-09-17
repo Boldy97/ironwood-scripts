@@ -39,6 +39,10 @@
         $('skill-page .header > .name:contains("Materials")').closest('.card').find('.row').each((_i,element) => {
             itemUtil.extractItem(element, inventory);
         });
+        const stardustRow = $('skill-page .header > .name:contains("Consumables")').closest('.card').find('.row > .name:contains("Stardust")').closest('.row')[0];
+        if(stardustRow) {
+            itemUtil.extractItem(stardustRow, inventory);
+        }
         emitEvent({
             type: 'partial',
             value: inventory
