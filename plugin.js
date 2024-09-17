@@ -8866,6 +8866,7 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
             handler: handleConfigStateChange
         });
         elementWatcher.addRecursiveObserver(onListingOpened, 'app-component > div.scroll div.wrapper', 'market-page', 'market-listings-component', 'div.groups', 'div.sticky', 'div.preview');
+        elementWatcher.addRecursiveObserver(onListingOpened, 'app-component > div.scroll div.wrapper', 'market-page', 'market-order-component', 'div.groups', 'div.sticky', 'div.modal');
     }
 
     function handleConfigStateChange(state) {
@@ -8876,16 +8877,14 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
         if(!enabled) {
             return;
         }
-        const buyButton = getBuyButton(element);
-        if(!buyButton.length) {
+        const otherButton = getOtherButton(element);
+        if(!otherButton.length) {
             return; // avoid triggering on other elements
         }
-        const ownedAmount = getOwnedAmount(element);
-        const availableAmount = getAvailableAmount(element);
         const input = getInput(element);
-        const targetButton = createTargetButton(buyButton);
-        attachInputListener(input, targetButton, ownedAmount, availableAmount);
-        attachTargetButtonListener(input, targetButton, ownedAmount);
+        const targetButton = createTargetButton(otherButton);
+        attachInputListener(input, targetButton, element);
+        attachTargetButtonListener(input, targetButton, element);
     }
 
     function getOwnedAmount(element) {
@@ -8901,15 +8900,15 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
             .contents()
             .filter(function() {
                 return this.nodeType === Node.TEXT_NODE;
-            }).text());
+            }).text()) || Infinity;
     }
 
     function getInput(element) {
         return $(element).find('input[placeholder=Quantity]');
     }
 
-    function getBuyButton(element) {
-        return $(element).find('button.action:contains("Buy")');
+    function getOtherButton(element) {
+        return $(element).find('button.action:contains("Buy"),button.action:contains("Order")');
     }
 
     function createTargetButton(buyButton) {
@@ -8920,9 +8919,11 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
         return targetButton;
     }
 
-    function attachInputListener(input, targetButton, ownedAmount, availableAmount) {
-        input.on('change paste keyup', function() {
+    function attachInputListener(input, targetButton, element) {
+        input.on('change paste keyup input', function() {
             const value = +input.val();
+            const ownedAmount = getOwnedAmount(element);
+            const availableAmount = getAvailableAmount(element);
             if(!!value && value > ownedAmount && value - ownedAmount <= availableAmount) {
                 targetButton.removeAttr('disabled');
             } else {
@@ -8931,9 +8932,10 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
         });
     }
 
-    function attachTargetButtonListener(input, targetButton, ownedAmount) {
+    function attachTargetButtonListener(input, targetButton, element) {
         targetButton.on('click', function() {
             const value = +input.val();
+            const ownedAmount = getOwnedAmount(element);
             input.val(value - ownedAmount);
             input[0].dispatchEvent(new Event('input'));
             return false;
