@@ -41,6 +41,15 @@ Replace the last require with the path to the actual plugin.js
   * this will update the plugin.js in the root folder every time a change is made to the scripts
 * You can now load the page, and the scripts should be there
 
+# How to release
+
+These are the steps I follow. You will not be able to do this, I'm just putting it here for posterity.
+
+* `cd packager`
+* `./bump.sh patch` (or minor/major)
+* trigger update in greasyfork
+* release in admin interface with patchnotes
+
 # FAQ
 
 ## What's this module registry ?
