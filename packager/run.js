@@ -12,6 +12,7 @@ const directories = [
     '../caches'
 ];
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

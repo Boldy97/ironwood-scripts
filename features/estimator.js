@@ -36,6 +36,10 @@
             const stats = events.getLast('state-stats');
             if (stats) {
                 const estimation = get(page.skill, page.action);
+                if(!estimation) {
+                    components.removeComponent(componentBlueprint);
+                    return;
+                }
                 estimation.isCurrent = !!$('.header .name:contains("Loot")').length;
                 enrichTimings(estimation);
                 enrichValues(estimation);
@@ -55,7 +59,8 @@
         } else if (skill.type === 'Gathering' || skill.type === 'Crafting') {
             return estimatorActivity.get(skillId, actionId);
         } else if (skill.type === 'Combat') {
-            return estimatorCombat.get(skillId, actionId);
+            return; // TODO - reenable when combat estimations are fixed
+            //return estimatorCombat.get(skillId, actionId);
         }
     }
 

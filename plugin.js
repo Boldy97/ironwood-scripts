@@ -5592,6 +5592,7 @@ window.moduleRegistry.add('estimator', (configuration, events, skillCache, actio
             if (stats) {
                 const estimation = get(page.skill, page.action);
                 if(!estimation) {
+                    components.removeComponent(componentBlueprint);
                     return;
                 }
                 estimation.isCurrent = !!$('.header .name:contains("Loot")').length;
