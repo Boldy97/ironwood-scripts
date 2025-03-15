@@ -6,6 +6,7 @@
         'Compost': itemCache.byName['Compost'].id,
         'Arcane Powder': itemCache.byName['Arcane Powder'].id,
         'Pet Snacks': itemCache.byName['Pet Snacks'].id,
+        'Metal Parts': itemCache.byName['Metal Parts'].id,
     };
     let savedFilters = [];
     let enabled = false;
