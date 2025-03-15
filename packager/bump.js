@@ -1,6 +1,10 @@
-const fs = require('fs').promises;
-const semverInc = require('semver/functions/inc');
-const path = require('path');
+import { promises as fs } from 'fs';
+import semverInc from 'semver/functions/inc';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function run() {
     let content = await readFile('prefix.js');
