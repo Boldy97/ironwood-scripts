@@ -1,8 +1,9 @@
-const fs = require('fs').promises;
-const path = require('path');
-const request = require('request-promise-native');
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+import { promises as fs } from 'fs';
+import path, { dirname } from 'path';
+import fetch from 'node-fetch';
+import { fileURLToPath } from 'url';
 
+const REQUEST_HOST = 'https://iwrpg.vectordungeon.com/';
 const directories = [
     '../libraries',
     '../readers',
@@ -11,7 +12,8 @@ const directories = [
     '../caches'
 ];
 
-const REQUEST_HOST = 'https://iwrpg.vectordungeon.com/';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 async function run() {
     await cleanup();
@@ -47,7 +49,9 @@ window.moduleRegistry.add('${filename}', ${content});
 async function fillPrefetchedCaches(text) {
     const matches = [...text.matchAll(/requestWithFallback\('(\{.*?\})', '(.*?)'/g)];
     for(const match of matches) {
-        text = text.replaceAll(match[1], await request(REQUEST_HOST + match[2]));
+        const response = await fetch(REQUEST_HOST + match[2]);
+        const json = await response.json();
+        text = text.replaceAll(match[1], JSON.stringify(json));
     }
     return text;
 }
