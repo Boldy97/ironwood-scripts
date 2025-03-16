@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import semverInc from 'semver/functions/inc';
+import semverInc from 'semver/functions/inc.js';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
 
