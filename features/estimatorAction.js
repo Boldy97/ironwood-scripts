@@ -20,7 +20,7 @@
         const hasFailDrops = !!drops.find(a => a.type === 'FAILED');
         const hasMonsterDrops = !!drops.find(a => a.type === 'MONSTER');
         const successChance = hasFailDrops ? getSuccessChance(skillId, actionId) / 100 : 1;
-        multiplier *= 1 + statsStore.get('MULTICRAFT') / 100;
+        multiplier *= 1 + statsStore.get('MULTICRAFT_CHANCE') / 100;
         if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             if(isOpulenceItemsMode()) {
@@ -72,14 +72,6 @@
             }
         })
         .filter(a => a)
-        .map(a => {
-            const mapFindChance = statsStore.get('MAP_FIND_CHANCE', skillId) / 100;
-            if(!mapFindChance || !itemCache.specialIds.dungeonMap.includes(a.id)) {
-                return a;
-            }
-            a.amount *= 1 + mapFindChance;
-            return a;
-        })
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
     }
 
@@ -94,7 +86,7 @@
         if(!ingredients) {
             return [];
         }
-        multiplier *= 1 + statsStore.get('MULTICRAFT') / 100;
+        multiplier *= 1 + statsStore.get('MULTICRAFT_CHANCE') / 100;
         if(shouldApplyOpulence(skillId)) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
@@ -110,7 +102,7 @@
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
     }
 
-    function getEquipmentUses(skillId, actionId, isCombat = false, foodPerHour = 0) {
+    function getEquipmentUses(skillId, actionId, actionCount = 0, isCombat = false, foodPerHour = 0) {
         const skill = skillCache.byId[skillId];
         const action = actionCache.byId[actionId];
         const result = {};
@@ -122,22 +114,16 @@
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
             if(action.type === 'DUNGEON') {
-                // dungeon map
-                const lanternMultiplier = 1 + statsStore.get('DUNGEON_TIME') / 100;
-                statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonMap)
-                    .forEach(a => result[a.id] = 3 / 24 / lanternMultiplier);
+                // dungeon key
+                let dungeonKeyCount = actionCount / 3;
+                dungeonKeyCount /=  1 + statsStore.get('KEY_PRESERVATION_CHANCE') / 100;
+                statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonKey)
+                    .forEach(a => result[a.id] = dungeonKeyCount);
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
                 // active food
                 statsStore.getManyEquipmentItems(itemCache.specialIds.food)
                     .forEach(a => result[a.id] = foodPerHour);
-            }
-            if(statsStore.getWeapon()?.name?.endsWith('Bow')) {
-                // ammo
-                const attacksPerHour = SECONDS_PER_HOUR / statsStore.get('ATTACK_SPEED');
-                const ammoPerHour = attacksPerHour * (1 - statsStore.get('AMMO_PRESERVATION_CHANCE') / 100);
-                statsStore.getManyEquipmentItems(itemCache.specialIds.ammo)
-                    .forEach(a => result[a.id] = ammoPerHour);
             }
         } else {
             if(skill.type === 'Gathering') {

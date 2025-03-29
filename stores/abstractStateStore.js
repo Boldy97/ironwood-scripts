@@ -6,7 +6,8 @@
         'equipment-tomes',
         'structures',
         'enchantments',
-        'structures-guild'
+        'structures-guild',
+        'marks'
     ];
 
     const stateBySource = {};

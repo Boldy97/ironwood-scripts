@@ -4,13 +4,13 @@
     let entered = false;
     let element;
     const converters = {
-        SPEED: val => val/2,
         DURATION: val => val && util.secondsToDuration(val),
         OWNED: (val, item) => statsStore.getInventoryItem(item.id),
         CHARCOAL: (val, item) => item.charcoal,
         COMPOST: (val, item) => item.compost,
         ARCANE_POWDER: (val, item) => item.arcanePowder,
         PET_SNACKS: (val, item) => item.petSnacks,
+        METAL_PARTS: (val, item) => item.metalParts,
         UNTRADEABLE: (val) => val ? 'Yes' : null,
         DROP_CHANCE: (val, item) => {
             const drops = dropCache.byItem[item.id];

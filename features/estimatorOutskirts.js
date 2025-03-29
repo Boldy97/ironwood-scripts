@@ -9,6 +9,7 @@
             const action = actionCache.byId[actionId];
 
             const activityEstimation = estimatorActivity.get(skillId, actionId);
+            // dont count food and combat potions for the outskirts
             const excludedItemIds = itemCache.specialIds.food.concat(itemCache.specialIds.combatPotion);
             statsStore.update(new Set(excludedItemIds));
             const combatEstimation = estimatorCombat.get(skillId, actionId);

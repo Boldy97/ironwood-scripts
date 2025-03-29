@@ -181,14 +181,9 @@
             .attr('placeholder', inputBlueprint.name)
             .attr('value', inputBlueprint.value || '')
             .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-            .keyup(inputDelay(function(e) {
-                inputBlueprint.value = e.target.value;
-                if(inputBlueprint.action) {
-                    inputBlueprint.action(inputBlueprint.value);
-                }
-            }, inputBlueprint.delay || 0))
+            .keyup(e => inputBlueprint.value = e.target.value)
             .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
-            .on('focusout', onInputFocusOut.bind(null, rootBlueprint));
+            .on('focusout', onInputFocusOut.bind(null, rootBlueprint, inputBlueprint));
             if(inputBlueprint.light) {
                 input
                     .css('padding', '0')
@@ -266,7 +261,7 @@
             .show();
     }
 
-    function onInputFocusOut(rootBlueprint) {
+    function onInputFocusOut(rootBlueprint, inputBlueprint) {
         if(!rootBlueprint.meta) {
             rootBlueprint.meta = {};
         }
@@ -274,6 +269,9 @@
         $(`#${rootBlueprint.componentId}`)
             .find('.componentStateMessage')
             .hide();
+        if(inputBlueprint.action) {
+            inputBlueprint.action(inputBlueprint.value);
+        }
     }
 
     function createRow_Break(breakBlueprint) {

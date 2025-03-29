@@ -5,6 +5,7 @@
         byId: {},
         byName: {},
         byTechnicalName: {},
+        match,
     };
 
     async function initialise() {
@@ -16,6 +17,18 @@
             exports.byTechnicalName[skill.technicalName] = skill;
         }
         return exports;
+    }
+
+    function match(name) {
+        name = name.toLowerCase();
+        for(let skill of exports.list) {
+            if(name === skill.displayName.toLowerCase()) {
+                return skill;
+            }
+            if(name === skill.technicalName.toLowerCase()) {
+                return skill;
+            }
+        }
     }
 
     return initialise();

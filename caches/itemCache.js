@@ -27,25 +27,27 @@
             telescope: null,
             lantern: null,
             food: null,
-            ammo: null,
             gatheringPotion: null,
             craftingPotion: null,
             combatPotion: null,
-            dungeonMap: null,
+            dungeonKey: null,
             woodcuttingRune: null,
             miningRune: null,
             farmingRune: null,
             fishingRune: null,
-            gatheringRune: null,
             oneHandedRune: null,
             twoHandedRune: null,
             rangedRune: null,
             defenseRune: null,
-            utilityRune: null,
+            forestDamageRune: null,
+            forestBlockRune: null,
+            mountainDamageRune: null,
+            mountainBlockRune: null,
+            oceanDamageRune: null,
+            oceanBlockRune: null,
             savageLootingTome: null,
             bountifulHarvestTome: null,
             opulentCraftingTome: null,
-            eternalLifeTome: null,
             insatiablePowerTome: null,
             potentConcoctionTome: null,
             gem: null,
@@ -73,15 +75,6 @@
                 exports.byImage[lastPart].duplicate = true;
             } else {
                 exports.byImage[lastPart] = item;
-            }
-            for(const stat in item.stats.bySkill) {
-                if(item.stats.bySkill[stat].All) {
-                    item.stats.global[stat] = item.stats.bySkill[stat].All;
-                    delete item.stats.bySkill[stat].All;
-                    if(!Object.keys(item.stats.bySkill[stat]).length) {
-                        delete item.stats.bySkill[stat];
-                    }
-                }
             }
         }
         for(const image of Object.keys(exports.byImage)) {
@@ -111,30 +104,27 @@
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
-        exports.specialIds.ammo = getAllIdsEnding('Arrow');
+        exports.specialIds.dungeonKey = getAllIdsStarting('Dungeon Key');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
-        exports.specialIds.dungeonMap = getAllIdsStarting('Dungeon Map');
         exports.specialIds.woodcuttingRune = getAllIdsEnding('Woodcutting Rune');
         exports.specialIds.miningRune = getAllIdsEnding('Mining Rune');
         exports.specialIds.farmingRune = getAllIdsEnding('Farming Rune');
         exports.specialIds.fishingRune = getAllIdsEnding('Fishing Rune');
-        exports.specialIds.gatheringRune = [
-            ...exports.specialIds.woodcuttingRune,
-            ...exports.specialIds.miningRune,
-            ...exports.specialIds.farmingRune,
-            ...exports.specialIds.fishingRune
-        ];
         exports.specialIds.oneHandedRune = getAllIdsEnding('One-handed Rune');
         exports.specialIds.twoHandedRune = getAllIdsEnding('Two-handed Rune');
         exports.specialIds.rangedRune = getAllIdsEnding('Ranged Rune');
         exports.specialIds.defenseRune = getAllIdsEnding('Defense Rune');
-        exports.specialIds.utilityRune = getAllIdsEnding('Crit Rune', 'Damage Rune', 'Block Rune', 'Stun Rune', 'Bleed Rune', 'Parry Rune');
+        exports.specialIds.forestDamageRune = getAllIdsEnding('Forest Damage Rune');
+        exports.specialIds.forestBlockRune = getAllIdsEnding('Forest Block Rune');
+        exports.specialIds.mountainDamageRune = getAllIdsEnding('Mountain Damage Rune');
+        exports.specialIds.mountainBlockRune = getAllIdsEnding('Mountain Block Rune');
+        exports.specialIds.oceanDamageRune = getAllIdsEnding('Ocean Damage Rune');
+        exports.specialIds.oceanBlockRune = getAllIdsEnding('Ocean Block Rune');
         exports.specialIds.savageLootingTome = getAllIdsStarting('Savage Looting Tome');
         exports.specialIds.bountifulHarvestTome = getAllIdsStarting('Bountiful Harvest Tome');
         exports.specialIds.opulentCraftingTome = getAllIdsStarting('Opulent Crafting Tome');
-        exports.specialIds.eternalLifeTome = getAllIdsStarting('Eternal Life Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
         exports.specialIds.gem = exports.list.filter(a => a.arcanePowder).map(a => a.id);
@@ -150,6 +140,11 @@
             ...exports.specialIds.spade,
             ...exports.specialIds.rod
         ];
+        for(const key of Object.keys(exports.specialIds)) {
+            if(!exports.specialIds[key]) {
+                throw `Unconfigured special id for ${key}`;
+            }
+        }
     }
 
     async function loadItemAttributes() {
@@ -171,6 +166,10 @@
             name: 'Pet Snacks',
             image: '/assets/items/pet-snacks.png'
         },{
+            technicalName: 'METAL_PARTS',
+            name: 'Metal Parts',
+            image: '/assets/items/metal-parts.png'
+        },{
             technicalName: 'MIN_MARKET_PRICE',
             name: 'Min Market Price',
             image: '/assets/misc/market.png'
@@ -189,9 +188,6 @@
         for(const item of exports.list) {
             if(!item.attributes) {
                 item.attributes = {};
-            }
-            if(item.attributes.ATTACK_SPEED) {
-                item.attributes.ATTACK_SPEED /= 2;
             }
         }
     }

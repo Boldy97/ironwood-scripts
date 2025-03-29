@@ -22,6 +22,7 @@
     let structures = {};
     let enchantments = {};
     let guildStructures = {};
+    let marks = {};
     let various = {};
 
     let stats;
@@ -36,6 +37,7 @@
         events.register('state-structures', event => (structures = event, _update()));
         events.register('state-enchantments', event => (enchantments = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
+        events.register('state-marks', event => (marks = event, _update()));
         events.register('state-various', event => (various = event, _update()));
     }
 
@@ -101,6 +103,7 @@
         processStructures();
         processEnhancements();
         processGuildStructures();
+        processMarks();
         processVarious();
         cleanup();
         if(!excludedItemIds) {
@@ -122,18 +125,11 @@
             const skill = skillCache.byId[id];
             addStats({
                 bySkill: {
-                    EFFICIENCY : {
+                    EFFICIENCY_CHANCE : {
                         [skill.technicalName]: 0.25
                     }
                 }
             }, exp[id].level, 4);
-            if(skill.displayName === 'Ranged') {
-                addStats({
-                    global: {
-                        AMMO_PRESERVATION_CHANCE : 0.5
-                    }
-                }, exp[id].level, 2);
-            }
         }
     }
 
@@ -150,8 +146,6 @@
     }
 
     function processEquipment(excludedItemIds) {
-        let arrow;
-        let bow;
         const potionMultiplier = get('INCREASED_POTION_EFFECT');
         for(const id in equipment) {
             if(equipment[id] <= 0) {
@@ -168,18 +162,6 @@
                 stats.weapon = item;
                 stats.attackStyle = item.skill;
             }
-            if(item.name.endsWith('Arrow')) {
-                arrow = item;
-                addStats({
-                    global: {
-                        AMMO_PRESERVATION_CHANCE : -0.5
-                    }
-                }, util.tierToLevel(item.tier), 2);
-                continue;
-            }
-            if(item.name.endsWith('Bow')) {
-                bow = item;
-            }
             let multiplier = 1;
             let accuracy = 2;
             if(potionMultiplier && /(Potion|Mix)$/.exec(item.name)) {
@@ -191,9 +173,6 @@
                 accuracy = 10;
             }
             addStats(item.stats, multiplier, accuracy);
-        }
-        if(bow && arrow) {
-            addStats(arrow.stats);
         }
     }
     function processRunes() {
@@ -236,6 +215,29 @@
         }
     }
 
+    function processMarks() {
+        for(const id in marks.exp) {
+            const skill = skillCache.byId[id];
+            addStats({
+                bySkill: {
+                    DOUBLE_EXP_CHANCE: {
+                        [skill.technicalName]: marks.exp[id]
+                    }
+                }
+            });
+        }
+        for(const id in marks.eff) {
+            const skill = skillCache.byId[id];
+            addStats({
+                bySkill: {
+                    EFFICIENCY_CHANCE: {
+                        [skill.technicalName]: marks.eff[id]
+                    }
+                }
+            });
+        }
+    }
+
     function processVarious() {
         if(various.maxAmount) {
             const stats = {
@@ -260,15 +262,14 @@
         // base
         addStats({
             global: {
-                HEALTH: 10,
-                AMMO_PRESERVATION_CHANCE : 65
+                HEALTH: 10
             }
         });
         // fallback
         if(!stats.weapon) {
             stats.weapon = null;
             stats.attackStyle = '';
-            stats.global.ATTACK_SPEED = 3;
+            stats.global.ATTACK_SPEED = 6;
         }
         // health percent
         const healthPercent = get('HEALTH_PERCENT');
@@ -280,34 +281,17 @@
                 }
             })
         }
-        // damage percent
-        const damagePercent = get('DAMAGE_PERCENT');
-        if(damagePercent) {
-            const damage = get('DAMAGE');
-            addStats({
-                global: {
-                    DAMAGE : Math.floor(damagePercent * damage / 100)
-                }
-            })
-        }
         // bonus level efficiency
         if(stats.bySkill['BONUS_LEVEL']) {
             for(const skill in stats.bySkill['BONUS_LEVEL']) {
                 addStats({
                     bySkill: {
-                        EFFICIENCY: {
+                        EFFICIENCY_CHANCE: {
                             [skill]: 0.25
                         }
                     }
                 }, Math.round(stats.bySkill['BONUS_LEVEL'][skill]), 4);
             }
-        }
-        // clamping
-        if(stats.global['AMMO_PRESERVATION_CHANCE'] < 65) {
-            stats.global['AMMO_PRESERVATION_CHANCE'] = 65;
-        }
-        if(stats.global['AMMO_PRESERVATION_CHANCE'] > 80) {
-            stats.global['AMMO_PRESERVATION_CHANCE'] = 80;
         }
     }
 

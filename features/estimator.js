@@ -59,8 +59,7 @@
         } else if (skill.type === 'Gathering' || skill.type === 'Crafting') {
             return estimatorActivity.get(skillId, actionId);
         } else if (skill.type === 'Combat') {
-            return; // TODO - reenable when combat estimations are fixed
-            //return estimatorCombat.get(skillId, actionId);
+            return estimatorCombat.get(skillId, actionId);
         }
     }
 
@@ -116,7 +115,7 @@
         components.search(blueprint, 'exp').value
             = util.formatNumber(estimation.exp);
         components.search(blueprint, 'survivalChance').hidden
-            = estimation.type === 'ACTIVITY';
+            = true; // TODO replace again by this : estimation.type === 'ACTIVITY'
         components.search(blueprint, 'survivalChance').value
             = util.formatNumber(estimation.survivalChance * 100) + ' %';
         components.search(blueprint, 'finishedTime').value

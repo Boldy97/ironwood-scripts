@@ -64,6 +64,11 @@
             event: 'reader-guild-event',
             page: 'guild',
             element: 'guild-page button .name:contains("Events")'
+        },
+        marks: {
+            name: 'Marks',
+            event: 'reader-marks',
+            page: 'marks'
         }
     };
 

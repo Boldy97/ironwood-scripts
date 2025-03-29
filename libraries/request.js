@@ -67,11 +67,13 @@
     request.listIngredients = () => requestWithFallback('{INGREDIENT_CACHE_DATA}', 'public/list/ingredient');
     request.listItems = () => requestWithFallback('{ITEM_CACHE_DATA}', 'public/list/item');
     request.listItemAttributes = () => requestWithFallback('{ITEM_ATTRIBUTE_CACHE_DATA}', 'public/list/itemAttribute');
+    request.listItemStats = () => requestWithFallback('{ITEM_STAT_CACHE_DATA}', 'public/list/itemStat');
     request.listMonsters = () => requestWithFallback('{MONSTER_CACHE_DATA}', 'public/list/monster');
     request.listPets = () => requestWithFallback('{PET_CACHE_DATA}', 'public/list/pet');
     request.listPetPassives = () => requestWithFallback('{PET_PASSIVE_CACHE_DATA}', 'public/list/petPassive');
     request.listRecipes = () => requestWithFallback('{RECIPE_CACHE_DATA}', 'public/list/recipe');
     request.listSkills = () => requestWithFallback('{SKILL_CACHE_DATA}', 'public/list/skill');
+    request.listSkillSets = () => requestWithFallback('{SKILLSET_CACHE_DATA}', 'public/list/skillSet');
     request.listStructures = () => requestWithFallback('{STRUCTURE_CACHE_DATA}', 'public/list/structure');
 
     request.report = (data) => request('public/report', data);

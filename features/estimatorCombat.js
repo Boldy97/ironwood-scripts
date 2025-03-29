@@ -9,49 +9,30 @@
     function get(skillId, actionId) {
         const skill = skillCache.byId[skillId];
         const action = actionCache.byId[actionId];
-        const monsterIds = action.monster ? [action.monster] : action.monsterGroup;
+        const monsterId = action.monster ? action.monster : action.monsterGroup[0];
         const playerStats = getPlayerStats();
-        const sampleMonsterStats = getMonsterStats(monsterIds[Math.floor(monsterIds.length / 2)]);
-        playerStats.damage_ = new Distribution();
-        sampleMonsterStats.damage_ = new Distribution();
-        for(const monsterId of monsterIds) {
-            const monsterStats = getMonsterStats(monsterId);
-            let damage_ = getInternalDamageDistribution(playerStats, monsterStats, monsterIds.length > 1);
-            const weight = damage_.expectedRollsUntill(monsterStats.health);
-            playerStats.damage_.addDistribution(damage_, weight);
-            //playerStats.damage_ = damage_;
-            damage_ = getInternalDamageDistribution(monsterStats, playerStats, monsterIds.length > 1);
-            sampleMonsterStats.damage_.addDistribution(damage_, weight);
-            //sampleMonsterStats.damage_ = damage_;
-        }
-        playerStats.damage_.normalize();
-        sampleMonsterStats.damage_.normalize();
-
-        const loopsPerKill = playerStats.attackSpeed * playerStats.damage_.expectedRollsUntill(sampleMonsterStats.health) * 10 + 5;
+        const monsterStats = getMonsterStats(monsterId);
+        playerStats.damage_ = getInternalDamageDistribution(playerStats, monsterStats);
+        monsterStats.damage_ = getInternalDamageDistribution(monsterStats, playerStats);
+        const loopsPerKill = playerStats.attackSpeed * playerStats.damage_.expectedRollsUntill(monsterStats.health) * 10 + 5;
         const actionCount = estimatorAction.LOOPS_PER_HOUR / loopsPerKill;
-        const efficiency = 1 + statsStore.get('EFFICIENCY', skill.technicalName) / 100;
+        const efficiency = 1 + statsStore.get('EFFICIENCY_CHANCE', skill.technicalName) / 100;
         const actualActionCount = actionCount * efficiency;
-        const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP', skill.technicalName) / 100);
-        const attacksReceivedPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / sampleMonsterStats.attackSpeed;
-        const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT') / 100);
-        const damagePerHour = attacksReceivedPerHour * sampleMonsterStats.damage_.average();
+        const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP_CHANCE', skill.technicalName) / 100);
+        const attacksReceivedPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / monsterStats.attackSpeed;
+        const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT_PERCENT') / 100);
+        const damagePerHour = attacksReceivedPerHour * monsterStats.damage_.average();
         const foodPerHour = damagePerHour / healPerFood;
 
         let exp = estimatorAction.LOOPS_PER_HOUR * action.exp / 1000;
         exp *= efficiency;
-        exp *= 1 + statsStore.get('DOUBLE_EXP', skill.technicalName) / 100;
-        exp *= 1 + statsStore.get('COMBAT_EXP', skill.technicalName) / 100;
-        exp *= getExpTriangleModifier(playerStats, sampleMonsterStats);
+        exp *= 1 + statsStore.get('DOUBLE_EXP_CHANCE', skill.technicalName) / 100;
+        exp *= 1 + statsStore.get('COMBAT_EXP_PERCENT', skill.technicalName) / 100;
+        exp *= getTriangleModifier(playerStats, monsterStats);
+        // TODO there's also a 1.2 exp multiplier when fighting a monster that was replaced by a dungeon endboss
         const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount);
-        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, true, foodPerHour);
-        const survivalChance = getSurvivalChance(playerStats, sampleMonsterStats, loopsPerKill);
-
-        let statCoinSnatch;
-        if(statCoinSnatch = statsStore.get('COIN_SNATCH')) {
-            const attacksPerHour = estimatorAction.LOOPS_PER_HOUR / 10 / playerStats.attackSpeed;
-            const coinsPerHour = (statCoinSnatch + 1) / 2 * attacksPerHour;
-            drops[itemCache.specialIds.coins] = (drops[itemCache.specialIds.coins] || 0) + coinsPerHour;
-        }
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actionCount, true, foodPerHour);
+        const survivalChance = getSurvivalChance(playerStats, monsterStats, loopsPerKill);
 
         let statCarveChance;
         if(action.type !== 'OUTSKIRTS' && (statCarveChance = statsStore.get('CARVE_CHANCE') / 100)) {
@@ -76,7 +57,7 @@
             ingredients: {},
             equipments,
             player: playerStats,
-            monster: sampleMonsterStats,
+            monster: monsterStats,
             survivalChance
         };
     }
@@ -93,15 +74,19 @@
             damage: statsStore.get('DAMAGE'),
             armour: statsStore.get('ARMOUR'),
             health: statsStore.get('HEALTH'),
-            blockChance: statsStore.get('BLOCK_CHANCE')/100,
-            critChance: statsStore.get('CRIT_CHANCE')/100,
-            stunChance: statsStore.get('STUN_CHANCE')/100,
-            parryChance: statsStore.get('PARRY_CHANCE')/100,
-            bleedChance: statsStore.get('BLEED_CHANCE')/100,
-            damageRange: (75 + statsStore.get('DAMAGE_RANGE'))/100,
-            dungeonDamage: 1 + statsStore.get('DUNGEON_DAMAGE')/100,
             attackLevel,
-            defenseLevel
+            defenseLevel,
+            bonusAccuracy: 0, // TODO from relics
+            bonusEvasion: 0, // TODO from relics
+            // spam
+            dungeonDamagePercent: statsStore.get('DUNGEON_DAMAGE_PERCENT'),
+            dungeonBlockPercent: statsStore.get('DUNGEON_BLOCK_PERCENT'),
+            forestDamagePercent: statsStore.get('FOREST_DAMAGE_PERCENT'),
+            forestBlockPercent: statsStore.get('FOREST_BLOCK_PERCENT'),
+            mountainDamagePercent: statsStore.get('MOUNTAIN_DAMAGE_PERCENT'),
+            mountainBlockPercent: statsStore.get('MOUNTAIN_BLOCK_PERCENT'),
+            oceanDamagePercent: statsStore.get('OCEAN_DAMAGE_PERCENT'),
+            oceanBlockPercent: statsStore.get('OCEAN_BLOCK_PERCENT'),
         };
     }
 
@@ -114,148 +99,107 @@
             damage: monster.attack,
             armour: monster.armour,
             health: monster.health,
-            blockChance: 0,
-            critChance: 0,
-            stunChance: 0,
-            parryChance: 0,
-            bleedChance: 0,
-            damageRange: 0.75,
-            dungeonDamage: 1,
             attackLevel: monster.level,
-            defenseLevel: monster.level
+            defenseLevel: monster.level,
+            // TODO
+            bonusAccuracy: 0,
+            bonusEvasion: 0,
+            // spam
+            dungeonDamagePercent: 0,
+            dungeonBlockPercent: 0,
+            forestDamagePercent: 0,
+            forestBlockPercent: 0,
+            mountainDamagePercent: 0,
+            mountainBlockPercent: 0,
+            oceanDamagePercent: 0,
+            oceanBlockPercent: 0,
         };
     }
 
-    function getInternalDamageDistribution(attacker, defender, isDungeon) {
+    function getInternalDamageDistribution(attacker, defender) {
         let damage = attacker.damage;
-        damage *= getDamageTriangleModifier(attacker, defender);
-        //damage *= getDamageScalingRatio(attacker, defender);
-        damage *= getDamageArmourRatio(attacker, defender);
-        damage *= !isDungeon ? 1 : attacker.dungeonDamage;
+        damage *= getTriangleModifier(attacker, defender);
+        damage *= 1 + getExtraTriangleModifier(attacker, defender, 'Damage') / 100;
+        damage *= 1 - getExtraTriangleModifier(defender, attacker, 'Block') / 100; // this is kindof ugly... I blame miccy
+        if(defender.armour > 0) {
+            damage *= getDamageArmourRatio(attacker, defender);
+        }
 
         const maxDamage_ = new Distribution(damage);
-        // crit
-        if(attacker.critChance) {
-            maxDamage_.convolution(
-                Distribution.getRandomChance(attacker.critChance),
-                (dmg, crit) => dmg * (crit ? 1.5 : 1)
-            );
-        }
         // damage range
         const result = maxDamage_.convolutionWithGenerator(
-            dmg => Distribution.getRandomOutcomeRounded(dmg * attacker.damageRange, dmg),
+            dmg => Distribution.getRandomOutcomeRounded(dmg * 0.75, dmg),
             (dmg, randomDamage) => randomDamage
         );
-        // block
-        if(defender.blockChance) {
-            result.convolution(
-                Distribution.getRandomChance(defender.blockChance),
-                (dmg, blocked) => blocked ? 0 : dmg
-            );
-        }
-        // stun
-        if(defender.stunChance) {
-            let stunChance = defender.stunChance;
-            // only when defender accurate
-            stunChance *= getAccuracy(defender, attacker);
-            // can also happen on defender parries
-            stunChance *= 1 + defender.parryChance;
-            // modifier based on speed
-            stunChance *= attacker.attackSpeed / defender.attackSpeed;
-            // convert to actual stunned percentage
-            const stunnedPercentage = stunChance * 2.5 / attacker.attackSpeed;
-            result.convolution(
-                Distribution.getRandomChance(stunnedPercentage),
-                (dmg, stunned) => stunned ? 0 : dmg
-            );
-        }
         // accuracy
         const accuracy = getAccuracy(attacker, defender);
-        const reverseAccuracy = getAccuracy(defender, attacker);
         result.convolution(
             Distribution.getRandomChance(accuracy),
             (dmg, accurate) => accurate ? dmg : 0
         );
-        // === special effects ===
-        const intermediateClone_ = result.clone();
-        // parry attacker - deal back 25% of a regular attack
-        if(attacker.parryChance) {
-            let parryChance = attacker.parryChance * accuracy;
-            if(attacker.attackSpeed < defender.attackSpeed) {
-                parryChance *= attacker.attackSpeed / defender.attackSpeed;
-            }
-            const parriedDamage = Math.round(attacker.damage / attacker.attackSpeed * defender.attackSpeed * 0.3);
-            result.convolution(
-                Distribution.getRandomChance(parryChance),
-                (dmg, parried) => dmg + (parried ? parriedDamage : 0)
-            );
-            if(attacker.attackSpeed > defender.attackSpeed) {
-                // we can parry multiple times during one turn
-                parryChance *= (attacker.attackSpeed - defender.attackSpeed) / attacker.attackSpeed;
-                result.convolution(
-                    Distribution.getRandomChance(parryChance),
-                    (dmg, parried) => dmg + (parried ? parriedDamage : 0)
-                );
-            }
-        }
-        // parry defender - deal 50% of a regular attack
-        if(defender.parryChance) {
-            result.convolution(
-                Distribution.getRandomChance(defender.parryChance * reverseAccuracy),
-                (dmg, parried) => parried ? Math.round(dmg/2) : dmg
-            );
-        }
-        // bleed - 50% of damage over 3 seconds (assuming to be within one attack round)
-        if(attacker.bleedChance) {
-            const bleed_ = intermediateClone_.clone();
-            bleed_.convolution(
-                Distribution.getRandomChance(attacker.bleedChance),
-                (dmg, bleed) => bleed ? 5 * Math.round(dmg/10) : 0
-            );
-            result.convolution(
-                bleed_,
-                (dmg, extra) => dmg + extra
-            );
-        }
+        // done
         return result;
     }
 
-    function getDamageTriangleModifier(attacker, defender) {
-        if(!attacker.attackStyle || !defender.attackStyle) {
-            return 1.0;
-        }
-        if(attacker.attackStyle === defender.attackStyle) {
-            return 1.0;
-        }
-        if(attacker.attackStyle === 'OneHanded' && defender.attackStyle === 'Ranged') {
-            return 1.1;
-        }
-        if(attacker.attackStyle === 'Ranged' && defender.attackStyle === 'TwoHanded') {
-            return 1.1;
-        }
-        if(attacker.attackStyle === 'TwoHanded' && defender.attackStyle === 'OneHanded') {
-            return 1.1;
-        }
-        return 0.9;
-    }
-
-    function getExpTriangleModifier(attacker, defender) {
+    function getTriangleModifier(attacker, defender) {
         if(!attacker.attackStyle || !defender.attackStyle) {
             return 1;
         }
-        return getDamageTriangleModifier(attacker, defender) - 0.1;
+        if(attacker.attackStyle === 'Ranged') {
+            if(defender.attackStyle === 'TwoHanded') {
+                return 1;
+            }
+            if(defender.attackStyle === 'OneHanded') {
+                return 1 / 1.2;
+            }
+        } else if(attacker.attackStyle === 'OneHanded') {
+            if(defender.attackStyle === 'Ranged') {
+                return 1;
+            }
+            if(defender.attackStyle === 'TwoHanded') {
+                return 1 / 1.2;
+            }
+        } else {
+            if(defender.attackStyle === 'OneHanded') {
+                return 1;
+            }
+            if(defender.attackStyle === 'Ranged') {
+                return 1 / 1.2;
+            }
+        }
+        return 1 / 1.1;
+    }
+
+    function getExtraTriangleModifier(attacker, defender, type, isDungeon) {
+        if(!['Damage', 'Block'].includes(type)) {
+            throw `Invalid triangle modifier type : ${type}`;
+        }
+        // for dungeons, use the (probably) most optimal value, the one your weapon gives
+        if(isDungeon) {
+            const dungeonEffect = attacker[`dungeon${type}Percent`];
+            switch(attacker.attackStyle) {
+                case 'Ranged': return dungeonEffect + attacker[`forest${type}Percent`];
+                case 'OneHanded': return dungeonEffect + attacker[`mountain${type}Percent`];
+                case 'TwoHanded': return dungeonEffect + attacker[`ocean${type}Percent`];
+                default: return dungeonEffect;
+            }
+        }
+        // otherwise, depends on the defender
+        switch(defender.attackStyle) {
+            case 'TwoHanded': return attacker[`forest${type}Percent`];
+            case 'Ranged': return attacker[`mountain${type}Percent`];
+            case 'OneHanded': return attacker[`ocean${type}Percent`];
+            default: return 0;
+        }
     }
 
     function getDamageArmourRatio(attacker, defender) {
-        if(!defender.armour) {
-            return 1;
-        }
-        const scale = 25 + Math.min(70, (defender.armour - 25) * 50 / 105);
-        return (100 - scale) / 100;
+        const modifier = Math.min(95, (defender.armour - 30) / 126 * 50 + 25);
+        return 1 - modifier / 100;
     }
 
     function getAccuracy(attacker, defender) {
-        let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel) / 2.0;
+        let accuracy = 75 + (attacker.attackLevel - defender.defenseLevel + attacker.bonusAccuracy - defender.bonusEvasion) / 2.0;
         accuracy = util.clamp(accuracy, 60, 90);
         return accuracy / 100;
     }
@@ -280,7 +224,7 @@
             attacksPerFight *= cringeMultiplier;
         }
         const foodPerAttack = loopsPerAttack / estimatorAction.LOOPS_PER_FOOD;
-        const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT') / 100);
+        const healPerFood = statsStore.get('HEAL') * (1 + statsStore.get('FOOD_EFFECT_PERCENT') / 100);
         const healPerAttack = Math.round(healPerFood * foodPerAttack);
         const healPerFight = healPerAttack * attacksPerFight;
         let deathChance = 0;
