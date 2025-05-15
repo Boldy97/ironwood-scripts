@@ -41,7 +41,7 @@
                 clearTimeout(invalidationTimer);
                 invalidationTimer = undefined;
 
-            }, (questData.resetTime - margin) * 1000);
+            }, (questData.resetTime - RESET_MARGIN) * 1000);
         };
     }
 
@@ -132,7 +132,3 @@
 
     initialise();
 }
-
-
-
-
