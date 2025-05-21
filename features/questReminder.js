@@ -3,7 +3,7 @@
     let enabled = false;
     let questData = undefined;
     let timer = undefined;
-    let invalidationTimer = undefined;
+    const RESET_MARGIN = 120;
 
     async function initialise() {
         elementCreator.addStyles(styles);
@@ -25,41 +25,15 @@
 
         await elementWatcher.exists('nav-component button[routerLink="/quests"]');
 
-        if (!state) {
-            removeQuestReminder();
-            return;
-        }
-
         updateQuestReminder();
     }
 
     function handleQuestData(event) {
-        questData = event.value;
-
-        const margin = 120; // 2 minutes
-
-        if (questData.resetTime < margin) {
-            removeQuestReminder();
-            return;
-        }
-
-        if (!invalidationTimer) {
-            invalidationTimer = setTimeout(() => {
-
-                questData = undefined;
-                removeQuestReminder();
-                clearTimeout(invalidationTimer);
-                invalidationTimer = undefined;
-
-            }, (questData.resetTime - margin) * 1000);
-        };
-
+        questData = event;
         updateQuestReminder();
     }
 
     function addQuestReminder() {
-        if (!enabled) return;
-        if (!questData) return;
         const { currentCompletedQuests, maxCompletedQuests } = questData;
 
         const $btn = $('nav-component button[routerLink="/quests"]');
@@ -81,8 +55,10 @@
     }
 
     function updateQuestReminder() {
-        if (!enabled) return;
-        if (!questData) return;
+        if (!enabled || !questData || questData.resetTime < RESET_MARGIN) {
+            removeQuestReminder();
+            return;
+        }
         const { currentCompletedQuests, maxCompletedQuests } = questData;
 
         if (maxCompletedQuests === 0) return;
