@@ -31,6 +31,17 @@
     function handleQuestData(event) {
         questData = event;
         updateQuestReminder();
+
+        if (!invalidationTimer) {
+            invalidationTimer = setTimeout(() => {
+
+                questData = undefined;
+                updateQuestReminder();
+                clearTimeout(invalidationTimer);
+                invalidationTimer = undefined;
+
+            }, (questData.resetTime - margin) * 1000);
+        };
     }
 
     function addQuestReminder() {
@@ -100,7 +111,7 @@
     }
 
     const styles = `
-		.questReminder {
+        .questReminder {
             box-sizing: border-box;
             padding: 2px 8px;
             display: flex;
@@ -110,10 +121,10 @@
             border-radius: 4px;
             font-size: .875rem;
         }
-		.questReminderIncomplete {
+        .questReminderIncomplete {
             background-color: #e4a11b;
         }
-		.questReminderComplete {
+        .questReminderComplete {
             background-color: #53bd73;
         }
     `;
