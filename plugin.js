@@ -8483,6 +8483,7 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
     let enabled = false;
     let questData = undefined;
     let timer = undefined;
+    let invalidationTimer = undefined;
     const RESET_MARGIN = 120;
 
     async function initialise() {
