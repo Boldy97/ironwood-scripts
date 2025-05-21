@@ -8598,7 +8598,7 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
                 clearTimeout(invalidationTimer);
                 invalidationTimer = undefined;
 
-            }, (questData.resetTime - margin) * 1000);
+            }, (questData.resetTime - RESET_MARGIN) * 1000);
         };
     }
 
@@ -8688,12 +8688,7 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
     `;
 
     initialise();
-}
-
-
-
-
-);
+});
 // recipeClickthrough
 window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, util) => {
 
