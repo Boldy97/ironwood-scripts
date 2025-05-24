@@ -21,7 +21,8 @@
         segment: createRow_Segment,
         progress: createRow_Progress,
         chart: createRow_Chart,
-        list: createRow_List
+        list: createRow_List,
+        chat: createRow_Chat
     };
     let selectedTabs = null;
 
@@ -40,10 +41,7 @@
     }
 
     async function addComponent(blueprint) {
-        if(blueprint?.meta?.focused) {
-            return; // delay until no longer having focus
-        }
-        if($(blueprint.dependsOn).length) {
+        if ($(blueprint.dependsOn).length) {
             actualAddComponent(blueprint);
             return;
         }
@@ -55,9 +53,8 @@
         const component =
             $('<div/>')
                 .addClass('customComponent')
-                .attr('id', blueprint.componentId)
-                .append('<div class="componentStateMessage" style="display: none"></div>');
-        if(blueprint.onClick) {
+                .attr('id', blueprint.componentId);
+        if (blueprint.onClick) {
             component
                 .click(blueprint.onClick)
                 .css('cursor', 'pointer');
@@ -65,7 +62,7 @@
 
         // TABS
         const selectedTabMatch = selectedTabs.find(a => a.key === blueprint.componentId);
-        if(selectedTabMatch) {
+        if (selectedTabMatch) {
             blueprint.selectedTabIndex = selectedTabMatch.value;
             selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
         }
@@ -75,13 +72,13 @@
         // PAGE
         const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] || blueprint.tabs[0];
         selectedTabBlueprint.rows.forEach((rowBlueprint, index) => {
-            component.append(createRow(rowBlueprint, blueprint));
+            component.append(createRow(rowBlueprint));
         });
 
         const existing = $(`#${blueprint.componentId}`);
-        if(existing.length) {
+        if (existing.length) {
             existing.replaceWith(component);
-        } else if(blueprint.prepend) {
+        } else if (blueprint.prepend) {
             $(blueprint.parent).prepend(component);
         } else {
             $(blueprint.parent).append(component);
@@ -89,15 +86,15 @@
     }
 
     function createTab(blueprint) {
-        if(!blueprint.selectedTabIndex) {
+        if (!blueprint.selectedTabIndex) {
             blueprint.selectedTabIndex = 0;
         }
-        if(blueprint.tabs.length === 1) {
+        if (blueprint.tabs.filter(t => !t.hidden).length === 1) {
             return;
         }
         const tabContainer = $('<div/>').addClass('tabs');
         blueprint.tabs.forEach((element, index) => {
-            if(element.hidden) {
+            if (element.hidden) {
                 return;
             }
             const tab = $('<button/>')
@@ -105,10 +102,10 @@
                 .addClass('tabButton')
                 .text(element.title)
                 .click(changeTab.bind(null, blueprint, index));
-            if(blueprint.selectedTabIndex !== index) {
+            if (blueprint.selectedTabIndex !== index) {
                 tab.addClass('tabButtonInactive')
             }
-            if(index !== 0) {
+            if (index !== 0) {
                 tab.addClass('lineLeft')
             }
             tabContainer.append(tab);
@@ -116,23 +113,23 @@
         return tabContainer;
     }
 
-    function createRow(rowBlueprint, rootBlueprint) {
-        if(!rowTypeMappings[rowBlueprint.type]) {
+    function createRow(rowBlueprint) {
+        if (!rowTypeMappings[rowBlueprint.type]) {
             console.warn(`Skipping unknown row type in blueprint: ${rowBlueprint.type}`, rowBlueprint);
             return;
         }
-        if(rowBlueprint.hidden) {
+        if (rowBlueprint.hidden) {
             return;
         }
-        return rowTypeMappings[rowBlueprint.type](rowBlueprint, rootBlueprint);
+        return rowTypeMappings[rowBlueprint.type](rowBlueprint);
     }
 
     function createRow_Item(itemBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
-        if(itemBlueprint.image) {
+        if (itemBlueprint.image) {
             parentRow.append(createImage(itemBlueprint));
         }
-        if(itemBlueprint?.name) {
+        if (itemBlueprint?.name) {
             parentRow
                 .append(
                     $('<div/>')
@@ -146,7 +143,7 @@
                     .addClass('myItemValue')
                     .text(itemBlueprint?.extra || '')
             );
-        if(itemBlueprint?.value) {
+        if (itemBlueprint?.value) {
             parentRow
                 .append(
                     $('<div/>')
@@ -157,51 +154,59 @@
         return parentRow;
     }
 
-    function createRow_Input(inputBlueprint, rootBlueprint) {
+    function createRow_Input(inputBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
-        if(inputBlueprint.text) {
-            const text = $('<div/>')
-                .addClass('myItemInputText')
-                .addClass(inputBlueprint.class || '')
-                .text(inputBlueprint.text)
-                .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`);
-            if(inputBlueprint.light) {
-                text
-                    .css('padding', '0')
-                    .css('height', 'inherit')
-                    .css('color', '#aaa');
-            }
-            parentRow.append(text);
+        if (inputBlueprint.text) {
+            parentRow
+                .append(
+                    $('<div/>')
+                        .addClass('myItemInputText')
+                        .addClass(inputBlueprint.class || '')
+                        .text(inputBlueprint.text)
+                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
+                )
         }
-        const input = $('<input/>')
-            .attr('id', inputBlueprint.id)
-            .addClass('myItemInput')
-            .addClass(inputBlueprint.class || '')
-            .attr('type', inputBlueprint.inputType || 'text')
-            .attr('placeholder', inputBlueprint.name)
-            .attr('value', inputBlueprint.value || '')
-            .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-            .keyup(e => inputBlueprint.value = e.target.value)
-            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
-            .on('focusout', onInputFocusOut.bind(null, rootBlueprint, inputBlueprint));
-            if(inputBlueprint.light) {
-                input
-                    .css('padding', '0')
-                    .css('height', 'inherit')
-                    .css('color', '#aaa');
-            }
-        parentRow.append(input)
+        parentRow
+            .append(
+                $('<input/>')
+                    .attr('id', inputBlueprint.id)
+                    .addClass('myItemInput')
+                    .addClass(inputBlueprint.class || '')
+                    .attr('type', inputBlueprint.inputType || 'text')
+                    .attr('placeholder', inputBlueprint.name)
+                    .attr('value', inputBlueprint.value || '')
+                    .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
+                    .keyup(inputDelay(function (e) {
+                        inputBlueprint.value = e.target.value;
+                        if (inputBlueprint.action) {
+                            inputBlueprint.action(inputBlueprint.value);
+                        }
+                    }, inputBlueprint.delay || 0))
+            )
+        if (inputBlueprint.chat) {
+            parentRow
+                .append(
+                    $('<button/>')
+                        .addClass('myItemInputSendMessageButton')
+                        .addClass(inputBlueprint.class || '')
+                        .text('Send')
+                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
+                        .click(() => {
+                            inputBlueprint.submit(inputBlueprint.value);
+                        })
+                )
+        }
         return parentRow;
     }
 
-    function createRow_ItemWithInput(itemWithInputBlueprint, rootBlueprint) {
+    function createRow_ItemWithInput(itemWithInputBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
 
-        if(itemWithInputBlueprint.image) {
+        if (itemWithInputBlueprint.image) {
             parentRow.append(createImage(itemWithInputBlueprint));
         }
 
-        if(itemWithInputBlueprint?.name) {
+        if (itemWithInputBlueprint?.name) {
             parentRow
                 .append(
                     $('<div/>')
@@ -220,16 +225,14 @@
                     .attr('placeholder', itemWithInputBlueprint.placeholder)
                     .attr('value', itemWithInputBlueprint.inputValue || '')
                     .css('flex', `${itemWithInputBlueprint.layout?.split('/')[1] || 1}`)
-                    .css('max-width', '80px')
+                    .css('max-width', itemWithInputBlueprint.inputMaxWidth ?? 'unset')
                     .css('height', 'inherit')
-                    .keyup(inputDelay(function(e) {
+                    .keyup(inputDelay(function (e) {
                         itemWithInputBlueprint.inputValue = e.target.value;
-                        if(itemWithInputBlueprint.action) {
+                        if (itemWithInputBlueprint.action) {
                             itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
                         }
                     }, itemWithInputBlueprint.delay || 0))
-                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
-                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint))
             )
 
         parentRow
@@ -239,7 +242,7 @@
                     .text(itemWithInputBlueprint?.extra || '')
             );
 
-        if(itemWithInputBlueprint?.value) {
+        if (itemWithInputBlueprint?.value) {
             parentRow
                 .append(
                     $('<div/>')
@@ -250,30 +253,6 @@
         return parentRow;
     }
 
-    function onInputFocusIn(rootBlueprint) {
-        if(!rootBlueprint.meta) {
-            rootBlueprint.meta = {};
-        }
-        rootBlueprint.meta.focused = true;
-        $(`#${rootBlueprint.componentId}`)
-            .find('.componentStateMessage')
-            .text('Focused - interrupted updates')
-            .show();
-    }
-
-    function onInputFocusOut(rootBlueprint, inputBlueprint) {
-        if(!rootBlueprint.meta) {
-            rootBlueprint.meta = {};
-        }
-        rootBlueprint.meta.focused = false;
-        $(`#${rootBlueprint.componentId}`)
-            .find('.componentStateMessage')
-            .hide();
-        if(inputBlueprint.action) {
-            inputBlueprint.action(inputBlueprint.value);
-        }
-    }
-
     function createRow_Break(breakBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
         parentRow.append('<br/>');
@@ -282,7 +261,7 @@
 
     function createRow_Button(buttonBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
-        for(const button of buttonBlueprint.buttons) {
+        for (const button of buttonBlueprint.buttons) {
             parentRow
                 .append(
                     $(`<button class='myButton'>${button.text}</button>`)
@@ -301,16 +280,16 @@
         const select = $('<select/>')
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
-            .change(inputDelay(function(e) {
-                for(const option of selectBlueprint.options) {
+            .change(inputDelay(function (e) {
+                for (const option of selectBlueprint.options) {
                     option.selected = this.value === option.value;
                 }
-                if(selectBlueprint.action) {
+                if (selectBlueprint.action) {
                     selectBlueprint.action(this.value);
                 }
             }, selectBlueprint.delay || 0));
-        for(const option of selectBlueprint.options) {
-            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}>${option.text}</option>`);
+        for (const option of selectBlueprint.options) {
+            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''}>${option.text}</option>`);
         }
         parentRow.append(select);
         return parentRow;
@@ -320,7 +299,7 @@
         const parentRow =
             $('<div/>')
                 .addClass('myHeader lineTop')
-        if(headerBlueprint.image) {
+        if (headerBlueprint.image) {
             parentRow.append(createImage(headerBlueprint));
         }
         parentRow.append(
@@ -328,7 +307,7 @@
                 .addClass('myName')
                 .text(headerBlueprint.title)
         )
-        if(headerBlueprint.action) {
+        if (headerBlueprint.action) {
             parentRow
                 .append(
                     $('<button/>')
@@ -338,7 +317,7 @@
                         .css('background-color', colorMapper(headerBlueprint.color || 'success'))
                         .click(headerBlueprint.action)
                 )
-        } else if(headerBlueprint.textRight) {
+        } else if (headerBlueprint.textRight) {
             parentRow.append(
                 $('<div/>')
                     .addClass('level')
@@ -347,7 +326,7 @@
                     .html(headerBlueprint.textRight)
             )
         }
-        if(headerBlueprint.centered) {
+        if (headerBlueprint.centered) {
             parentRow.css('justify-content', 'center');
         }
         return parentRow;
@@ -373,7 +352,7 @@
                             .html(buttonInnerHTML)
                             .click(() => {
                                 checkboxBlueprint.checked = !checkboxBlueprint.checked;
-                                if(checkboxBlueprint.action) {
+                                if (checkboxBlueprint.action) {
                                     checkboxBlueprint.action(checkboxBlueprint.checked);
                                 }
                             })
@@ -384,11 +363,11 @@
         return parentRow;
     }
 
-    function createRow_Segment(segmentBlueprint, rootBlueprint) {
-        if(segmentBlueprint.hidden) {
+    function createRow_Segment(segmentBlueprint) {
+        if (segmentBlueprint.hidden) {
             return;
         }
-        return segmentBlueprint.rows.flatMap(a => createRow(a, rootBlueprint));
+        return segmentBlueprint.rows.flatMap(createRow);
     }
 
     function createRow_Progress(progressBlueprint) {
@@ -420,7 +399,7 @@
 
     function createRow_Chart(chartBlueprint) {
         const parentRow = $('<div/>')
-        .addClass('lineTop')
+            .addClass('lineTop')
             .append(
                 $('<canvas/>')
                     .attr('id', chartBlueprint.chartId)
@@ -442,7 +421,29 @@
             );
         return parentRow;
     }
-    
+
+    function createRow_Chat(listBlueprint) {
+        const parentRow = $('<div/>').addClass('chatMessageRow');
+        listBlueprint.messages.forEach(message => {
+            parentRow.append(
+                $('<p/>')
+                    .addClass('myChatMessage')
+                    .append(
+                        $('<span/>')
+                            .addClass('myChatMessageTime')
+                            .text(`[${message.time}] `)
+                    )
+                    .append(
+                        $('<span/>')
+                            .addClass('myChatMessageSender')
+                            .text(`${message.sender}: `)
+                    )
+                    .append(document.createTextNode(message.message))
+            );
+        });
+        return parentRow;
+    }
+
     function createImage(blueprint) {
         return $('<div/>')
             .addClass('myItemImage image')
@@ -466,20 +467,20 @@
 
     function inputDelay(callback, ms) {
         var timer = 0;
-        return function() {
+        return function () {
             var context = this, args = arguments;
             window.clearTimeout(timer);
-            timer = window.setTimeout(function() {
+            timer = window.setTimeout(function () {
                 callback.apply(context, args);
             }, ms || 0);
         };
     }
 
     function search(blueprint, query) {
-        if(!blueprint.idMappings) {
+        if (!blueprint.idMappings) {
             generateIdMappings(blueprint);
         }
-        if(!blueprint.idMappings[query]) {
+        if (!blueprint.idMappings[query]) {
             throw `Could not find id ${query} in blueprint ${blueprint.componentId}`;
         }
         return blueprint.idMappings[query];
@@ -487,30 +488,30 @@
 
     function generateIdMappings(blueprint) {
         blueprint.idMappings = {};
-        for(const tab of blueprint.tabs) {
+        for (const tab of blueprint.tabs) {
             addIdMapping(blueprint, tab);
-            for(const row of tab.rows) {
+            for (const row of tab.rows) {
                 addIdMapping(blueprint, row);
             }
         }
     }
 
     function addIdMapping(blueprint, element) {
-        if(element.id) {
-            if(blueprint.idMappings[element.id]) {
+        if (element.id) {
+            if (blueprint.idMappings[element.id]) {
                 throw `Detected duplicate id ${element.id} in blueprint ${blueprint.componentId}`;
             }
             blueprint.idMappings[element.id] = element;
         }
         let subelements = null;
-        if(element.type === 'segment') {
+        if (element.type === 'segment') {
             subelements = element.rows;
         }
-        if(element.type === 'buttons') {
+        if (element.type === 'buttons') {
             subelements = element.buttons;
         }
-        if(subelements) {
-            for(const subelement of subelements) {
+        if (subelements) {
+            for (const subelement of subelements) {
                 addIdMapping(blueprint, subelement);
             }
         }
@@ -523,7 +524,6 @@
             --darker-color: ${colorMapper('componentDark')};
         }
         .customComponent {
-            position: relative;
             margin-top: var(--gap);
             background-color: var(--background-color);
             box-shadow: 0 6px 12px -6px #0006;
@@ -729,20 +729,45 @@
         .myListLine {
             margin-left: 20px;
         }
-        .componentStateMessage {
-            position: absolute;
-            top: .5em;
-            left: 50%;
-            transform: translateX(-50%);
+        .myItemInputSendMessageButton {
             display: flex;
-            font-family: Jost,Helvetica Neue,Arial,sans-serif;
+            background-color: #53bd73;
+            justify-content: center;
+            height: 40px;
+            width: 100%;
+            text-align: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+        .chatMessageRow {
+            display: flex;
             flex-direction: column;
-            white-space: nowrap;
-            background-color: black;
-            padding: .4rem;
-            border: 1px solid #3e3e3e;
-            border-radius: .4em;
-            gap: .4em;
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 400px;
+            overflow-y: auto;
+            gap: 10px;
+            padding: 5px 10px;
+            border-top: 1px solid var(--border-color);
+            
+            scrollbar-color: var(--border-color) var(--darker-color);
+        }
+
+        .chatMessageRow::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chatMessageRow::-webkit-scrollbar-thumb {
+            border-radius: 4px;
+        }
+        .myChatMessageTime {
+
+        }
+        .myChatMessageSender {
+            font-weight: 600;
+            letter-spacing: .25px;
+        }
+        .chatMessageInput {
+            text-align: unset !important;
         }
     `;
 
