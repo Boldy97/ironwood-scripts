@@ -11,14 +11,14 @@
 
     let socket = null;
     let reconnectInterval = 3000;
-    let url = "wss://iwrpg.vectordungeon.com/socket";
+    let url = "wss://iwrpg.vectordungeon.com/websocket";
     let shouldReconnect = true;
 
     const HISTORY_LIMIT = 100;
     const history = [];
 
     function initialise() {
-        // openSocket();
+        //openSocket();
     }
 
     function openSocket() {

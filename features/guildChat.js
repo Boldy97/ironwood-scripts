@@ -29,14 +29,11 @@
         events.register('page', setup);
 
         messages = generateFakeChat(30);
-        console.log(messages);
 
-        messages = messages.map(m => crypto.encrypt(JSON.stringify(m), key));
-        console.log(messages);
+        //messages = messages.map(m => crypto.encrypt(JSON.stringify(m), key));
 
-        components.search(componentBlueprint, 'chatMessages').messages = messages.map(m => JSON.parse(crypto.decrypt(m, key)));
-
-        components.search(componentBlueprint, 'guildChatHeader').textRight = `${2} 👨‍👩‍👧‍👦`;
+        components.search(componentBlueprint, 'chatMessagesContainer').messages = messages//.map(m => JSON.parse(crypto.decrypt(m, key)));
+        components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.length} 👨‍👩‍👧‍👦`;
     }
 
     async function handleConfigStateChange(state) {
@@ -71,17 +68,20 @@
         parent: 'guild-component > .groups > :last-child',
         prepend: false,
         selectedTabIndex: 0,
+        after: () => {
+            scrollChatToBottom()
+        },
         tabs: [{
             title: 'guild-chat-tab',
             rows: [{
                 id: 'guildChatHeader',
                 type: 'header',
                 title: 'Guild Chat',
-                textRight: `${0} 👨‍👩‍👧‍👦`
+                textRight: '0 👨‍👩‍👧‍👦'
             }, {
-                id: 'chatMessages',
+                id: 'chatMessagesContainer',
                 type: 'chat',
-                messages: messages
+                messages: []
             }, {
                 type: 'input',
                 id: 'chatMessageInput',
@@ -91,14 +91,21 @@
                 layout: '1/6',
                 chat: true,
                 class: 'chatMessageInput',
-                submit: () => {
+                submit: (value) => {
 
-                    console.log(components.search(componentBlueprint, 'chatMessageInput').value);
+                    if (value === '') return;
 
+                    messages.push({
+                        sender: 'You',
+                        message: value,
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
+                    components.search(componentBlueprint, 'chatMessagesContainer').messages = messages
+                    components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.length} 👨‍👩‍👧‍👦`;
                     components.search(componentBlueprint, 'chatMessageInput').value = '';
-                    $(`#chatMessageInput`).val('');
+                    $(`#chatMessageInput`).val('').blur();
 
-                    console.log(components.search(componentBlueprint, 'chatMessageInput').value);
+                    components.addComponent(componentBlueprint);
                 }
             }]
         }, {
@@ -154,6 +161,13 @@
         }
 
         return messages;
+    }
+
+    function scrollChatToBottom() {
+        const $container = $('#chatMessagesContainer');
+        if ($container.length) {
+            $container.scrollTop($container[0].scrollHeight);
+        }
     }
 }
 

@@ -87,6 +87,10 @@
         } else {
             $(blueprint.parent).append(component);
         }
+
+        if (blueprint.after) {
+            blueprint.after();
+        }
     }
 
     function createTab(blueprint) {
@@ -191,7 +195,17 @@
                 .css('height', 'inherit')
                 .css('color', '#aaa');
         }
-        parentRow.append(input)
+        if (inputBlueprint.chat) {
+            input.attr('autocomplete', 'off');
+            input.keyup(e => {
+                inputBlueprint.value = e.target.value;
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    inputBlueprint.submit(inputBlueprint.value);
+                }
+            })
+        }
+        parentRow.append(input);
+
         if (inputBlueprint.chat) {
             parentRow
                 .append(
@@ -457,27 +471,47 @@
         return parentRow;
     }
 
-    function createRow_Chat(listBlueprint) {
-        const parentRow = $('<div/>').addClass('chatMessageRow');
-        listBlueprint.messages.forEach(message => {
-            parentRow.append(
-                $('<p/>')
-                    .addClass('myChatMessage')
-                    .append(
-                        $('<span/>')
-                            .addClass('myChatMessageTime')
-                            .text(`[${message.time}] `)
-                    )
-                    .append(
-                        $('<span/>')
-                            .addClass('myChatMessageSender')
-                            .text(`${message.sender}: `)
-                    )
-                    .append(document.createTextNode(message.message))
-            );
+    function createRow_Chat(chatblueprint) {
+        const colorMap = {
+            red: '#b35c5c',
+            gre: '#5c8f5c',
+            blu: '#5c7ca6',
+            cya: '#5ca6a6',
+            whi: '#aaa9a9',
+            bla: '#444',
+            pur: '#7c5c8f',
+            yel: '#b3a35c',
+            ora: '#b37c5c'
+        };
+
+        const parentRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
+
+        chatblueprint.messages.forEach(message => {
+            let msgText = message.message;
+            let bgColor = null;
+
+            const colorMatch = msgText.match(/^@(\w{3})@/);
+            if (colorMatch && colorMap[colorMatch[1]]) {
+                bgColor = colorMap[colorMatch[1]];
+                msgText = msgText.replace(/^@\w{3}@/, '');
+            }
+
+            const msgElem = $('<p/>').addClass('myChatMessage');
+            if (bgColor) {
+                msgElem.css('background-color', bgColor);
+            }
+
+            msgElem
+                .append($('<span/>').addClass('myChatMessageTime').text(`[${message.time}] `))
+                .append($('<span/>').addClass('myChatMessageSender').text(`${message.sender}: `))
+                .append(document.createTextNode(msgText));
+
+            parentRow.append(msgElem);
         });
+
         return parentRow;
     }
+
 
     function createImage(blueprint) {
         return $('<div/>')
@@ -797,7 +831,8 @@
             align-items: flex-start;
             height: 400px;
             overflow-y: auto;
-            gap: 10px;
+            /*gap: 10px;*/
+            gap: 4px;
             padding: 5px 10px;
             border-top: 1px solid var(--border-color);
             
@@ -819,6 +854,11 @@
         }
         .chatMessageInput {
             text-align: unset !important;
+        }
+        .myChatMessage {
+            width: 100%;
+            border-radius: 4px;
+            padding: 2px;
         }
     `;
 
