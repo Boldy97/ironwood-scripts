@@ -41,6 +41,9 @@
     }
 
     async function addComponent(blueprint) {
+        if (blueprint?.meta?.focused) {
+            return; // delay until no longer having focus
+        }
         if ($(blueprint.dependsOn).length) {
             actualAddComponent(blueprint);
             return;
@@ -53,7 +56,8 @@
         const component =
             $('<div/>')
                 .addClass('customComponent')
-                .attr('id', blueprint.componentId);
+                .attr('id', blueprint.componentId)
+                .append('<div class="componentStateMessage" style="display: none"></div>');
         if (blueprint.onClick) {
             component
                 .click(blueprint.onClick)
@@ -72,7 +76,7 @@
         // PAGE
         const selectedTabBlueprint = blueprint.tabs[blueprint.selectedTabIndex] || blueprint.tabs[0];
         selectedTabBlueprint.rows.forEach((rowBlueprint, index) => {
-            component.append(createRow(rowBlueprint));
+            component.append(createRow(rowBlueprint, blueprint));
         });
 
         const existing = $(`#${blueprint.componentId}`);
@@ -89,7 +93,7 @@
         if (!blueprint.selectedTabIndex) {
             blueprint.selectedTabIndex = 0;
         }
-        if (blueprint.tabs.filter(t => !t.hidden).length === 1) {
+        if (blueprint.tabs.length === 1) {
             return;
         }
         const tabContainer = $('<div/>').addClass('tabs');
@@ -113,7 +117,7 @@
         return tabContainer;
     }
 
-    function createRow(rowBlueprint) {
+    function createRow(rowBlueprint, rootBlueprint) {
         if (!rowTypeMappings[rowBlueprint.type]) {
             console.warn(`Skipping unknown row type in blueprint: ${rowBlueprint.type}`, rowBlueprint);
             return;
@@ -121,7 +125,7 @@
         if (rowBlueprint.hidden) {
             return;
         }
-        return rowTypeMappings[rowBlueprint.type](rowBlueprint);
+        return rowTypeMappings[rowBlueprint.type](rowBlueprint, rootBlueprint);
     }
 
     function createRow_Item(itemBlueprint) {
@@ -154,52 +158,44 @@
         return parentRow;
     }
 
-    function createRow_Input(inputBlueprint) {
+    function createRow_Input(inputBlueprint, rootBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
         if (inputBlueprint.text) {
-            parentRow
-                .append(
-                    $('<div/>')
-                        .addClass('myItemInputText')
-                        .addClass(inputBlueprint.class || '')
-                        .text(inputBlueprint.text)
-                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
-                )
+            const text = $('<div/>')
+                .addClass('myItemInputText')
+                .addClass(inputBlueprint.class || '')
+                .text(inputBlueprint.text)
+                .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`);
+            if (inputBlueprint.light) {
+                text
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+            parentRow.append(text);
         }
-        parentRow
-            .append(
-                $('<input/>')
-                    .attr('id', inputBlueprint.id)
-                    .addClass('myItemInput')
-                    .addClass(inputBlueprint.class || '')
-                    .attr('type', inputBlueprint.inputType || 'text')
-                    .attr('placeholder', inputBlueprint.name)
-                    .attr('value', inputBlueprint.value || '')
-                    .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-                    .keyup(inputDelay(function (e) {
-                        inputBlueprint.value = e.target.value;
-                        if (inputBlueprint.action) {
-                            inputBlueprint.action(inputBlueprint.value);
-                        }
-                    }, inputBlueprint.delay || 0))
-            )
-        if (inputBlueprint.chat) {
-            parentRow
-                .append(
-                    $('<button/>')
-                        .addClass('myItemInputSendMessageButton')
-                        .addClass(inputBlueprint.class || '')
-                        .text('Send')
-                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
-                        .click(() => {
-                            inputBlueprint.submit(inputBlueprint.value);
-                        })
-                )
+        const input = $('<input/>')
+            .attr('id', inputBlueprint.id)
+            .addClass('myItemInput')
+            .addClass(inputBlueprint.class || '')
+            .attr('type', inputBlueprint.inputType || 'text')
+            .attr('placeholder', inputBlueprint.name)
+            .attr('value', inputBlueprint.value || '')
+            .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
+            .keyup(e => inputBlueprint.value = e.target.value)
+            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+            .on('focusout', onInputFocusOut.bind(null, rootBlueprint, inputBlueprint));
+        if (inputBlueprint.light) {
+            input
+                .css('padding', '0')
+                .css('height', 'inherit')
+                .css('color', '#aaa');
         }
+        parentRow.append(input)
         return parentRow;
     }
 
-    function createRow_ItemWithInput(itemWithInputBlueprint) {
+    function createRow_ItemWithInput(itemWithInputBlueprint, rootBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
 
         if (itemWithInputBlueprint.image) {
@@ -225,7 +221,7 @@
                     .attr('placeholder', itemWithInputBlueprint.placeholder)
                     .attr('value', itemWithInputBlueprint.inputValue || '')
                     .css('flex', `${itemWithInputBlueprint.layout?.split('/')[1] || 1}`)
-                    .css('max-width', itemWithInputBlueprint.inputMaxWidth ?? 'unset')
+                    .css('max-width', '80px')
                     .css('height', 'inherit')
                     .keyup(inputDelay(function (e) {
                         itemWithInputBlueprint.inputValue = e.target.value;
@@ -233,6 +229,8 @@
                             itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
                         }
                     }, itemWithInputBlueprint.delay || 0))
+                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint))
             )
 
         parentRow
@@ -251,6 +249,30 @@
                 )
         }
         return parentRow;
+    }
+
+    function onInputFocusIn(rootBlueprint) {
+        if (!rootBlueprint.meta) {
+            rootBlueprint.meta = {};
+        }
+        rootBlueprint.meta.focused = true;
+        $(`#${rootBlueprint.componentId}`)
+            .find('.componentStateMessage')
+            .text('Focused - interrupted updates')
+            .show();
+    }
+
+    function onInputFocusOut(rootBlueprint, inputBlueprint) {
+        if (!rootBlueprint.meta) {
+            rootBlueprint.meta = {};
+        }
+        rootBlueprint.meta.focused = false;
+        $(`#${rootBlueprint.componentId}`)
+            .find('.componentStateMessage')
+            .hide();
+        if (inputBlueprint.action) {
+            inputBlueprint.action(inputBlueprint.value);
+        }
     }
 
     function createRow_Break(breakBlueprint) {
@@ -289,7 +311,7 @@
                 }
             }, selectBlueprint.delay || 0));
         for (const option of selectBlueprint.options) {
-            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''}>${option.text}</option>`);
+            select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}>${option.text}</option>`);
         }
         parentRow.append(select);
         return parentRow;
@@ -363,11 +385,11 @@
         return parentRow;
     }
 
-    function createRow_Segment(segmentBlueprint) {
+    function createRow_Segment(segmentBlueprint, rootBlueprint) {
         if (segmentBlueprint.hidden) {
             return;
         }
-        return segmentBlueprint.rows.flatMap(createRow);
+        return segmentBlueprint.rows.flatMap(a => createRow(a, rootBlueprint));
     }
 
     function createRow_Progress(progressBlueprint) {
@@ -524,6 +546,7 @@
             --darker-color: ${colorMapper('componentDark')};
         }
         .customComponent {
+            position: relative;
             margin-top: var(--gap);
             background-color: var(--background-color);
             box-shadow: 0 6px 12px -6px #0006;
@@ -728,6 +751,21 @@
         }
         .myListLine {
             margin-left: 20px;
+        }
+        .componentStateMessage {
+            position: absolute;
+            top: .5em;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            font-family: Jost,Helvetica Neue,Arial,sans-serif;
+            flex-direction: column;
+            white-space: nowrap;
+            background-color: black;
+            padding: .4rem;
+            border: 1px solid #3e3e3e;
+            border-radius: .4em;
+            gap: .4em;
         }
         .myItemInputSendMessageButton {
             display: flex;
