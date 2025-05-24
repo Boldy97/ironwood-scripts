@@ -8483,6 +8483,7 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
     let enabled = false;
     let questData = undefined;
     let timer = undefined;
+    let invalidationTimer = undefined;
     const RESET_MARGIN = 120;
 
     async function initialise() {
@@ -8511,6 +8512,17 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
     function handleQuestData(event) {
         questData = event;
         updateQuestReminder();
+
+        if (!invalidationTimer) {
+            invalidationTimer = setTimeout(() => {
+
+                questData = undefined;
+                updateQuestReminder();
+                clearTimeout(invalidationTimer);
+                invalidationTimer = undefined;
+
+            }, (questData.resetTime - margin) * 1000);
+        };
     }
 
     function addQuestReminder() {
@@ -8580,7 +8592,7 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
     }
 
     const styles = `
-		.questReminder {
+        .questReminder {
             box-sizing: border-box;
             padding: 2px 8px;
             display: flex;
@@ -8590,10 +8602,10 @@ window.moduleRegistry.add('questReminder', (events, elementWatcher, configuratio
             border-radius: 4px;
             font-size: .875rem;
         }
-		.questReminderIncomplete {
+        .questReminderIncomplete {
             background-color: #e4a11b;
         }
-		.questReminderComplete {
+        .questReminderComplete {
             background-color: #53bd73;
         }
     `;
