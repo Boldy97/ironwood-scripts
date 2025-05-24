@@ -93,7 +93,7 @@
         if (!blueprint.selectedTabIndex) {
             blueprint.selectedTabIndex = 0;
         }
-        if (blueprint.tabs.length === 1) {
+        if (blueprint.tabs.filter(t => !t.hidden).length === 1) {
             return;
         }
         const tabContainer = $('<div/>').addClass('tabs');
@@ -192,6 +192,19 @@
                 .css('color', '#aaa');
         }
         parentRow.append(input)
+        if (inputBlueprint.chat) {
+            parentRow
+                .append(
+                    $('<button/>')
+                        .addClass('myItemInputSendMessageButton')
+                        .addClass(inputBlueprint.class || '')
+                        .text('Send')
+                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
+                        .click(() => {
+                            inputBlueprint.submit(inputBlueprint.value);
+                        })
+                )
+        }
         return parentRow;
     }
 
