@@ -28,7 +28,10 @@
     }
 
     function attach(key, callback) {
-        keyHandlers.set(key.toLowerCase(), callback);
+        if (typeof key !== 'string' || typeof callback !== 'function' || key.trim() === '' || key.trim().length > 1) {
+            return;
+        }
+        keyHandlers.set(key.toLowerCase().trim(), callback);
     }
 
     function detachAll() {
