@@ -498,7 +498,12 @@
             }
 
             // anti html inject
-            msgElem.append(document.createTextNode(msgText));
+            msgText.split('\n').forEach((line, i, arr) => {
+                msgElem.append(document.createTextNode(line));
+                if (i < arr.length - 1) {
+                    msgElem.append(document.createElement('br'));
+                }
+            });
 
             ChatMessagesRow.append(msgElem);
         });

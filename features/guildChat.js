@@ -166,6 +166,51 @@
     function sendMessage(text) {
         if (text === '') return;
 
+        const commands = [
+            {
+                command: '/clear',
+                description: 'Clear chat messages',
+                action: () => {
+                    messages = [{
+                        content: {
+                            message: "@C:blu@Cleared",
+                        },
+                    }];
+                    buildComponent();
+                }
+            },
+            {
+                command: '/help',
+                description: 'Show help message',
+                action: () => {
+                    const helpMessage = 'Available commands:\n' + commands.map(cmd => `${cmd.command} - ${cmd.description}`).join('\n');
+                    messages.push({
+                        content: {
+                            message: "@C:blu@" + helpMessage,
+                        },
+                    });
+                }
+            }
+        ]
+
+        if (text.startsWith('/')) {
+            const command = text.split(' ')[0].toLowerCase();
+            const cmd = commands.find(c => c.command === command);
+            if (cmd) {
+                cmd.action();
+                buildComponent();
+                return;
+            } else {
+                messages.push({
+                    content: {
+                        message: "@C:red@Unknown command: " + command,
+                    },
+                });
+                buildComponent();
+                return;
+            }
+        }
+
         const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: displayName }), channelKey)
         socket.sendMessage(encryptedMessage);
     }
