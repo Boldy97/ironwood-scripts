@@ -3,7 +3,7 @@
     // Guild Chat Feature TODO list
 
     // @ mention toasts
-    // extract component, dont use other components
+    // DONE extract component, dont use other components
 
     let enabled = false;
     let audionotification = false;
@@ -12,9 +12,9 @@
     let missedMessageCount = 0;
     let chatOpened = false;
 
-    let disclaimerMessage = {
+    const disclaimerMessage = {
         content: {
-            message: "@C:red@Do not share your key with anyone! This is a private encrypted channel for your guild. Don't share your account password with anyone! This chat is not affiliated with the game developers."
+            message: "@C:red@Do NOT share your chat key or account password with anyone! This is a private encrypted channel for your guild. This chat is not affiliated with the game developers."
         },
     }
     let messages = [];
@@ -195,17 +195,12 @@
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
-                messages: []
-            }, {
-                type: 'input',
-                id: 'chatMessageInput',
-                name: 'Type a message',
-                value: '',
+                inputPlaceholder: 'Type a message',
                 inputType: 'text',
-                layout: '1/6',
-                chat: true,
-                class: 'chatMessageInput',
-                action: () => buildComponent(), // onfocusout
+                inputValue: '',
+                inputLayout: '1/6',
+                messages: [],
+                action: () => setTimeout(() => buildComponent(), 100), // onfocusout
                 submit: (value) => sendMessage(value)
             }]
         }, {

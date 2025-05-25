@@ -22,7 +22,7 @@
         progress: createRow_Progress,
         chart: createRow_Chart,
         list: createRow_List,
-        chat: createRow_Chat
+        chat: createCompositeRow_Chat
     };
     let selectedTabs = null;
 
@@ -194,37 +194,6 @@
                 .css('padding', '0')
                 .css('height', 'inherit')
                 .css('color', '#aaa');
-        }
-        if (inputBlueprint.chat) {
-            input.attr('autocomplete', 'off');
-            input.keyup(e => {
-                inputBlueprint.value = e.target.value;
-                if (e.key === 'Enter' || e.keyCode === 13) {
-                    inputBlueprint.submit(inputBlueprint.value);
-                    clearOnSubmit();
-                }
-            })
-        }
-        parentRow.append(input);
-
-        if (inputBlueprint.chat) {
-            parentRow
-                .append(
-                    $('<button/>')
-                        .addClass('myItemInputSendMessageButton')
-                        .addClass(inputBlueprint.class || '')
-                        .text('Send')
-                        .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
-                        .click(() => {
-                            inputBlueprint.submit(inputBlueprint.value);
-                            clearOnSubmit();
-                        })
-                )
-        }
-
-        function clearOnSubmit() {
-            inputBlueprint.value = '';
-            $(`#${inputBlueprint.id}`).val('').blur();
         }
 
         return parentRow;
@@ -479,7 +448,7 @@
         return parentRow;
     }
 
-    function createRow_Chat(chatblueprint) {
+    function createCompositeRow_Chat(chatblueprint, rootBlueprint) {
         const colorMap = {
             'C:red': '#b35c5c',
             'C:gre': '#5c8f5c',
@@ -492,7 +461,7 @@
             'C:ora': '#b37c5c'
         };
 
-        const parentRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
+        const ChatMessagesRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
 
         chatblueprint.messages.forEach(message => {
             let msgText = message.content.message;
@@ -528,42 +497,53 @@
                 );
             }
 
-            // TEST START
-            // const fragment = document.createDocumentFragment();
-            // let remaining = msgText;
-            // const regex = /@I:(.+?)@/g;
-
-            // let lastIndex = 0;
-            // let match;
-
-            // while ((match = regex.exec(remaining)) !== null) {
-            //     if (match.index > lastIndex) {
-            //         fragment.appendChild(document.createTextNode(remaining.substring(lastIndex, match.index)));
-            //     }
-
-            //     const imgName = match[1];
-            //     const img = document.createElement('img');
-            //     img.src = `/assets/monsters/${imgName}.png`;
-            //     img.className = 'inlineImage';
-            //     fragment.appendChild(img);
-
-            //     lastIndex = regex.lastIndex;
-            // }
-
-            // if (lastIndex < remaining.length) {
-            //     fragment.appendChild(document.createTextNode(remaining.substring(lastIndex)));
-            // }
-
-            // msgElem.append(fragment);
-            // TEST END
-
             // anti html inject
             msgElem.append(document.createTextNode(msgText));
 
-            parentRow.append(msgElem);
+            ChatMessagesRow.append(msgElem);
         });
 
-        return parentRow;
+        const chatInputRow = $('<div/>').addClass('customRow');
+
+        const input = $('<input/>')
+            .attr('id', `${chatblueprint.id}_input`)
+            .addClass('myItemInput')
+            .addClass('chatMessageInput')
+            .addClass(chatblueprint.class || '')
+            .attr('type', chatblueprint.inputType || 'text')
+            .attr('placeholder', chatblueprint.inputPlaceholder)
+            .attr('value', chatblueprint.inputValue || '')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[1] || 1}`)
+            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+            .on('focusout', onInputFocusOut.bind(null, rootBlueprint, chatblueprint))
+            .attr('autocomplete', 'off')
+            .keyup(e => {
+                chatblueprint.inputValue = $(`#${chatblueprint.id}_input`).val();
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    chatblueprint.submit(chatblueprint.inputValue);
+                    clearOnSubmit();
+                }
+            })
+        chatInputRow.append(input);
+
+        chatInputRow
+            .append(
+                $('<button/>')
+                    .addClass('myItemInputSendMessageButton')
+                    .addClass(chatblueprint.class || '')
+                    .text('Send')
+                    .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
+                    .click(() => {
+                        chatblueprint.submit(chatblueprint.inputValue);
+                        clearOnSubmit();
+                    })
+            )
+
+        function clearOnSubmit() {
+            $(`#${chatblueprint.id}_input`).val('').trigger('keyup').trigger('focusout');
+        }
+
+        return $('<div/>').append(ChatMessagesRow).append(chatInputRow);
     }
 
 
