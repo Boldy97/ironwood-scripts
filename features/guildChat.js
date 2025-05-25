@@ -188,6 +188,8 @@
             updateMissedMessageNotification();
 
             components.search(componentBlueprint, 'chatMessagesContainer').messages = [disclaimerMessage, ...messages];
+            components.search(componentBlueprint, 'chatMessagesContainer').inputPlaceholder =
+                `Type a message...${openChatHotkey !== '' ? ` (hotkey: ${openChatHotkey})` : ''}`;
             //components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.at(-1)?.clientCount || 0} 👨‍👩‍👧‍👦`;
             // this is WRONG, clientcount is ALL clients, not just guild members
 
@@ -214,7 +216,7 @@
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
-                inputPlaceholder: `Type a message...${openChatHotkey !== '' ? ` (hotkey: ${openChatHotkey})` : ''}`,
+                inputPlaceholder: 'Type a message...',
                 inputType: 'text',
                 inputValue: '',
                 inputLayout: '1/6',
