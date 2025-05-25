@@ -3,6 +3,8 @@
     let enabled = false;
     let key = '';
     let name = '';
+    let missedMessageCount = 0;
+    let chatOpened = false;
 
     let messages = [];
 
@@ -75,6 +77,39 @@
         }
     }
 
+    // Menu Notification missed messages
+    function addMissedMessageNotification() {
+        const $btn = $('nav-component button[routerLink="/guild"]');
+        if ($btn.find('.missedMessageNotification').length) return;
+
+        const $reminder = $('<div>', {
+            class: `missedMessageNotification`,
+            id: 'missedMessageNotification',
+            text: `${missedMessageCount} 💬`,
+        });
+
+        $btn.append($reminder);
+    }
+    function removeMissedMessageNotification() {
+        $('#missedMessageNotification').remove();
+    }
+    function updateMissedMessageNotification() {
+        if (!enabled || missedMessageCount === 0) {
+            removeMissedMessageNotification();
+            return;
+        }
+        const notification = $('#missedMessageNotification');
+        if (!notification.length) {
+            addMissedMessageNotification();
+            return;
+        }
+        notification.text(`${missedMessageCount} 💬`);
+    }
+
+
+
+
+
     function handleSocketEvent(socketEventData) {
         if (!enabled) {
             return;
@@ -86,6 +121,10 @@
             const decryptedContent = JSON.parse(crypto.decrypt(socketEventData.content, key));
             if (decryptedContent) {
                 messages.push({ ...socketEventData, content: decryptedContent });
+                if (!chatOpened) {
+                    missedMessageCount++;
+                    updateMissedMessageNotification();
+                }
             }
         }
 
@@ -105,9 +144,14 @@
         }
         try {
             if (events.getLast('page').type !== 'guild') {
+                chatOpened = false;
                 return;
             }
             await elementWatcher.exists('guild-component > .groups');
+
+            missedMessageCount = 0;
+            chatOpened = true;
+            updateMissedMessageNotification();
 
             components.search(componentBlueprint, 'chatMessagesContainer').messages = messages;
             //components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.at(-1)?.clientCount || 0} 👨‍👩‍👧‍👦`;
@@ -146,6 +190,7 @@
                 layout: '1/6',
                 chat: true,
                 class: 'chatMessageInput',
+                action: () => buildComponent(),
                 submit: (value) => sendMessage(value)
             }]
         }, {
@@ -166,7 +211,17 @@
     };
 
     const styles = `
-
+        .missedMessageNotification {
+            box-sizing: border-box;
+            padding: 2px 8px;
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            letter-spacing: .25px;
+            border-radius: 4px;
+            font-size: .875rem;
+            background-color: #db6565;
+        }
     `;
 
     initialise();
