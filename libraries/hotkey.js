@@ -27,7 +27,6 @@
         }
     }
 
-
     function attach(key, callback) {
         keyHandlers.set(key.toLowerCase(), callback);
     }
