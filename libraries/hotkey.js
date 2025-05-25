@@ -12,7 +12,6 @@
     }
 
     function onKeydown(e) {
-        console.log('Key pressed:', e.key);
         const el = document.activeElement;
         const isUserFocusable =
             el.tagName === 'INPUT' ||
@@ -27,7 +26,6 @@
 
         if (isUserFocusable && !handler.override) return;
 
-        console.log(`Key handler found for: ${key}`);
         e.preventDefault();
         handler.callback(e);
     }
@@ -37,7 +35,6 @@
 
         const normalizedKey = key.trim().toLowerCase();
         keyHandlers.set(normalizedKey, { callback, override });
-        console.log(keyHandlers);
     }
 
     function detach(key) {
@@ -45,7 +42,6 @@
 
         const normalizedKey = key.trim().toLowerCase();
         keyHandlers.delete(normalizedKey);
-        console.log(keyHandlers);
     }
 
     function detachAll() {

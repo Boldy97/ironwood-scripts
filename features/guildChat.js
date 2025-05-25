@@ -4,8 +4,8 @@
 
     // @ mention toasts
     // DONE extract component, dont use other components
-    // hearbeat transmit nam (encrypted) to see whos online on a channel (invalidate after 1m to keep updatodate)
-    // username no whitespace allowed trim
+    // DONE hearbeat transmit nam (encrypted) to see whos online on a channel (invalidate after 1m to keep updatodate)
+    // DONE username no whitespace allowed trim
     // DONE esc to unfocus chat input
     // DONE socket opensocketfor keep set op requireds, if requireds empty, close it
 
@@ -16,11 +16,15 @@
     let missedMessageCount = 0;
     let chatOpened = false;
     let openChatHotkey = '';
+    const activeChatters = new Map();
+    const HEARTBEAT_TIMEOUT = 30000;
+    const HEARTBEAT_INTERVAL = 10000;
+    let heartbeatInterval;
 
     const disclaimerMessage = {
         content: {
-            message: "@C:red@Do NOT share your chat key or account password with anyone! This is a private encrypted channel for your guild. This chat is not affiliated with the game developers."
-        },
+            message: "@C:red@Do NOT share your chat key or account password with anyone. This is a private, encrypted channel for your guild only. If your key is compromised, anyone can read your messages. Note: This chat is *not* affiliated with the game developers.",
+        }
     }
     let messages = [];
 
@@ -80,7 +84,7 @@
         events.register('socket', handleSocketEvent);
 
         window.sentMessageTest = function (text, key) {
-            const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: displayName }), key);
+            const encryptedMessage = crypto.encrypt(JSON.stringify({ type: 'chat_message', message: text, sender: displayName }), key);
             socket.sendMessage(encryptedMessage);
         };
         audio.volume = 0.5;
@@ -88,10 +92,12 @@
 
     async function handleConfigStateChange(state) {
         enabled = state;
-        if (!enabled) {
-            socket.closeSocket("GUILDCHAT");
-        } else {
+        if (enabled) {
             socket.openSocket("GUILDCHAT");
+            startHeartbeat();
+        } else {
+            socket.closeSocket("GUILDCHAT");
+            stopHeartbeat();
         }
     }
 
@@ -114,11 +120,15 @@
     }
 
     function requiredConfigChange() {
-        if (isEmptyOrWhitespace(channelKey) || isEmptyOrWhitespace(displayName)) {
-            componentBlueprint.selectedTabIndex = 1;
-        } else {
+        if (isValidConfig()) {
             componentBlueprint.selectedTabIndex = 0;
+        } else {
+            componentBlueprint.selectedTabIndex = 1;
         }
+    }
+
+    function isValidConfig() {
+        return !isEmptyOrWhitespace(channelKey) && !isEmptyOrWhitespace(displayName);
 
         function isEmptyOrWhitespace(str) {
             if (typeof str !== 'string') return true;
@@ -160,25 +170,60 @@
     }
 
     function handleSocketEvent(socketEventData) {
-        if (!enabled) {
-            return;
-        }
+        if (!enabled) return;
 
         console.log('Socket Data:', socketEventData);
 
         if (channelKey && socketEventData) {
             const decryptedContent = JSON.parse(crypto.decrypt(socketEventData.content, channelKey));
             if (decryptedContent) {
-                messages.push({ ...socketEventData, content: decryptedContent });
-                if (!chatOpened) {
-                    missedMessageCount++;
-                    updateMissedMessageNotification();
-                    if (audionotification) audio.play();
+                const now = Date.now();
+
+                switch (decryptedContent.type) {
+                    case 'chat_message':
+                        messages.push({ ...socketEventData, content: decryptedContent });
+                        activeChatters.set(decryptedContent.sender, socketEventData.time || now);
+
+                        if (!chatOpened) {
+                            missedMessageCount++;
+                            updateMissedMessageNotification();
+                            if (audionotification) audio.play();
+                        }
+                        break;
+
+                    case 'heartbeat':
+                        activeChatters.set(decryptedContent.sender, socketEventData.time || now);
+
+                        for (const [sender, lastSeen] of activeChatters) {
+                            if ((now - lastSeen) > HEARTBEAT_TIMEOUT) {
+                                activeChatters.delete(sender);
+                            }
+                        }
+                        console.log('Active Chatters:', activeChatters);
+                        break;
                 }
             }
         }
 
         buildComponent();
+    }
+
+    function startHeartbeat() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+
+        heartbeatInterval = setInterval(() => {
+            if (!isValidConfig) return;
+            const heartbeat = { type: 'heartbeat', sender: displayName };
+            const encrypted = crypto.encrypt(JSON.stringify(heartbeat), channelKey);
+            socket.sendMessage(encrypted);
+        }, HEARTBEAT_INTERVAL);
+    }
+
+    function stopHeartbeat() {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+        }
     }
 
     function sendMessage(text) {
@@ -237,7 +282,7 @@
             }
         }
 
-        const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: displayName }), channelKey)
+        const encryptedMessage = crypto.encrypt(JSON.stringify({ type: 'chat_message', message: text, sender: displayName }), channelKey)
         socket.sendMessage(encryptedMessage);
     }
 
@@ -261,8 +306,7 @@
             components.search(componentBlueprint, 'chatMessagesContainer').messages = [disclaimerMessage, ...messages];
             components.search(componentBlueprint, 'chatMessagesContainer').inputPlaceholder =
                 `Type a message...${openChatHotkey !== '' ? ` (hotkey: ${openChatHotkey})` : ''}`;
-            //components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.at(-1)?.clientCount || 0} 👨‍👩‍👧‍👦`;
-            // this is WRONG, clientcount is ALL clients, not just guild members
+            components.search(componentBlueprint, 'guildChatHeader').textRight = `${activeChatters.size} 👨‍👩‍👧‍👦`;
 
             components.addComponent(componentBlueprint);
         } catch (e) { }
@@ -283,7 +327,8 @@
             rows: [{
                 id: 'guildChatHeader',
                 type: 'header',
-                title: 'Guild Chat'
+                title: 'Guild Chat',
+                textRight: '0 👨‍👩‍👧‍👦'
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
