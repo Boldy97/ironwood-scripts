@@ -195,7 +195,7 @@
                 .css('height', 'inherit')
                 .css('color', '#aaa');
         }
-
+        parentRow.append(input)
         return parentRow;
     }
 
@@ -503,7 +503,7 @@
             ChatMessagesRow.append(msgElem);
         });
 
-        const chatInputRow = $('<div/>').addClass('customRow');
+        const chatInputRow = $('<div/>').addClass('chatInputRow');
 
         const input = $('<input/>')
             .attr('id', `${chatblueprint.id}_input`)
@@ -863,16 +863,24 @@
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
-            height: 400px;
+            height: 500px;
             overflow-y: auto;
-            /*gap: 10px;*/
-            gap: 4px;
-            padding: 5px 10px;
+            gap: 5px;
+            padding: 5px 5px;
             border-top: 1px solid var(--border-color);
             
             scrollbar-color: var(--border-color) var(--darker-color);
         }
-
+        .chatInputRow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            min-height: 0px;
+            min-width: 0px;
+            gap: 10px;
+            padding: 5px 5px;
+        }
         .chatMessageRow::-webkit-scrollbar {
             width: 8px;
         }

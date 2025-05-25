@@ -1,4 +1,4 @@
-(events, elementWatcher, components, configuration, elementCreator, crypto, socket) => {
+(events, elementWatcher, components, configuration, elementCreator, crypto, socket, hotkey) => {
 
     // Guild Chat Feature TODO list
 
@@ -7,10 +7,11 @@
 
     let enabled = false;
     let audionotification = false;
-    let key = '';
-    let name = '';
+    let channelKey = '';
+    let displayName = '';
     let missedMessageCount = 0;
     let chatOpened = false;
+    let openChatHotkey = '';
 
     const disclaimerMessage = {
         content: {
@@ -58,12 +59,24 @@
             default: false,
             handler: handleConfigGuildChatMessageNotificationChange,
         });
+        configuration.registerInput({
+            category: 'Guild Chat',
+            key: 'guild-chat-open-hotkey',
+            name: `Key`,
+            default: '',
+            inputType: 'text',
+            text: 'Focus chat hotkey (while on guild page) (empty for none)',
+            layout: '8/1',
+            class: 'noPad_InheritHeigth',
+            noHeader: true,
+            handler: handleConfigGuildChatHotkeyChange,
+        });
         elementCreator.addStyles(styles);
         events.register('page', buildComponent);
         events.register('socket', handleSocketEvent);
 
         window.sentMessageTest = function (text, key) {
-            const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: name }), key);
+            const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: displayName }), key);
             socket.sendMessage(encryptedMessage);
         };
         audio.volume = 0.5;
@@ -74,12 +87,12 @@
     }
 
     async function handleConfigGuildChatKeyChange(state) {
-        key = state;
+        channelKey = state;
         requiredConfigChange();
     }
 
     async function handleConfigGuildChatUserNameChange(state) {
-        name = state;
+        displayName = state;
         requiredConfigChange();
     }
 
@@ -87,8 +100,12 @@
         audionotification = state;
     }
 
+    async function handleConfigGuildChatHotkeyChange(state) {
+        openChatHotkey = state;
+    }
+
     function requiredConfigChange() {
-        if (key == '' || name == '') {
+        if (channelKey == '' || displayName == '') {
             componentBlueprint.selectedTabIndex = 1;
         } else {
             componentBlueprint.selectedTabIndex = 0;
@@ -131,8 +148,8 @@
 
         console.log('Socket Data:', socketEventData);
 
-        if (key && socketEventData) {
-            const decryptedContent = JSON.parse(crypto.decrypt(socketEventData.content, key));
+        if (channelKey && socketEventData) {
+            const decryptedContent = JSON.parse(crypto.decrypt(socketEventData.content, channelKey));
             if (decryptedContent) {
                 messages.push({ ...socketEventData, content: decryptedContent });
                 if (!chatOpened) {
@@ -149,7 +166,7 @@
     function sendMessage(text) {
         if (text === '') return;
 
-        const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: name }), key)
+        const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: displayName }), channelKey)
         socket.sendMessage(encryptedMessage);
     }
 
@@ -160,12 +177,14 @@
         try {
             if (events.getLast('page').type !== 'guild') {
                 chatOpened = false;
+                hotkey.detachAll();
                 return;
             }
             await elementWatcher.exists('guild-component > .groups');
 
             missedMessageCount = 0;
             chatOpened = true;
+            hotkey.attach(openChatHotkey, () => { $('#chatMessagesContainer_input').focus(); });
             updateMissedMessageNotification();
 
             components.search(componentBlueprint, 'chatMessagesContainer').messages = [disclaimerMessage, ...messages];
@@ -195,7 +214,7 @@
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
-                inputPlaceholder: 'Type a message',
+                inputPlaceholder: `Type a message...${openChatHotkey !== '' ? ` (hotkey: ${openChatHotkey})` : ''}`,
                 inputType: 'text',
                 inputValue: '',
                 inputLayout: '1/6',
