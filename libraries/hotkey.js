@@ -3,14 +3,16 @@
 
     const exports = {
         attach,
+        detach,
         detachAll
     };
 
     function initialise() {
-        $(window).on('keydown._globalKeyManager', onKeydown); // attach to cappuchino bubblerino
+        $(window).on('keydown._globalKeyManager', onKeydown);
     }
 
     function onKeydown(e) {
+        console.log('Key pressed:', e.key);
         const el = document.activeElement;
         const isUserFocusable =
             el.tagName === 'INPUT' ||
@@ -18,20 +20,32 @@
             el.tagName === 'BUTTON' ||
             el.isContentEditable;
 
-        if (isUserFocusable) return;
-
         const key = e.key.toLowerCase();
-        if (keyHandlers.has(key)) {
-            e.preventDefault();
-            keyHandlers.get(key)(e);
-        }
+        const handler = keyHandlers.get(key);
+
+        if (!handler) return;
+
+        if (isUserFocusable && !handler.override) return;
+
+        console.log(`Key handler found for: ${key}`);
+        e.preventDefault();
+        handler.callback(e);
     }
 
-    function attach(key, callback) {
-        if (typeof key !== 'string' || typeof callback !== 'function' || key.trim() === '' || key.trim().length > 1) {
-            return;
-        }
-        keyHandlers.set(key.toLowerCase().trim(), callback);
+    function attach(key, callback, override = false) {
+        if (typeof key !== 'string' || typeof callback !== 'function' || key.trim() === '') return;
+
+        const normalizedKey = key.trim().toLowerCase();
+        keyHandlers.set(normalizedKey, { callback, override });
+        console.log(keyHandlers);
+    }
+
+    function detach(key) {
+        if (typeof key !== 'string' || key.trim() === '') return;
+
+        const normalizedKey = key.trim().toLowerCase();
+        keyHandlers.delete(normalizedKey);
+        console.log(keyHandlers);
     }
 
     function detachAll() {

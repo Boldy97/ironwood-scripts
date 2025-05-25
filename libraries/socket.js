@@ -16,12 +16,13 @@
 
     const HISTORY_LIMIT = 100;
     const history = [];
+    const requesters = new Set();
 
-    function initialise() {
-        //openSocket();
-    }
+    function initialise() { }
 
-    function openSocket() {
+    function openSocket(forKey) {
+        requesters.add(forKey);
+
         if (socket && socket.readyState <= 1) return;
 
         socket = new WebSocket(url);
@@ -48,7 +49,7 @@
         socket.addEventListener("close", () => {
             console.log("WebSocket closed");
 
-            if (shouldReconnect) {
+            if (shouldReconnect && requesters.size > 0) {
                 setTimeout(openSocket, reconnectInterval);
             }
         });
@@ -59,11 +60,15 @@
         });
     }
 
-    function closeSocket() {
-        shouldReconnect = false;
-        if (socket) {
-            socket.close();
-            socket = null;
+    function closeSocket(forKey) {
+        requesters.delete(forKey);
+
+        if (requesters.size === 0) {
+            shouldReconnect = false;
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
         }
     }
 

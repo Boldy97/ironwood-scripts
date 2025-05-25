@@ -47,16 +47,16 @@
     }
 
     function handleTest(_val, _key, isInitial) {
-        if(!isInitial) {
+        if (!isInitial) {
             audio.play();
         }
     }
 
     function checkRevive() {
-        if(!enabled || reviving) {
+        if (!enabled || reviving) {
             return;
         }
-        if($('.revive').length) {
+        if ($('.revive').length) {
             reviving = true;
             actionStop();
         } else {
@@ -75,10 +75,10 @@
     }
 
     function beep() {
-        if(!enabled) {
+        if (!enabled) {
             return;
         }
-        if(!started) {
+        if (!started) {
             audio.play();
         }
     }

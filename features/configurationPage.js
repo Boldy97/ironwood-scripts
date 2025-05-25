@@ -1,4 +1,4 @@
-(pages, components, configuration, elementCreator) => {
+(pages, components, configuration, elementCreator, util) => {
 
     const PAGE_NAME = 'Configuration';
 
@@ -17,8 +17,8 @@
 
     function generateBlueprint() {
         const categories = {};
-        for(const item of configuration.items) {
-            if(!categories[item.category]) {
+        for (const item of configuration.items) {
+            if (!categories[item.category]) {
                 categories[item.category] = {
                     name: item.category,
                     items: []
@@ -28,7 +28,7 @@
         }
         const blueprints = [];
         let column = 1;
-        for(const category in categories) {
+        for (const category in categories) {
             column = 1 - column;
             const rows = [{
                 type: 'header',
@@ -50,7 +50,7 @@
     }
 
     function createRows(item) {
-        switch(item.type) {
+        switch (item.type) {
             case 'checkbox': return createRows_Checkbox(item);
             case 'input': return createRows_Input(item);
             case 'dropdown': return createRows_Dropdown(item);
@@ -84,6 +84,7 @@
         }
 
         result.push({
+            id: util.generateRandomId(),
             type: 'input',
             name: item.name,
             value: value,
@@ -112,7 +113,7 @@
         return [{
             type: 'item',
             name: item.name
-        },{
+        }, {
             type: 'dropdown',
             options: options,
             delay: 500,
@@ -135,7 +136,7 @@
 
     function renderPage() {
         const blueprints = generateBlueprint();
-        for(const blueprint of blueprints) {
+        for (const blueprint of blueprints) {
             components.addComponent(blueprint);
         }
     }

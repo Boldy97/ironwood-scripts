@@ -47,12 +47,12 @@
         item.handler = (value, isInitial) => {
             item.value = value;
             handler(value, item.key, isInitial);
-            if(!isInitial) {
+            if (!isInitial) {
                 save(item, value);
             }
         }
         let initialValue;
-        if(item.key in configs) {
+        if (item.key in configs) {
             initialValue = configs[item.key];
         } else {
             initialValue = item.default;
@@ -63,21 +63,21 @@
     }
 
     async function save(item, value) {
-        if(item.type === 'button') {
+        if (item.type === 'button') {
             return;
         }
-        if(item.type === 'toggle') {
+        if (item.type === 'toggle') {
             value = !!value;
         }
-        if(item.type === 'input' || item.type === 'json') {
+        if (item.type === 'input' || item.type === 'json') {
             value = JSON.stringify(value);
         }
         await configurationStore.save(item.key, value);
     }
 
     function validate(item, keys) {
-        for(const key of keys) {
-            if(!(key in item)) {
+        for (const key of keys) {
+            if (!(key in item)) {
                 throw `Missing ${key} while registering a configuration item`;
             }
         }

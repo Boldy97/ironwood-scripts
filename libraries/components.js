@@ -1,4 +1,4 @@
-(elementWatcher, colorMapper, elementCreator, localDatabase, Promise, util) => {
+(elementWatcher, colorMapper, elementCreator, localDatabase, Promise, util, hotkey) => {
 
     const exports = {
         addComponent,
@@ -187,7 +187,7 @@
             .attr('value', inputBlueprint.value || '')
             .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
             .keyup(e => inputBlueprint.value = e.target.value)
-            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+            .on('focusin', onInputFocusIn.bind(null, rootBlueprint, inputBlueprint))
             .on('focusout', onInputFocusOut.bind(null, rootBlueprint, inputBlueprint));
         if (inputBlueprint.light) {
             input
@@ -233,8 +233,8 @@
                             itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
                         }
                     }, itemWithInputBlueprint.delay || 0))
-                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
-                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint))
+                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint, itemWithInputBlueprint))
+                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint, itemWithInputBlueprint))
             )
 
         parentRow
@@ -255,7 +255,7 @@
         return parentRow;
     }
 
-    function onInputFocusIn(rootBlueprint) {
+    function onInputFocusIn(rootBlueprint, inputBlueprint) {
         if (!rootBlueprint.meta) {
             rootBlueprint.meta = {};
         }
@@ -264,6 +264,10 @@
             .find('.componentStateMessage')
             .text('Focused - interrupted updates')
             .show();
+        hotkey.attach("Escape", () => {
+            $(`#${inputBlueprint.id}`)?.blur();
+            $(`#${inputBlueprint.id}_input`)?.blur();
+        }, true);
     }
 
     function onInputFocusOut(rootBlueprint, inputBlueprint) {
@@ -274,6 +278,7 @@
         $(`#${rootBlueprint.componentId}`)
             .find('.componentStateMessage')
             .hide();
+        hotkey.detach("Escape");
         if (inputBlueprint.action) {
             inputBlueprint.action(inputBlueprint.value);
         }
@@ -519,7 +524,7 @@
             .attr('placeholder', chatblueprint.inputPlaceholder)
             .attr('value', chatblueprint.inputValue || '')
             .css('flex', `${chatblueprint.inputLayout?.split('/')[1] || 1}`)
-            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+            .on('focusin', onInputFocusIn.bind(null, rootBlueprint, chatblueprint))
             .on('focusout', onInputFocusOut.bind(null, rootBlueprint, chatblueprint))
             .attr('autocomplete', 'off')
             .keyup(e => {
