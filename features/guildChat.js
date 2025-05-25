@@ -114,10 +114,19 @@
     }
 
     function requiredConfigChange() {
-        if (channelKey == '' || displayName == '') {
+        if (isEmptyOrWhitespace(channelKey) || isEmptyOrWhitespace(displayName)) {
             componentBlueprint.selectedTabIndex = 1;
         } else {
             componentBlueprint.selectedTabIndex = 0;
+        }
+
+        function isEmptyOrWhitespace(str) {
+            if (typeof str !== 'string') return true;
+            try {
+                return str.replace(/\p{White_Space}+/gu, '') === '';
+            } catch {
+                return str.replace(/[\s\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000\uFEFF]/g, '') === '';
+            }
         }
     }
 
