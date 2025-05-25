@@ -18,7 +18,7 @@
     const history = [];
 
     function initialise() {
-        //openSocket();
+        openSocket();
     }
 
     function openSocket() {
@@ -28,7 +28,6 @@
 
         socket.addEventListener("open", () => {
             console.log("WebSocket connected");
-            emitEvent({ type: "connected" });
         });
 
         socket.addEventListener("message", (event) => {
@@ -40,7 +39,7 @@
                     history.shift();
                 }
 
-                emitEvent({ type: "message", payload: data });
+                emitEvent(data);
             } catch {
                 console.warn("Invalid message:", event.data);
             }
@@ -48,7 +47,6 @@
 
         socket.addEventListener("close", () => {
             console.log("WebSocket closed");
-            emitEvent({ type: "disconnected" });
 
             if (shouldReconnect) {
                 setTimeout(openSocket, reconnectInterval);

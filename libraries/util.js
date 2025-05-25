@@ -29,24 +29,25 @@
         compress,
         decompress,
         log,
-        clamp
+        clamp,
+        unixToHMS
     };
 
     function levelToExp(level) {
-        if(level === 1) {
+        if (level === 1) {
             return 0;
         }
-        if(level <= 100) {
+        if (level <= 100) {
             return Math.floor(Math.pow(level, 3.5) * 6 / 5);
         }
         return Math.round(12_000_000 * Math.pow(Math.pow(3500, .01), level - 100));
     }
 
     function expToLevel(exp) {
-        if(exp <= 0) {
+        if (exp <= 0) {
             return 1;
         }
-        if(exp <= 12_000_000) {
+        if (exp <= 12_000_000) {
             return Math.floor(Math.pow((exp + 1) / 1.2, 1 / 3.5));
         }
         return 100 + Math.floor(Math.log((exp + 1) / 12_000_000) / Math.log(Math.pow(3500, .01)));
@@ -65,7 +66,7 @@
     function expToNextTier(exp) {
         const level = expToLevel(exp);
         let target = 10;
-        while(target <= level) {
+        while (target <= level) {
             target += 15;
         }
         return levelToExp(target) - exp;
@@ -76,14 +77,14 @@
     }
 
     function tierToLevel(tier) {
-        if(tier <= 1) {
+        if (tier <= 1) {
             return tier;
         }
         return tier * 15 - 20;
     }
 
     function levelToTier(level) {
-        if(level <= 1) {
+        if (level <= 1) {
             return level;
         }
         return (level + 20) / 15;
@@ -91,37 +92,37 @@
 
     function formatNumber(number) {
         let digits = 2;
-        if(number < .1 && number > -.1) {
+        if (number < .1 && number > -.1) {
             digits = 3;
         }
-        if(number < .01 && number > -.01) {
+        if (number < .01 && number > -.01) {
             digits = 4;
         }
-        return number.toLocaleString(undefined, {maximumFractionDigits:digits});
+        return number.toLocaleString(undefined, { maximumFractionDigits: digits });
     }
 
     function parseNumber(text) {
-        if(!text) {
+        if (!text) {
             return 0;
         }
-        if(text.includes('Empty')) {
+        if (text.includes('Empty')) {
             return 0;
         }
         const regexMatch = /\d+[^\s]*/.exec(text);
-        if(!regexMatch) {
+        if (!regexMatch) {
             return 0;
         }
         text = regexMatch[0];
         text = text.replaceAll(/,/g, '');
         text = text.replaceAll(/&.*$/g, '');
         let multiplier = 1;
-        if(text.endsWith('%')) {
+        if (text.endsWith('%')) {
             multiplier = 1 / 100;
         }
-        if(text.endsWith('K')) {
+        if (text.endsWith('K')) {
             multiplier = 1_000;
         }
-        if(text.endsWith('M')) {
+        if (text.endsWith('M')) {
             multiplier = 1_000_000;
         }
         return roundToMultiple((parseFloat(text) || 0) * multiplier, 1 / 100);
@@ -129,7 +130,7 @@
 
     function secondsToDuration(seconds) {
         seconds = Math.floor(seconds);
-        if(seconds > 60 * 60 * 24 * 100) {
+        if (seconds > 60 * 60 * 24 * 100) {
             // > 100 days
             return 'A very long time';
         }
@@ -144,13 +145,13 @@
         days = `${days}`.padStart(2, '0');
 
         let result = '';
-        if(result || +days) {
+        if (result || +days) {
             result += `${days}d `;
         }
-        if(result || +hours) {
+        if (result || +hours) {
             result += `${hours}h `;
         }
-        if(result || +minutes) {
+        if (result || +minutes) {
             result += `${minutes}m `;
         }
         result += `${seconds}s`;
@@ -161,15 +162,15 @@
     function parseDuration(duration) {
         const parts = duration.split(' ');
         let seconds = 0;
-        for(const part of parts) {
+        for (const part of parts) {
             const value = parseFloat(part);
-            if(part.endsWith('s')) {
+            if (part.endsWith('s')) {
                 seconds += value;
-            } else if(part.endsWith('m')) {
+            } else if (part.endsWith('m')) {
                 seconds += value * 60;
-            } else if(part.endsWith('h')) {
+            } else if (part.endsWith('h')) {
                 seconds += value * 60 * 60;
-            } else if(part.endsWith('d')) {
+            } else if (part.endsWith('d')) {
                 seconds += value * 60 * 60 * 24;
             } else {
                 console.warn(`Unexpected duration being parsed : ${part}`);
@@ -183,7 +184,7 @@
     }
 
     async function goToPage(page) {
-        if(page === 'settings') {
+        if (page === 'settings') {
             goToPage('merchant');
             await elementWatcher.exists('merchant-page');
         }
@@ -199,27 +200,27 @@
     function compareObjects(object1, object2, doLog) {
         const keys1 = Object.keys(object1);
         const keys2 = Object.keys(object2);
-        if(keys1.length !== keys2.length) {
-            if(doLog) {
+        if (keys1.length !== keys2.length) {
+            if (doLog) {
                 console.warn(`key length not matching`, object1, object2);
             }
             return false;
         }
         keys1.sort();
         keys2.sort();
-        for(let i=0;i<keys1.length;i++) {
-            if(keys1[i] !== keys2[i]) {
-                if(doLog) {
+        for (let i = 0; i < keys1.length; i++) {
+            if (keys1[i] !== keys2[i]) {
+                if (doLog) {
                     console.warn(`keys not matching`, keys1[i], keys2[i], object1, object2);
                 }
                 return false;
             }
-            if(typeof object1[keys1[i]] === 'object' && typeof object2[keys2[i]] === 'object') {
-                if(!compareObjects(object1[keys1[i]], object2[keys2[i]], doLog)) {
+            if (typeof object1[keys1[i]] === 'object' && typeof object2[keys2[i]] === 'object') {
+                if (!compareObjects(object1[keys1[i]], object2[keys2[i]], doLog)) {
                     return false;
                 }
-            } else if(object1[keys1[i]] !== object2[keys2[i]]) {
-                if(doLog) {
+            } else if (object1[keys1[i]] !== object2[keys2[i]]) {
+                if (doLog) {
                     console.warn(`values not matching`, object1[keys1[i]], object2[keys2[i]], object1, object2);
                 }
                 return false;
@@ -248,7 +249,7 @@
 
     function debounce(callback, delay) {
         let timer;
-        return function(...args) {
+        return function (...args) {
             clearTimeout(timer);
             timer = setTimeout(() => {
                 callback(...args);
@@ -258,15 +259,15 @@
 
     function distinct(array) {
         return array.filter((value, index) => {
-          return array.indexOf(value) === index;
+            return array.indexOf(value) === index;
         });
     }
 
     function getDuplicates(array) {
         const sorted = array.slice().sort();
         const result = [];
-        for(let i=0;i<sorted.length-1;i++) {
-            if(sorted[i+1] == sorted[i]) {
+        for (let i = 0; i < sorted.length - 1; i++) {
+            if (sorted[i + 1] == sorted[i]) {
                 result.push(sorted[i]);
             }
         }
@@ -275,9 +276,9 @@
 
     function sumObjects(array) {
         const result = {};
-        for(const element of array) {
-            for(const key of Object.keys(element)) {
-                if(typeof element[key] === 'number') {
+        for (const element of array) {
+            for (const key of Object.keys(element)) {
+                if (typeof element[key] === 'number') {
                     result[key] = (result[key] || 0) + element[key];
                 }
             }
@@ -288,7 +289,7 @@
     function startOfWeek(date) {
         const result = new Date();
         result.setDate(date.getDate() - date.getDay());
-        result.setHours(0,0,0,0);
+        result.setHours(0, 0, 0, 0);
         return result;
     }
 
@@ -299,9 +300,9 @@
 
     function generateCombinations(objects, count, grouper) {
         const objectsByGroup = {};
-        for(const object of objects) {
+        for (const object of objects) {
             const group = grouper(object);
-            if(!objectsByGroup[group]) {
+            if (!objectsByGroup[group]) {
                 objectsByGroup[group] = [];
             }
             objectsByGroup[group].push(object);
@@ -313,14 +314,14 @@
     }
 
     function addOneCombination(result, objectsByGroup, groups, count, combination = [], groupStart = 0) {
-        if(!count) {
+        if (!count) {
             result.push(combination);
             return;
         }
-        for(let i=groupStart;i<groups.length-count+1;i++) {
+        for (let i = groupStart; i < groups.length - count + 1; i++) {
             const contents = objectsByGroup[groups[i]];
-            for(let j=0;j<contents.length;j++) {
-                addOneCombination(result, objectsByGroup, groups, count-1, combination.concat([contents[j]]), i+1);
+            for (let j = 0; j < contents.length; j++) {
+                addOneCombination(result, objectsByGroup, groups, count - 1, combination.concat([contents[j]]), i + 1);
             }
         }
     }
@@ -370,6 +371,14 @@
 
     function clamp(value, min, max) {
         return Math.min(max, Math.max(min, value));
+    }
+
+    function unixToHMS(unixMillis) {
+        const date = new Date(unixMillis);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
     }
 
     return exports;

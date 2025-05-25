@@ -1,4 +1,4 @@
-(elementWatcher, colorMapper, elementCreator, localDatabase, Promise) => {
+(elementWatcher, colorMapper, elementCreator, localDatabase, Promise, util) => {
 
     const exports = {
         addComponent,
@@ -201,6 +201,7 @@
                 inputBlueprint.value = e.target.value;
                 if (e.key === 'Enter' || e.keyCode === 13) {
                     inputBlueprint.submit(inputBlueprint.value);
+                    clearOnSubmit();
                 }
             })
         }
@@ -216,9 +217,16 @@
                         .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`)
                         .click(() => {
                             inputBlueprint.submit(inputBlueprint.value);
+                            clearOnSubmit();
                         })
                 )
         }
+
+        function clearOnSubmit() {
+            inputBlueprint.value = '';
+            $(`#${inputBlueprint.id}`).val('').blur();
+        }
+
         return parentRow;
     }
 
@@ -487,7 +495,7 @@
         const parentRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
 
         chatblueprint.messages.forEach(message => {
-            let msgText = message.message;
+            let msgText = message.content.message;
             let bgColor = null;
 
             const colorMatch = msgText.match(/^@(\w{3})@/);
@@ -502,8 +510,8 @@
             }
 
             msgElem
-                .append($('<span/>').addClass('myChatMessageTime').text(`[${message.time}] `))
-                .append($('<span/>').addClass('myChatMessageSender').text(`${message.sender}: `))
+                .append($('<span/>').addClass('myChatMessageTime').text(`[${util.unixToHMS(message.time)}] `))
+                .append($('<span/>').addClass('myChatMessageSender').text(`${message.content.sender}: `))
                 .append(document.createTextNode(msgText));
 
             parentRow.append(msgElem);

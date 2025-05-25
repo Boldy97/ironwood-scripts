@@ -1,7 +1,8 @@
-(events, elementWatcher, components, configuration, elementCreator, crypto) => {
+(events, elementWatcher, components, configuration, elementCreator, crypto, socket) => {
 
     let enabled = false;
     let key = '';
+    let name = '';
 
     let messages = [];
 
@@ -25,15 +26,31 @@
             noHeader: true,
             handler: handleConfigGuildChatKeyChange,
         });
+        configuration.registerInput({
+            category: 'Guild Chat',
+            key: 'guild-chat-name',
+            name: `Enter name`,
+            default: '',
+            inputType: 'text',
+            text: 'Your Display Name for Guild Chat',
+            layout: '7/5',
+            class: 'noPad_InheritHeigth',
+            noHeader: true,
+            handler: handleConfigGuildChatUserNameChange,
+        });
         elementCreator.addStyles(styles);
-        events.register('page', setup);
+        events.register('page', buildComponent);
+        events.register('socket', handleSocketEvent);
 
-        messages = generateFakeChat(30);
+        window.sentMessageTest = function (text, key) {
+            const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: name }), key);
+            socket.sendMessage(encryptedMessage);
+        };
 
         //messages = messages.map(m => crypto.encrypt(JSON.stringify(m), key));
 
-        components.search(componentBlueprint, 'chatMessagesContainer').messages = messages//.map(m => JSON.parse(crypto.decrypt(m, key)));
-        components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.length} 👨‍👩‍👧‍👦`;
+        // components.search(componentBlueprint, 'chatMessagesContainer').messages = messages//.map(m => JSON.parse(crypto.decrypt(m, key)));
+        // components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.length} 👨‍👩‍👧‍👦`;
     }
 
     async function handleConfigStateChange(state) {
@@ -42,14 +59,47 @@
 
     async function handleConfigGuildChatKeyChange(state) {
         key = state;
-        if (key === '') {
+        requiredConfigChange();
+    }
+
+    async function handleConfigGuildChatUserNameChange(state) {
+        name = state;
+        requiredConfigChange();
+    }
+
+    function requiredConfigChange() {
+        if (key == '' || name == '') {
             componentBlueprint.selectedTabIndex = 1;
         } else {
             componentBlueprint.selectedTabIndex = 0;
         }
     }
 
-    async function setup() {
+    function handleSocketEvent(socketEventData) {
+        if (!enabled) {
+            return;
+        }
+
+        console.log('Socket Data:', socketEventData);
+
+        if (key && socketEventData) {
+            const decryptedContent = JSON.parse(crypto.decrypt(socketEventData.content, key));
+            if (decryptedContent) {
+                messages.push({ ...socketEventData, content: decryptedContent });
+            }
+        }
+
+        buildComponent();
+    }
+
+    function sendMessage(text) {
+        if (text === '') return;
+
+        const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: name }), key)
+        socket.sendMessage(encryptedMessage);
+    }
+
+    async function buildComponent() {
         if (!enabled) {
             return;
         }
@@ -58,10 +108,16 @@
                 return;
             }
             await elementWatcher.exists('guild-component > .groups');
+
+            components.search(componentBlueprint, 'chatMessagesContainer').messages = messages;
+            //components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.at(-1)?.clientCount || 0} 👨‍👩‍👧‍👦`;
+            // this is WRONG, clientcount is ALL clients, not just guild members
+
             components.addComponent(componentBlueprint);
         } catch (e) { }
     }
 
+    // textRight: '0 👨‍👩‍👧‍👦'
     const componentBlueprint = {
         componentId: 'guildChatComponent',
         dependsOn: 'guild-page',
@@ -76,8 +132,7 @@
             rows: [{
                 id: 'guildChatHeader',
                 type: 'header',
-                title: 'Guild Chat',
-                textRight: '0 👨‍👩‍👧‍👦'
+                title: 'Guild Chat'
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
@@ -91,22 +146,7 @@
                 layout: '1/6',
                 chat: true,
                 class: 'chatMessageInput',
-                submit: (value) => {
-
-                    if (value === '') return;
-
-                    messages.push({
-                        sender: 'You',
-                        message: value,
-                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    });
-                    components.search(componentBlueprint, 'chatMessagesContainer').messages = messages
-                    components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.length} 👨‍👩‍👧‍👦`;
-                    components.search(componentBlueprint, 'chatMessageInput').value = '';
-                    $(`#chatMessageInput`).val('').blur();
-
-                    components.addComponent(componentBlueprint);
-                }
+                submit: (value) => sendMessage(value)
             }]
         }, {
             hidden: true,
@@ -118,7 +158,8 @@
                 textRight: `⛔`
             }, {
                 type: 'header',
-                title: 'Missing Guild Chat Key',
+                id: 'errorHeader',
+                title: 'Missing Guild Chat Key or Name',
                 centered: true
             }]
         }]
