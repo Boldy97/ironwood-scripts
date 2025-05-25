@@ -6,6 +6,11 @@
     let missedMessageCount = 0;
     let chatOpened = false;
 
+    let disclaimerMessage = {
+        content: {
+            message: "@C:red@❗❗❗ Do not share your key with anyone! This is a private encrypted channel for your guild. Don't share your account password with anyone! This chat is not affiliated with the game developers."
+        },
+    }
     let messages = [];
 
     function initialise() {
@@ -48,11 +53,6 @@
             const encryptedMessage = crypto.encrypt(JSON.stringify({ message: text, sender: name }), key);
             socket.sendMessage(encryptedMessage);
         };
-
-        //messages = messages.map(m => crypto.encrypt(JSON.stringify(m), key));
-
-        // components.search(componentBlueprint, 'chatMessagesContainer').messages = messages//.map(m => JSON.parse(crypto.decrypt(m, key)));
-        // components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.length} 👨‍👩‍👧‍👦`;
     }
 
     async function handleConfigStateChange(state) {
@@ -153,7 +153,7 @@
             chatOpened = true;
             updateMissedMessageNotification();
 
-            components.search(componentBlueprint, 'chatMessagesContainer').messages = messages;
+            components.search(componentBlueprint, 'chatMessagesContainer').messages = [disclaimerMessage, ...messages];
             //components.search(componentBlueprint, 'guildChatHeader').textRight = `${messages.at(-1)?.clientCount || 0} 👨‍👩‍👧‍👦`;
             // this is WRONG, clientcount is ALL clients, not just guild members
 
@@ -222,42 +222,14 @@
             font-size: .875rem;
             background-color: #db6565;
         }
+        .inlineImage {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+        }
     `;
 
     initialise();
-
-    function generateFakeChat(count = 10) {
-        const sampleMessages = [
-            'Hello, world!',
-            'How are you?',
-            'Anyone online?',
-            'lorem ipsum dolor sit amet, consectetur adipiscing elit. lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-            'What’s the plan today?',
-            'I just found a rare item!',
-            'Let’s meet at the dungeon entrance.',
-            'brb, quick break.',
-            'gg everyone!',
-            'Need help with this quest.'
-        ];
-
-        const messages = [];
-        const baseHour = 12;
-        const baseMinute = 0;
-
-        for (let i = 0; i < count; i++) {
-            const minutes = (baseMinute + i * 2) % 60;
-            const hour = baseHour + Math.floor((baseMinute + i * 2) / 60);
-            const time = `${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-
-            messages.push({
-                sender: 'Player',
-                message: sampleMessages[i % sampleMessages.length],
-                time: time
-            });
-        }
-
-        return messages;
-    }
 
     function scrollChatToBottom() {
         const $container = $('#chatMessagesContainer');

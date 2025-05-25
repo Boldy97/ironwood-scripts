@@ -481,15 +481,15 @@
 
     function createRow_Chat(chatblueprint) {
         const colorMap = {
-            red: '#b35c5c',
-            gre: '#5c8f5c',
-            blu: '#5c7ca6',
-            cya: '#5ca6a6',
-            whi: '#aaa9a9',
-            bla: '#444',
-            pur: '#7c5c8f',
-            yel: '#b3a35c',
-            ora: '#b37c5c'
+            'C:red': '#b35c5c',
+            'C:gre': '#5c8f5c',
+            'C:blu': '#5c7ca6',
+            'C:cya': '#5ca6a6',
+            'C:whi': '#aaa9a9',
+            'C:bla': '#444',
+            'C:pur': '#7c5c8f',
+            'C:yel': '#b3a35c',
+            'C:ora': '#b37c5c'
         };
 
         const parentRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
@@ -498,10 +498,13 @@
             let msgText = message.content.message;
             let bgColor = null;
 
-            const colorMatch = msgText.match(/^@(\w{3})@/);
-            if (colorMatch && colorMap[colorMatch[1]]) {
-                bgColor = colorMap[colorMatch[1]];
-                msgText = msgText.replace(/^@\w{3}@/, '');
+            const prefixMatch = msgText.match(/^@(.+?)@/);
+            if (prefixMatch) {
+                msgText = msgText.replace(/^@.+?@/, '').trim();
+
+                if (colorMap[prefixMatch[1]]) {
+                    bgColor = colorMap[prefixMatch[1]];
+                }
             }
 
             const msgElem = $('<p/>').addClass('myChatMessage');
@@ -509,10 +512,53 @@
                 msgElem.css('background-color', bgColor);
             }
 
-            msgElem
-                .append($('<span/>').addClass('myChatMessageTime').text(`[${util.unixToHMS(message.time)}] `))
-                .append($('<span/>').addClass('myChatMessageSender').text(`${message.content.sender}: `))
-                .append(document.createTextNode(msgText));
+            if (message.time) {
+                msgElem.append(
+                    $('<span/>')
+                        .addClass('myChatMessageTime')
+                        .text(`[${util.unixToHMS(message.time)}] `)
+                );
+            }
+
+            if (message.content.sender) {
+                msgElem.append(
+                    $('<span/>')
+                        .addClass('myChatMessageSender')
+                        .text(`${message.content.sender}: `)
+                );
+            }
+
+            // TEST START
+            // const fragment = document.createDocumentFragment();
+            // let remaining = msgText;
+            // const regex = /@I:(.+?)@/g;
+
+            // let lastIndex = 0;
+            // let match;
+
+            // while ((match = regex.exec(remaining)) !== null) {
+            //     if (match.index > lastIndex) {
+            //         fragment.appendChild(document.createTextNode(remaining.substring(lastIndex, match.index)));
+            //     }
+
+            //     const imgName = match[1];
+            //     const img = document.createElement('img');
+            //     img.src = `/assets/monsters/${imgName}.png`;
+            //     img.className = 'inlineImage';
+            //     fragment.appendChild(img);
+
+            //     lastIndex = regex.lastIndex;
+            // }
+
+            // if (lastIndex < remaining.length) {
+            //     fragment.appendChild(document.createTextNode(remaining.substring(lastIndex)));
+            // }
+
+            // msgElem.append(fragment);
+            // TEST END
+
+            // anti html inject
+            msgElem.append(document.createTextNode(msgText));
 
             parentRow.append(msgElem);
         });
@@ -866,7 +912,7 @@
         .myChatMessage {
             width: 100%;
             border-radius: 4px;
-            padding: 2px;
+            padding: 2px 4px;
         }
     `;
 
