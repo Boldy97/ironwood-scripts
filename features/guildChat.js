@@ -4,6 +4,10 @@
 
     // @ mention toasts
     // DONE extract component, dont use other components
+    // hearbeat transmit nam (encrypted) to see whos online on a channel (invalidate after 1m to keep updatodate)
+    // username no whitespace allowed trim
+    // esc to unfocus chat input
+    // socket opensocketfor keep set op requireds, if requireds empty, close it
 
     let enabled = false;
     let audionotification = false;
@@ -85,9 +89,9 @@
     async function handleConfigStateChange(state) {
         enabled = state;
         if (!enabled) {
-            socket.closeSocket();
+            socket.closeSocket("GUILDCHAT");
         } else {
-            socket.openSocket();
+            socket.openSocket("GUILDCHAT");
         }
     }
 
