@@ -18,7 +18,7 @@
     const history = [];
 
     function initialise() {
-        openSocket();
+        //openSocket();
     }
 
     function openSocket() {

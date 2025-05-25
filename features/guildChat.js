@@ -86,6 +86,8 @@
         enabled = state;
         if (!enabled) {
             socket.closeSocket();
+        } else {
+            socket.openSocket();
         }
     }
 
