@@ -190,7 +190,7 @@
                 layout: '1/6',
                 chat: true,
                 class: 'chatMessageInput',
-                action: () => buildComponent(),
+                action: () => buildComponent(), // onfocusout
                 submit: (value) => sendMessage(value)
             }]
         }, {
