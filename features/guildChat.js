@@ -190,16 +190,24 @@
                         },
                     });
                 }
+            },
+            {
+                command: '/shrug',
+                description: 'Send a shrug emoticon',
+                transmit: true,
+                action: () => {
+                    text = '¯\\_(ツ)_/¯';
+                }
             }
-        ]
+        ];
 
         if (text.startsWith('/')) {
             const command = text.split(' ')[0].toLowerCase();
             const cmd = commands.find(c => c.command === command);
             if (cmd) {
-                cmd.action();
+                cmd.action(text.split(' ')[1]);
                 buildComponent();
-                return;
+                if (!cmd.transmit) return;
             } else {
                 messages.push({
                     content: {
