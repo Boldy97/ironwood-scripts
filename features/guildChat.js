@@ -84,6 +84,9 @@
 
     async function handleConfigStateChange(state) {
         enabled = state;
+        if (!enabled) {
+            socket.closeSocket();
+        }
     }
 
     async function handleConfigGuildChatKeyChange(state) {
