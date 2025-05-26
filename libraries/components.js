@@ -575,6 +575,45 @@
                     msgElem.append($('<span/>').text(content.message));
                     break;
                 }
+                case "chat_trade": {
+
+                    // todo different layouts for buy or sell
+                    // if buying, go to orders tab after navigating to market
+
+                    appendTimestamp(msgElem, message.time);
+                    msgElem.append($('<span/>')
+                        .text(content.sender + ' ' + "is looking to sell:"));
+                    msgElem.addClass('chatTradeMessage');
+
+                    const container = $('<div/>').addClass('chatTradeMessageContainer')
+                    container.append(
+                        $('<img/>')
+                            .addClass('chatTradeMessageImage')
+                            .attr('src', `https://ironwoodrpg.com/assets/items/rock-silver.png`)
+                    )
+                    const infoContainer = $('<div/>').addClass('chatTradeMessageInformation');
+                    container.append(
+                        infoContainer
+                            .append($('<span/>').text(`Name: ${content.message || 'Skibidi'}`))
+                            .append($('<span/>').text(`Price: ${content.price || '420'}`))
+                            .append($('<span/>').text(`Quantity: ${content.quantity || '69'}`))
+                            .append(
+                                $('<a/>')
+                                    .text(`Click here to view`)
+                                    .click(async () => {
+                                        util.goToPage('market');
+                                        await elementWatcher.exists('market-listings-component .search > input');
+                                        const searchReference = $('market-listings-component .search > input');
+                                        searchReference.val(content.message);
+                                        searchReference[0].dispatchEvent(new Event('input'));
+                                    })
+                            )
+                    )
+
+                    msgElem.append(container);
+
+                    break;
+                }
             }
 
             ChatMessagesRow.append(msgElem);
@@ -1010,6 +1049,28 @@
             width: 100%;
             border-radius: 4px;
             padding: 2px 4px;
+        }
+        .chatTradeMessage {
+            background-color: #7c5c8f;
+        }
+        .chatTradeMessageContainer {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+        }
+        .chatTradeMessageImage {
+            width: 96px;
+            height: 96px;
+            image-rendering: pixelated;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        .chatTradeMessageInformation {
+            display: flex;
+            flex-direction: column;
+            a {
+                text-decoration: underline;
+            }
         }
     `;
 

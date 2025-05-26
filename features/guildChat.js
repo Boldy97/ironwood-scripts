@@ -258,7 +258,7 @@
                     messages = [{
                         content: {
                             type: 'chat_system',
-                            message: "@C:blu@Cleared",
+                            message: "@C:blu@Cleared chat messages.",
                         },
                     }];
                     buildComponent();
@@ -315,6 +315,20 @@
                 action: () => {
                     type = 'chat_roleplay';
                     text = text.replace(/^\s*\/me\s+/, '').trim();
+                }
+            },
+            {
+                command: '/test',
+                description: 'For testing purposes',
+                action: () => {
+                    messages.push({
+                        time: Date.now(),
+                        content: {
+                            type: 'chat_trade',
+                            message: "silver ore",
+                            sender: "leroy jenkins",
+                        }
+                    });
                 }
             },
         ];
