@@ -17,6 +17,7 @@
     let missedMessageCount = 0;
     let chatOpened = false;
     let openChatHotkey = '';
+    const MAX_MESSAGE_LENGTH = 200;
 
     const activeChatters = new Map();
     const HEARTBEAT_TIMEOUT = 30000;
@@ -25,6 +26,7 @@
 
     const disclaimerMessage = {
         content: {
+            type: 'chat_system',
             message: "@C:red@Do NOT share your chat key or account password with anyone. This is a private, encrypted channel for your guild only. If your key is compromised, anyone can read your messages. Note: This chat is *not* affiliated with the game developers.",
         }
     }
@@ -244,6 +246,10 @@
         if (text === '') return;
         let type = 'chat_message';
 
+        if (text.length > MAX_MESSAGE_LENGTH) {
+            text = text.substring(0, MAX_MESSAGE_LENGTH);
+        }
+
         const commands = [
             {
                 command: '/clear',
@@ -251,6 +257,7 @@
                 action: () => {
                     messages = [{
                         content: {
+                            type: 'chat_system',
                             message: "@C:blu@Cleared",
                         },
                     }];
@@ -264,6 +271,7 @@
                     const helpMessage = 'Available commands:\n' + commands.map(cmd => `${cmd.command} - ${cmd.description}`).join('\n');
                     messages.push({
                         content: {
+                            type: 'chat_system',
                             message: "@C:blu@" + helpMessage,
                         },
                     });
@@ -292,6 +300,7 @@
 
                     messages.push({
                         content: {
+                            type: 'chat_system',
                             message: "@C:blu@" + messageText,
                         },
                     });
@@ -322,6 +331,7 @@
             } else {
                 messages.push({
                     content: {
+                        type: 'chat_system',
                         message: "@C:red@Unknown command: " + command,
                     },
                 });

@@ -510,15 +510,29 @@
             const msgElem = $('<p/>').addClass('myChatMessage');
 
             const content = message.content || {};
-            const type = content.type || 'chat_message';
-            const msgText = content.message || '';
+            const type = content.type || 'chat_raw';
+
+            const { cleanedText, currentStyle } = parseModifiersAndCleanText(content.message, modifiers);
 
             switch (type) {
+                case 'chat_system': {
+
+                    for (const key in modifiers) {
+                        modifiers[key].apply?.(msgElem, currentStyle);
+                    }
+
+                    cleanedText.split('\n').forEach((line, i, arr) => {
+                        msgElem.append(document.createTextNode(line));
+                        if (i < arr.length - 1) {
+                            msgElem.append(document.createElement('br'));
+                        }
+                    });
+
+                    break;
+                }
                 case 'chat_message': {
                     appendTimestamp(msgElem, message.time);
                     appendSender(msgElem, content.sender);
-
-                    const { cleanedText, currentStyle } = parseModifiersAndCleanText(msgText, modifiers);
 
                     for (const key in modifiers) {
                         if (key === 'C') {
@@ -526,19 +540,12 @@
                         }
                     }
 
-                    const textWrapper = $('<span/>');
+                    const textWrapper = $('<span/>').append(document.createTextNode(cleanedText));
                     for (const key in modifiers) {
                         if (key !== 'C') {
                             modifiers[key].apply?.(textWrapper, currentStyle);
                         }
                     }
-
-                    cleanedText.split('\n').forEach((line, i, arr) => {
-                        textWrapper.append(document.createTextNode(line));
-                        if (i < arr.length - 1) {
-                            textWrapper.append(document.createElement('br'));
-                        }
-                    });
 
                     msgElem.append(textWrapper);
 
@@ -546,30 +553,26 @@
                 }
                 case "chat_roleplay": {
                     appendTimestamp(msgElem, message.time);
-                    const { cleanedText, currentStyle } = parseModifiersAndCleanText(msgText, modifiers);
-                    const explicitStyle = {
-                        italic: true,
-                        bold: true,
-                    }
+
                     for (const key in modifiers) {
                         if (key === 'C') {
                             modifiers[key].apply?.(msgElem, currentStyle);
                         }
                     }
+
                     const wrapper = $('<span/>');
-                    wrapper.append($('<span/>').text(content.sender + ' ' + cleanedText));
-                    for (const key in modifiers) {
-                        if (key !== 'C') {
-                            modifiers[key].apply?.(wrapper, explicitStyle);
-                        }
-                    }
+                    wrapper
+                        .append($('<span/>')
+                            .css('font-weight', 'bold')
+                            .css('font-style', 'italic')
+                            .text(content.sender + ' ' + cleanedText));
                     msgElem.append(wrapper);
                     break;
                 }
                 case "chat_raw": {
                     appendTimestamp(msgElem, message.time);
                     appendSender(msgElem, content.sender);
-                    msgElem.append($('<span/>').text(msgText));
+                    msgElem.append($('<span/>').text(content.message));
                     break;
                 }
             }
