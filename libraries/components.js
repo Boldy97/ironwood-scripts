@@ -453,6 +453,7 @@
         return parentRow;
     }
 
+    //fuuuuuuuuk, overly "complex", but works, needs refactoring
     function createCompositeRow_Chat(chatblueprint, rootBlueprint) {
         const colorMap = {
             'C:red': '#b35c5c',
@@ -466,96 +467,191 @@
             'C:ora': '#b37c5c'
         };
 
+        const modifiers = {
+            'C': {
+                update: (value, state) => {
+                    const colorKey = `C:${value.toLowerCase()}`;
+                    if (colorMap[colorKey]) {
+                        state.backgroundColor = colorMap[colorKey];
+                    }
+                },
+                apply: (elem, state) => {
+                    if (state.backgroundColor) {
+                        elem.css('background-color', state.backgroundColor);
+                    }
+                }
+            },
+            'B': {
+                update: (_, state) => {
+                    state.bold = true;
+                },
+                apply: (elem, state) => {
+                    if (state.bold) {
+                        elem.css('font-weight', 'bold');
+                    }
+                }
+            },
+            'I': {
+                update: (_, state) => {
+                    state.italic = true;
+                },
+                apply: (elem, state) => {
+                    if (state.italic) {
+                        elem.css('font-style', 'italic');
+                    }
+                }
+            }
+        };
+
+        const wrapper = $('<div/>');
         const ChatMessagesRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
 
         chatblueprint.messages.forEach(message => {
-            let msgText = message.content.message;
-            let bgColor = null;
-
-            const prefixMatch = msgText.match(/^@(.+?)@/);
-            if (prefixMatch) {
-                msgText = msgText.replace(/^@.+?@/, '').trim();
-
-                if (colorMap[prefixMatch[1]]) {
-                    bgColor = colorMap[prefixMatch[1]];
-                }
-            }
-
             const msgElem = $('<p/>').addClass('myChatMessage');
-            if (bgColor) {
-                msgElem.css('background-color', bgColor);
-            }
 
-            if (message.time) {
-                msgElem.append(
-                    $('<span/>')
-                        .addClass('myChatMessageTime')
-                        .text(`[${util.unixToHMS(message.time)}] `)
-                );
-            }
+            const content = message.content || {};
+            const type = content.type || 'chat_message';
+            const msgText = content.message || '';
 
-            if (message.content.sender) {
-                msgElem.append(
-                    $('<span/>')
-                        .addClass('myChatMessageSender')
-                        .text(`${message.content.sender}: `)
-                );
-            }
+            switch (type) {
+                case 'chat_message': {
+                    appendTimestamp(msgElem, message.time);
+                    appendSender(msgElem, content.sender);
 
-            // anti html inject
-            msgText.split('\n').forEach((line, i, arr) => {
-                msgElem.append(document.createTextNode(line));
-                if (i < arr.length - 1) {
-                    msgElem.append(document.createElement('br'));
+                    const { cleanedText, currentStyle } = parseModifiersAndCleanText(msgText, modifiers);
+
+                    for (const key in modifiers) {
+                        if (key === 'C') {
+                            modifiers[key].apply?.(msgElem, currentStyle);
+                        }
+                    }
+
+                    const textWrapper = $('<span/>');
+                    for (const key in modifiers) {
+                        if (key !== 'C') {
+                            modifiers[key].apply?.(textWrapper, currentStyle);
+                        }
+                    }
+
+                    cleanedText.split('\n').forEach((line, i, arr) => {
+                        textWrapper.append(document.createTextNode(line));
+                        if (i < arr.length - 1) {
+                            textWrapper.append(document.createElement('br'));
+                        }
+                    });
+
+                    msgElem.append(textWrapper);
+
+                    break;
                 }
-            });
+                case "chat_roleplay": {
+                    appendTimestamp(msgElem, message.time);
+                    const { cleanedText, currentStyle } = parseModifiersAndCleanText(msgText, modifiers);
+                    const explicitStyle = {
+                        italic: true,
+                        bold: true,
+                    }
+                    for (const key in modifiers) {
+                        if (key === 'C') {
+                            modifiers[key].apply?.(msgElem, currentStyle);
+                        }
+                    }
+                    const wrapper = $('<span/>');
+                    wrapper.append($('<span/>').text(content.sender + ' ' + cleanedText));
+                    for (const key in modifiers) {
+                        if (key !== 'C') {
+                            modifiers[key].apply?.(wrapper, explicitStyle);
+                        }
+                    }
+                    msgElem.append(wrapper);
+                    break;
+                }
+                case "chat_raw": {
+                    appendTimestamp(msgElem, message.time);
+                    appendSender(msgElem, content.sender);
+                    msgElem.append($('<span/>').text(msgText));
+                    break;
+                }
+            }
 
             ChatMessagesRow.append(msgElem);
         });
 
+
         const chatInputRow = $('<div/>').addClass('chatInputRow');
 
         const input = $('<input/>')
-            .attr('id', `${chatblueprint.id}_input`)
-            .addClass('myItemInput')
-            .addClass('chatMessageInput')
+            .attr({
+                id: `${chatblueprint.id}_input`,
+                type: chatblueprint.inputType || 'text',
+                placeholder: chatblueprint.inputPlaceholder,
+                value: chatblueprint.inputValue || '',
+                autocomplete: 'off'
+            })
+            .addClass('myItemInput chatMessageInput')
             .addClass(chatblueprint.class || '')
-            .attr('type', chatblueprint.inputType || 'text')
-            .attr('placeholder', chatblueprint.inputPlaceholder)
-            .attr('value', chatblueprint.inputValue || '')
             .css('flex', `${chatblueprint.inputLayout?.split('/')[1] || 1}`)
-            .on('focusin', onInputFocusIn.bind(null, rootBlueprint, chatblueprint))
-            .on('focusout', onInputFocusOut.bind(null, rootBlueprint, chatblueprint))
-            .attr('autocomplete', 'off')
-            .keyup(e => {
+            .on('focusin', () => onInputFocusIn(rootBlueprint, chatblueprint))
+            .on('focusout', () => onInputFocusOut(rootBlueprint, chatblueprint))
+            .on('keyup', e => {
                 chatblueprint.inputValue = $(`#${chatblueprint.id}_input`).val();
                 if (e.key === 'Enter' || e.keyCode === 13) {
                     chatblueprint.submit(chatblueprint.inputValue);
                     clearOnSubmit();
                 }
-            })
-        chatInputRow.append(input);
+            });
 
-        chatInputRow
-            .append(
-                $('<button/>')
-                    .addClass('myItemInputSendMessageButton')
-                    .addClass(chatblueprint.class || '')
-                    .text('Send')
-                    .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
-                    .click(() => {
-                        chatblueprint.submit(chatblueprint.inputValue);
-                        clearOnSubmit();
-                    })
-            )
+        const sendButton = $('<button/>')
+            .addClass('myItemInputSendMessageButton')
+            .addClass(chatblueprint.class || '')
+            .text('Send')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
+            .on('click', () => {
+                chatblueprint.submit(chatblueprint.inputValue);
+                clearOnSubmit();
+            });
 
         function clearOnSubmit() {
             $(`#${chatblueprint.id}_input`).val('').trigger('keyup').trigger('focusout');
         }
 
-        return $('<div/>').append(ChatMessagesRow).append(chatInputRow);
-    }
+        function appendTimestamp(container, timestamp) {
+            if (!timestamp) return;
+            container.append(
+                $('<span/>')
+                    .addClass('myChatMessageTime')
+                    .text(`[${util.unixToHMS(timestamp)}] `)
+            );
+        }
 
+        function appendSender(container, sender) {
+            if (!sender) return;
+            container.append(
+                $('<span/>')
+                    .addClass('myChatMessageSender')
+                    .text(`${sender}: `)
+            );
+        }
+        function parseModifiersAndCleanText(msgText, modifiers) {
+            const modifierRegex = /@([A-Z])(?::([^@]+))?@/gi;
+            const currentStyle = {};
+
+            const cleanedText = msgText.replace(modifierRegex, (_, key, val) => {
+                const upperKey = key.toUpperCase();
+                const mod = modifiers[upperKey];
+                if (mod) {
+                    mod.update(val, currentStyle);
+                }
+                return '';
+            }).trim();
+
+            return { cleanedText, currentStyle };
+        }
+
+        chatInputRow.append(input, sendButton);
+        wrapper.append(ChatMessagesRow, chatInputRow);
+        return wrapper;
+    }
 
     function createImage(blueprint) {
         return $('<div/>')

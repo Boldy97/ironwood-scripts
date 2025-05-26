@@ -8,6 +8,7 @@
     // DONE username no whitespace allowed trim
     // DONE esc to unfocus chat input
     // DONE socket opensocketfor keep set op requireds, if requireds empty, close it
+    // integration with guild quests, pledging resources, etc.
 
     let enabled = false;
     let audionotification = false;
@@ -16,6 +17,7 @@
     let missedMessageCount = 0;
     let chatOpened = false;
     let openChatHotkey = '';
+
     const activeChatters = new Map();
     const HEARTBEAT_TIMEOUT = 30000;
     const HEARTBEAT_INTERVAL = 10000;
@@ -27,6 +29,15 @@
         }
     }
     let messages = [];
+
+    const demoResponse = {
+        time: Date.now(), // unix timestamp
+        content: { // encrypted with channelKey
+            type: 'chat_message',
+            message: "in nomine patris et filii et spiritus sancti",
+            sender: "leroy jenkins",
+        }
+    };
 
     function initialise() {
         configuration.registerCheckbox({
@@ -181,7 +192,10 @@
 
                 switch (decryptedContent.type) {
                     case 'chat_message':
+                    case 'chat_roleplay':
+                        //replace encrypted content with decrypted content
                         messages.push({ ...socketEventData, content: decryptedContent });
+
                         activeChatters.set(decryptedContent.sender, socketEventData.time || now);
 
                         if (!chatOpened) {
@@ -228,6 +242,7 @@
 
     function sendMessage(text) {
         if (text === '') return;
+        let type = 'chat_message';
 
         const commands = [
             {
@@ -283,7 +298,16 @@
 
                     buildComponent();
                 }
-            }
+            },
+            {
+                command: '/me',
+                description: 'For roleplay purposes',
+                transmit: true,
+                action: () => {
+                    type = 'chat_roleplay';
+                    text = text.replace(/^\s*\/me\s+/, '').trim();
+                }
+            },
         ];
 
         if (text.startsWith('/')) {
@@ -291,8 +315,10 @@
             const cmd = commands.find(c => c.command === command);
             if (cmd) {
                 cmd.action(text.split(' ')[1]);
-                buildComponent();
-                if (!cmd.transmit) return;
+                if (!cmd.transmit) {
+                    buildComponent();
+                    return
+                };
             } else {
                 messages.push({
                     content: {
@@ -304,7 +330,7 @@
             }
         }
 
-        const encryptedMessage = crypto.encrypt(JSON.stringify({ type: 'chat_message', message: text, sender: displayName }), channelKey)
+        const encryptedMessage = crypto.encrypt(JSON.stringify({ type: type, message: text, sender: displayName }), channelKey)
         socket.sendMessage(encryptedMessage);
     }
 
