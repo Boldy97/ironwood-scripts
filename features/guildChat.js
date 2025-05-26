@@ -261,6 +261,28 @@
                 action: () => {
                     text = '¯\\_(ツ)_/¯';
                 }
+            },
+            {
+                command: '/who',
+                description: 'List active chatters',
+                action: () => {
+                    const now = Date.now();
+                    const active = [...activeChatters.entries()]
+                        .filter(([_, lastSeen]) => now - lastSeen <= HEARTBEAT_TIMEOUT)
+                        .map(([sender]) => sender);
+
+                    const messageText = active.length > 0
+                        ? 'Active chatters:\n' + active.join(', ')
+                        : 'No active chatters at the moment.';
+
+                    messages.push({
+                        content: {
+                            message: "@C:blu@" + messageText,
+                        },
+                    });
+
+                    buildComponent();
+                }
             }
         ];
 
