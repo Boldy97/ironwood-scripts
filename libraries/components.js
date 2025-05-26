@@ -585,7 +585,7 @@
                         .text(content.sender + ' ' + "is looking to sell:"));
                     msgElem.addClass('chatTradeMessage');
 
-                    const container = $('<div/>').addClass('chatTradeMessageContainer')
+                    const container = $('<div/>').addClass('chatTradeMessageContainer image')
                     container.append(
                         $('<img/>')
                             .addClass('chatTradeMessageImage')
