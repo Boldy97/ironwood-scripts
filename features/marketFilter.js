@@ -115,6 +115,7 @@
             amount: 0
         });
         syncCustomView();
+        showComponent();
     }
 
     async function applyFilter(filter) {
@@ -181,12 +182,14 @@
         });        
         componentBlueprint.selectedTabIndex = 0;
         syncCustomView();
+        showComponent();
     }
 
     async function removeFilter(filter) {
         localDatabase.removeEntry(STORE_NAME, filter.key);
         savedFilters = savedFilters.filter(a => a.key !== filter.key);
         syncCustomView();
+        showComponent();
     }
 
     function syncListingsView() {
@@ -272,6 +275,7 @@
                     action: async function() {
                         await applyFilter(savedFilter);
                         syncCustomView();
+                        showComponent();
                     }
                 },{
                     text: 'Remove',
@@ -280,7 +284,6 @@
                 }]
             });
         }
-        showComponent();
     }
 
     function hideComponent() {
