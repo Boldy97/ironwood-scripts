@@ -10,6 +10,8 @@
     // DONE socket opensocketfor keep set op requireds, if requireds empty, close it
     // integration with guild quests, pledging resources, etc.
 
+    // add icon / unread notification left of gold
+
     let enabled = false;
     let audionotification = false;
     let channelKey = '';
@@ -156,30 +158,49 @@
     // Menu Notification missed messages
     function addMissedMessageNotification() {
         const $btn = $('nav-component button[routerLink="/guild"]');
-        if ($btn.find('.missedMessageNotification').length) return;
+        if (!$btn.find('.missedMessageNotification').length) {
+            const $reminderMenu = $('<div>', {
+                class: 'missedMessageNotification',
+                text: `${missedMessageCount} 💬`,
+            });
+            $btn.append($reminderMenu);
+        }
 
-        const $reminder = $('<div>', {
-            class: `missedMessageNotification`,
-            id: 'missedMessageNotification',
-            text: `${missedMessageCount} 💬`,
-        });
-
-        $btn.append($reminder);
+        const $header = $('header-component > .header > .wrapper > .title');
+        if (!$header.next('.missedMessageNotification').length) {
+            const $reminderHeader = $('<div>', {
+                class: 'missedMessageNotification missedMessageNotificationHeader',
+                text: `${missedMessageCount} 💬`,
+            });
+            $header.after($reminderHeader);
+        }
     }
+
     function removeMissedMessageNotification() {
-        $('#missedMessageNotification').remove();
+        $('.missedMessageNotification').remove();
     }
+
     function updateMissedMessageNotification() {
         if (!enabled || missedMessageCount === 0) {
             removeMissedMessageNotification();
             return;
         }
-        const notification = $('#missedMessageNotification');
-        if (!notification.length) {
+
+        const text = `${missedMessageCount} 💬`;
+
+        const $btn = $('nav-component button[routerLink="/guild"]').find('.missedMessageNotification');
+        if ($btn.length) {
+            $btn.text(text);
+        } else {
             addMissedMessageNotification();
-            return;
         }
-        notification.text(`${missedMessageCount} 💬`);
+
+        const $header = $('header-component > .header > .wrapper > .title').next('.missedMessageNotification');
+        if ($header.length) {
+            $header.text(text);
+        } else {
+            addMissedMessageNotification();
+        }
     }
 
     function handleSocketEvent(socketEventData) {
@@ -440,6 +461,10 @@
             border-radius: 4px;
             font-size: .875rem;
             background-color: #db6565;
+        }
+        .missedMessageNotificationHeader {
+            font-size: unset;
+            padding: 4px 8px;
         }
         .inlineImage {
             width: 20px;
