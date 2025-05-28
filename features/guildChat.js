@@ -155,7 +155,6 @@
         }
     }
 
-    // Menu Notification missed messages
     function addMissedMessageNotification() {
         const $btn = $('nav-component button[routerLink="/guild"]');
         if (!$btn.find('.missedMessageNotification').length) {
@@ -174,10 +173,19 @@
             });
             $header.after($reminderHeader);
         }
+
+        // const $hamborgir = $('header-component > .header > .wrapper > .nav-menu');
+        // if (!$('.dot2').length) {
+        //     const $dot = $('<div>', {
+        //         class: 'dot2',
+        //     });
+        //     $hamborgir.append($dot);
+        // }
     }
 
     function removeMissedMessageNotification() {
         $('.missedMessageNotification').remove();
+        $('.dot2').remove();
     }
 
     function updateMissedMessageNotification() {
@@ -470,6 +478,16 @@
             width: 20px;
             height: 20px;
             vertical-align: middle;
+        }
+        .dot2 {
+            background-color: var(--border-color);
+            box-shadow: 0 2px 3px #0000004d;
+            width: 10px;
+            height: 10px;
+            position: absolute;
+            bottom: 6px;
+            right: 0;
+            border-radius: 100px;
         }
     `;
 
