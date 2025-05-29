@@ -10759,7 +10759,7 @@ window.moduleRegistry.add('ui', (configuration) => {
     }
 
     function add() {
-        document.documentElement.style.setProperty('--gap', '8px');
+        document.documentElement.style.setProperty('--gap', '10px');
         const element = $(`
             <style>
                 ${selector} :not(.multi-row) > :is(
