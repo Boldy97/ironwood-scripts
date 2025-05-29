@@ -679,6 +679,13 @@
                 }
             });
 
+        const testButton = $('<button/>')
+            .addClass('myItemInputTestButton')
+            .addClass(chatblueprint.class || '')
+            .text('+')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
+            .on('click', () => { });
+
         const sendButton = $('<button/>')
             .addClass('myItemInputSendMessageButton')
             .addClass(chatblueprint.class || '')
@@ -726,7 +733,7 @@
             return { cleanedText, currentStyle };
         }
 
-        chatInputRow.append(input, sendButton);
+        chatInputRow.append(input, testButton, sendButton);
         wrapper.append(chatMessagesRow, chatInputRow);
         return wrapper;
     }
@@ -1035,6 +1042,16 @@
         .myItemInputSendMessageButton {
             display: flex;
             background-color: ${colorMapper('success')};
+            justify-content: center;
+            height: 40px;
+            width: 100%;
+            text-align: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+        .myItemInputTestButton {
+            display: flex;
+            background-color: ${colorMapper('info')};
             justify-content: center;
             height: 40px;
             width: 100%;
