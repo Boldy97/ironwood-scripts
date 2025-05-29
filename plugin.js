@@ -726,7 +726,10 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
         const wrapper = $('<div/>');
         const chatMessagesRow = $('<div/>').addClass('customRow');
-        const chatMessagesContainer = $('<div/>').addClass('chatMessageContainer customScroller').attr('id', chatblueprint.id);
+        const chatMessagesContainer = $('<div/>')
+            .css('maxHeight', `${chatblueprint.maxHeight || 500}px`)
+            .addClass('chatMessageContainer customScroller')
+            .attr('id', chatblueprint.id);
         chatMessagesRow.append(chatMessagesContainer)
         chatblueprint.messages.forEach(message => {
             const msgElem = $('<p/>').addClass('myChatMessage');
@@ -842,7 +845,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         });
 
 
-        const chatInputRow = $('<div/>').addClass('chatInputRow');
+        const chatInputRow = $('<div/>').addClass('customRow');
 
         const input = $('<input/>')
             .attr({
@@ -1016,7 +1019,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         }
         .myHeaderAction{
             margin: 0px 0px 0px auto;
-            border: 1px solid var(--border-color);
+            /*border: 1px solid var(--border-color);*/
             border-radius: 4px;
             padding: 0px 5px;
         }
@@ -1028,8 +1031,8 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             /*padding: 5px 12px 5px 6px;*/
             min-height: 0px;
             min-width: 0px;
-            gap: var(--margin);
-            padding: calc(var(--gap) / 2) var(--gap);
+            gap: calc(var(--gap) / 2);
+            padding: calc(var(--gap) / 2) calc(var(--gap) / 2);
         }
         .myItemImage {
             position: relative;
@@ -1220,7 +1223,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         }
         .myItemInputSendMessageButton {
             display: flex;
-            background-color: #53bd73;
+            background-color: ${colorMapper('success')};
             justify-content: center;
             height: 40px;
             width: 100%;
@@ -1233,28 +1236,17 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
-            height: 500px;
+            height: 900px;
             overflow-y: auto;
             gap: var(--gap);
-            padding: calc(var(--gap) / 2) 0;
             width: 100%;
         }
-        .chatInputRow {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-top: 1px solid var(--border-color);
-            min-height: 0px;
-            min-width: 0px;
-            gap: var(--gap);
-            padding: calc(var(--gap)) var(--gap);
-        }
         .customScroller {
-            padding-right: 8px !important;   
+            padding-right: calc(var(--gap) / 2) !important;   
             box-sizing: content-box;
         }
         .customScroller::-webkit-scrollbar {
-            width: 8px;
+            width: var(--gap);
             background: transparent;
         }
         .customScroller::-webkit-scrollbar-thumb {
@@ -1303,8 +1295,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         .listViewContainer {
             display: flex;
             flex-direction: column;
-            gap: var(--gap);
-            padding: calc(var(--gap) / 2) 0;
+            gap: calc(var(--gap) / 2);
             width: 100%;
             overflow-y: auto;
         }
@@ -1315,6 +1306,9 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             background: var(--darker-color);
             border-radius: 4px;
             transition: background 0.2s;
+        }
+        .listViewElement.selected {
+            box-shadow: inset 0 0 0 2px red;
         }
         .listViewElement:hover {
             background-color: rgba(0, 0, 0, 0.04);
@@ -2479,6 +2473,7 @@ window.moduleRegistry.add('modal', (util, elementCreator, elementWatcher) => {
 
         _modal.find('.custom-modal-close, .custom-modal-backdrop').on('click', close);
 
+        //  > .scroll > .padding > .wrapper // location of real modals
         $('app-component').append(_modal);
 
         return modalId;
@@ -9248,6 +9243,7 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
     }
 
     function hanglePageEvent(event) {
+        modal.close();
         //to track when a user leaves this page to start accumulating missed message notifications
         if (events.getLast('page').type !== PAGE_NAME.toLowerCase()) {
             messagesPageIsOpen = false;
@@ -9302,7 +9298,7 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
     async function createNewChat() {
         const modalId = await modal.create({
             title: 'Select a recipient',
-            image: 'https://cdn-icons-png.flaticon.com/512/610/610413.png',
+            image: 'https://cdn-icons-png.flaticon.com/512/7887/7887065.png',
             maxWidth: 300
         });
         selectRecipientComponent.parent = `#${modalId}`;
@@ -9373,13 +9369,14 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
                 id: 'header',
                 type: 'header',
                 title: 'Inbox',
-                action: async () => { createNewChat(); },
+                // action: async () => { createNewChat(); },
                 name: 'New Chat',
             }, {
                 id: 'chatsList',
                 type: 'listView',
-                maxHeight: 1000,
+                maxHeight: 700,
                 render: ($element, item) => {
+                    if (item.selected) $element.addClass('selected')
                     $element.append(
                         $('<div/>').addClass('chatListViewContent').append(
                             $('<div/>').addClass('chatListViewTop').append(
@@ -9402,7 +9399,56 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
                     sender: "Pancake",
                     time: "12:45 PM",
                     lastMessage: "Please respond to my messages.",
-                    unreadCount: 9
+                    unreadCount: 9,
+                    selected: true
+                }, {
+                    sender: "Sexy Lady",
+                    time: "12:45 PM",
+                    lastMessage: "*image*",
+                    unreadCount: 1
+                }, {
+                    sender: "Miccyboye",
+                    time: "12:45 PM",
+                    lastMessage: "I'm sorry to inform you you're banned again for violating tos.",
+                    unreadCount: 1
+                }, {
+                    sender: "LEROY JENKINS",
+                    time: "12:45 PM",
+                    lastMessage: "IM GOING IN!",
+                    unreadCount: 1
+                }, {
+                    sender: "Santa Claus",
+                    time: "12:45 PM",
+                    unreadCount: 0
+                }, {
+                    sender: "Patt",
+                    time: "12:45 PM",
+                    lastMessage: "You have been invited to join the Rift Guild Chat.",
+                    unreadCount: 0
+                }, {
+                    sender: "Sexy Lady",
+                    time: "12:45 PM",
+                    lastMessage: "*image*",
+                    unreadCount: 1
+                }, {
+                    sender: "Miccyboye",
+                    time: "12:45 PM",
+                    lastMessage: "I'm sorry to inform you you're banned again for violating tos.",
+                    unreadCount: 1
+                }, {
+                    sender: "LEROY JENKINS",
+                    time: "12:45 PM",
+                    lastMessage: "IM GOING IN!",
+                    unreadCount: 1
+                }, {
+                    sender: "Santa Claus",
+                    time: "12:45 PM",
+                    unreadCount: 0
+                }, {
+                    sender: "Patt",
+                    time: "12:45 PM",
+                    lastMessage: "You have been invited to join the Rift Guild Chat.",
+                    unreadCount: 0
                 }, {
                     sender: "Sexy Lady",
                     time: "12:45 PM",
@@ -9428,6 +9474,15 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
                     lastMessage: "You have been invited to join the Rift Guild Chat.",
                     unreadCount: 0
                 }]
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'New Chat',
+                    color: 'success',
+                    action: async function () {
+                        createNewChat()
+                    }
+                }]
             }]
         }]
     };
@@ -9445,10 +9500,11 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
             rows: [{
                 id: 'privateMessageHeader',
                 type: 'header',
-                title: 'Santa Claus',
+                title: `Your conversation with ${'Santa Claus'}`,
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
+                maxHeight: 700,
                 inputPlaceholder: 'Type a message...',
                 inputType: 'text',
                 inputValue: '',
@@ -10695,7 +10751,7 @@ window.moduleRegistry.add('ui', (configuration) => {
     }
 
     function handleConfigStateChange(state) {
-        if(state) {
+        if (state) {
             add();
         } else {
             remove();

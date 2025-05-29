@@ -523,7 +523,10 @@
 
         const wrapper = $('<div/>');
         const chatMessagesRow = $('<div/>').addClass('customRow');
-        const chatMessagesContainer = $('<div/>').addClass('chatMessageContainer customScroller').attr('id', chatblueprint.id);
+        const chatMessagesContainer = $('<div/>')
+            .css('maxHeight', `${chatblueprint.maxHeight || 500}px`)
+            .addClass('chatMessageContainer customScroller')
+            .attr('id', chatblueprint.id);
         chatMessagesRow.append(chatMessagesContainer)
         chatblueprint.messages.forEach(message => {
             const msgElem = $('<p/>').addClass('myChatMessage');
@@ -639,7 +642,7 @@
         });
 
 
-        const chatInputRow = $('<div/>').addClass('chatInputRow');
+        const chatInputRow = $('<div/>').addClass('customRow');
 
         const input = $('<input/>')
             .attr({
@@ -813,7 +816,7 @@
         }
         .myHeaderAction{
             margin: 0px 0px 0px auto;
-            border: 1px solid var(--border-color);
+            /*border: 1px solid var(--border-color);*/
             border-radius: 4px;
             padding: 0px 5px;
         }
@@ -825,8 +828,8 @@
             /*padding: 5px 12px 5px 6px;*/
             min-height: 0px;
             min-width: 0px;
-            gap: var(--margin);
-            padding: calc(var(--gap) / 2) var(--gap);
+            gap: calc(var(--gap) / 2);
+            padding: calc(var(--gap) / 2) calc(var(--gap) / 2);
         }
         .myItemImage {
             position: relative;
@@ -1017,7 +1020,7 @@
         }
         .myItemInputSendMessageButton {
             display: flex;
-            background-color: #53bd73;
+            background-color: ${colorMapper('success')};
             justify-content: center;
             height: 40px;
             width: 100%;
@@ -1030,28 +1033,17 @@
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
-            height: 500px;
+            height: 900px;
             overflow-y: auto;
             gap: var(--gap);
-            padding: calc(var(--gap) / 2) 0;
             width: 100%;
         }
-        .chatInputRow {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-top: 1px solid var(--border-color);
-            min-height: 0px;
-            min-width: 0px;
-            gap: var(--gap);
-            padding: calc(var(--gap)) var(--gap);
-        }
         .customScroller {
-            padding-right: 8px !important;   
+            padding-right: calc(var(--gap) / 2) !important;   
             box-sizing: content-box;
         }
         .customScroller::-webkit-scrollbar {
-            width: 8px;
+            width: var(--gap);
             background: transparent;
         }
         .customScroller::-webkit-scrollbar-thumb {
@@ -1100,8 +1092,7 @@
         .listViewContainer {
             display: flex;
             flex-direction: column;
-            gap: var(--gap);
-            padding: calc(var(--gap) / 2) 0;
+            gap: calc(var(--gap) / 2);
             width: 100%;
             overflow-y: auto;
         }
@@ -1112,6 +1103,9 @@
             background: var(--darker-color);
             border-radius: 4px;
             transition: background 0.2s;
+        }
+        .listViewElement.selected {
+            box-shadow: inset 0 0 0 2px red;
         }
         .listViewElement:hover {
             background-color: rgba(0, 0, 0, 0.04);

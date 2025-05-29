@@ -24,6 +24,7 @@
     }
 
     function hanglePageEvent(event) {
+        modal.close();
         //to track when a user leaves this page to start accumulating missed message notifications
         if (events.getLast('page').type !== PAGE_NAME.toLowerCase()) {
             messagesPageIsOpen = false;
@@ -78,7 +79,7 @@
     async function createNewChat() {
         const modalId = await modal.create({
             title: 'Select a recipient',
-            image: 'https://cdn-icons-png.flaticon.com/512/610/610413.png',
+            image: 'https://cdn-icons-png.flaticon.com/512/7887/7887065.png',
             maxWidth: 300
         });
         selectRecipientComponent.parent = `#${modalId}`;
@@ -149,13 +150,14 @@
                 id: 'header',
                 type: 'header',
                 title: 'Inbox',
-                action: async () => { createNewChat(); },
+                // action: async () => { createNewChat(); },
                 name: 'New Chat',
             }, {
                 id: 'chatsList',
                 type: 'listView',
-                maxHeight: 1000,
+                maxHeight: 700,
                 render: ($element, item) => {
+                    if (item.selected) $element.addClass('selected')
                     $element.append(
                         $('<div/>').addClass('chatListViewContent').append(
                             $('<div/>').addClass('chatListViewTop').append(
@@ -178,7 +180,56 @@
                     sender: "Pancake",
                     time: "12:45 PM",
                     lastMessage: "Please respond to my messages.",
-                    unreadCount: 9
+                    unreadCount: 9,
+                    selected: true
+                }, {
+                    sender: "Sexy Lady",
+                    time: "12:45 PM",
+                    lastMessage: "*image*",
+                    unreadCount: 1
+                }, {
+                    sender: "Miccyboye",
+                    time: "12:45 PM",
+                    lastMessage: "I'm sorry to inform you you're banned again for violating tos.",
+                    unreadCount: 1
+                }, {
+                    sender: "LEROY JENKINS",
+                    time: "12:45 PM",
+                    lastMessage: "IM GOING IN!",
+                    unreadCount: 1
+                }, {
+                    sender: "Santa Claus",
+                    time: "12:45 PM",
+                    unreadCount: 0
+                }, {
+                    sender: "Patt",
+                    time: "12:45 PM",
+                    lastMessage: "You have been invited to join the Rift Guild Chat.",
+                    unreadCount: 0
+                }, {
+                    sender: "Sexy Lady",
+                    time: "12:45 PM",
+                    lastMessage: "*image*",
+                    unreadCount: 1
+                }, {
+                    sender: "Miccyboye",
+                    time: "12:45 PM",
+                    lastMessage: "I'm sorry to inform you you're banned again for violating tos.",
+                    unreadCount: 1
+                }, {
+                    sender: "LEROY JENKINS",
+                    time: "12:45 PM",
+                    lastMessage: "IM GOING IN!",
+                    unreadCount: 1
+                }, {
+                    sender: "Santa Claus",
+                    time: "12:45 PM",
+                    unreadCount: 0
+                }, {
+                    sender: "Patt",
+                    time: "12:45 PM",
+                    lastMessage: "You have been invited to join the Rift Guild Chat.",
+                    unreadCount: 0
                 }, {
                     sender: "Sexy Lady",
                     time: "12:45 PM",
@@ -204,6 +255,15 @@
                     lastMessage: "You have been invited to join the Rift Guild Chat.",
                     unreadCount: 0
                 }]
+            }, {
+                type: 'buttons',
+                buttons: [{
+                    text: 'New Chat',
+                    color: 'success',
+                    action: async function () {
+                        createNewChat()
+                    }
+                }]
             }]
         }]
     };
@@ -221,10 +281,11 @@
             rows: [{
                 id: 'privateMessageHeader',
                 type: 'header',
-                title: 'Santa Claus',
+                title: `Your conversation with ${'Santa Claus'}`,
             }, {
                 id: 'chatMessagesContainer',
                 type: 'chat',
+                maxHeight: 700,
                 inputPlaceholder: 'Type a message...',
                 inputType: 'text',
                 inputValue: '',

@@ -49,6 +49,7 @@
 
         _modal.find('.custom-modal-close, .custom-modal-backdrop').on('click', close);
 
+        //  > .scroll > .padding > .wrapper // location of real modals
         $('app-component').append(_modal);
 
         return modalId;

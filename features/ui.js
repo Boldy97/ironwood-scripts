@@ -30,7 +30,7 @@
     }
 
     function handleConfigStateChange(state) {
-        if(state) {
+        if (state) {
             add();
         } else {
             remove();
