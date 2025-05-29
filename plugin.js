@@ -284,8 +284,22 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         });
 
         const existing = $(`#${blueprint.componentId}`);
+
         if (existing.length) {
+            const scrollPositions = [];
+            existing.find('.customScroller').each(function () {
+                scrollPositions.push($(this).scrollTop());
+            });
+
             existing.replaceWith(component);
+
+            const $newScrollables = component.find('.customScroller');
+            $newScrollables.each(function (i) {
+                if (scrollPositions[i] !== undefined) {
+                    $(this).scrollTop(scrollPositions[i]);
+                }
+            });
+
         } else if (blueprint.prepend) {
             $(blueprint.parent).prepend(component);
         } else {
@@ -9240,6 +9254,10 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
         });
         elementCreator.addStyles(styles);
         events.register('page', hanglePageEvent);
+
+        window.rerenderTest = function () {
+            renderPage()
+        };
     }
 
     function hanglePageEvent(event) {

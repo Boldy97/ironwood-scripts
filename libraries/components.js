@@ -81,8 +81,22 @@
         });
 
         const existing = $(`#${blueprint.componentId}`);
+
         if (existing.length) {
+            const scrollPositions = [];
+            existing.find('.customScroller').each(function () {
+                scrollPositions.push($(this).scrollTop());
+            });
+
             existing.replaceWith(component);
+
+            const $newScrollables = component.find('.customScroller');
+            $newScrollables.each(function (i) {
+                if (scrollPositions[i] !== undefined) {
+                    $(this).scrollTop(scrollPositions[i]);
+                }
+            });
+
         } else if (blueprint.prepend) {
             $(blueprint.parent).prepend(component);
         } else {

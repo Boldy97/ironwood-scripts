@@ -21,6 +21,10 @@
         });
         elementCreator.addStyles(styles);
         events.register('page', hanglePageEvent);
+
+        window.rerenderTest = function () {
+            renderPage()
+        };
     }
 
     function hanglePageEvent(event) {
