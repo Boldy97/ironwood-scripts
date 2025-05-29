@@ -662,7 +662,8 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         parentRow
             .append(
                 $('<div/>')
-                    .addClass('listViewContainer')
+                    .addClass('listViewContainer customScroller')
+                    .css('max-height', `${listViewBlueprint.maxHeight ? `${listViewBlueprint.maxHeight}px` : '80vh'}`)
                     .addClass(listViewBlueprint.class || '')
                     .append(...listViewBlueprint.entries.map(entry => {
                         const listViewElement = $('<div/>')
@@ -724,8 +725,9 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         };
 
         const wrapper = $('<div/>');
-        const ChatMessagesRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
-
+        const chatMessagesRow = $('<div/>').addClass('customRow');
+        const chatMessagesContainer = $('<div/>').addClass('chatMessageContainer customScroller').attr('id', chatblueprint.id);
+        chatMessagesRow.append(chatMessagesContainer)
         chatblueprint.messages.forEach(message => {
             const msgElem = $('<p/>').addClass('myChatMessage');
 
@@ -836,7 +838,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                 }
             }
 
-            ChatMessagesRow.append(msgElem);
+            chatMessagesContainer.append(msgElem);
         });
 
 
@@ -911,7 +913,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         }
 
         chatInputRow.append(input, sendButton);
-        wrapper.append(ChatMessagesRow, chatInputRow);
+        wrapper.append(chatMessagesRow, chatInputRow);
         return wrapper;
     }
 
@@ -1093,11 +1095,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             pointer-events: none;
         }
         .sort {
-           padding: 12px var(--gap);
-           border-top: 1px solid var(--border-color);
-           display: flex;
-           align-items: center;
-           justify-content: space-between;
+            padding: 12px var(--gap);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         .sortButtonContainer {
             display: flex;
@@ -1108,29 +1110,29 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             overflow: hidden;
         }
         .sortButton {
-           display: flex;
-           border: none;
-           background: transparent;
-           font-family: inherit;
-           font-size: inherit;
-           line-height: 1.5;
-           font-weight: inherit;
-           color: inherit;
-           resize: none;
-           text-transform: inherit;
-           letter-spacing: inherit;
-           cursor: pointer;
-           padding: 4px var(--gap);
-           flex: 1;
-           text-align: center;
-           justify-content: center;
-           background-color: var(--darker-color);
+            display: flex;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 1.5;
+            font-weight: inherit;
+            color: inherit;
+            resize: none;
+            text-transform: inherit;
+            letter-spacing: inherit;
+            cursor: pointer;
+            padding: 4px var(--gap);
+            flex: 1;
+            text-align: center;
+            justify-content: center;
+            background-color: var(--darker-color);
         }
         .tabs {
-           display: flex;
-           align-items: center;
-           overflow: hidden;
-           border-radius: inherit;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            border-radius: inherit;
         }
         .tabButton {
             border: none;
@@ -1226,18 +1228,16 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             align-items: center;
             border-radius: 4px;
         }
-        .chatMessageRow {
+        .chatMessageContainer {
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
             height: 500px;
             overflow-y: auto;
-            gap: 5px;
-            padding: 5px 5px;
-            border-top: 1px solid var(--border-color);
-            
-            scrollbar-color: var(--border-color) var(--darker-color);
+            gap: var(--gap);
+            padding: calc(var(--gap) / 2) 0;
+            width: 100%;
         }
         .chatInputRow {
             display: flex;
@@ -1246,14 +1246,22 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             border-top: 1px solid var(--border-color);
             min-height: 0px;
             min-width: 0px;
-            gap: 10px;
-            padding: 5px 5px;
+            gap: var(--gap);
+            padding: calc(var(--gap)) var(--gap);
         }
-        .chatMessageRow::-webkit-scrollbar {
+        .customScroller {
+            padding-right: 8px !important;   
+            box-sizing: content-box;
+        }
+        .customScroller::-webkit-scrollbar {
             width: 8px;
+            background: transparent;
         }
-        .chatMessageRow::-webkit-scrollbar-thumb {
+        .customScroller::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
             border-radius: 4px;
+            border: 2px solid transparent
+            background-clip: padding-box;
         }
         .myChatMessageTime {
 
@@ -1276,7 +1284,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         .chatTradeMessageContainer {
             display: flex;
             flex-direction: row;
-            gap: 8px;
+            gap: var(--gap);
         }
         .chatTradeMessageImage {
             width: 96px;
@@ -1295,14 +1303,14 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         .listViewContainer {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 4px 0px;
+            gap: var(--gap);
+            padding: calc(var(--gap) / 2) 0;
             width: 100%;
+            overflow-y: auto;
         }
         .listViewElement {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1rem;
             border: 1px solid var(--border-color);
             background: var(--darker-color);
             border-radius: 4px;
@@ -2419,6 +2427,136 @@ window.moduleRegistry.add('logService', () => {
     return exports;
 
 });
+// modal
+window.moduleRegistry.add('modal', (util, elementCreator, elementWatcher) => {
+
+    let _modal = null;
+
+    const exports = {
+        create,
+        close
+    };
+
+    function initialise() {
+        elementCreator.addStyles(styles);
+    }
+
+
+    async function create(config) {
+        await elementWatcher.exists('app-component');
+
+        close();
+
+        const width = Math.max(200, Math.min(Number(config.maxWidth) || 450, 800));
+        if (!config.title) throw new Error('Modal requires a title');
+        const title = config.title;
+        const image = config.image ?? 'https://ironwoodrpg.com/assets/misc/smelting.png';
+
+        const modalId = util.generateRandomId();
+
+        _modal = $(`
+            <div class="custom-modal custom-route-nav">
+            <div class="custom-modal-backdrop"></div>
+            <div class="custom-modal-wrapper" style="max-width: ${width}px;">
+                <div class="custom-modal-container">
+                <div class="custom-modal-preview" id="${modalId}">
+                    <div class="custom-modal-header">
+                        <div class="custom-modal-image">
+                            <img src="${image}" alt="Skill Icon">
+                        </div>
+                        <div class="custom-modal-name">${title}</div>
+                        <button type="button" class="custom-modal-close">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            </div>
+        `);
+
+        _modal.find('.custom-modal-close, .custom-modal-backdrop').on('click', close);
+
+        $('app-component').append(_modal);
+
+        return modalId;
+    }
+
+    function close() {
+        if (_modal) {
+            _modal.remove();
+            _modal = null;
+        }
+    }
+
+    const styles = `
+        .custom-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+
+            .customComponent {
+                margin-top: unset !important;
+            }
+        }
+        .custom-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background-color: #00000080;
+        }
+        .custom-modal-wrapper {
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            padding: var(--gap);
+            overflow-y: auto;
+            z-index: 1;
+        }
+        .custom-modal-container {
+            position: relative;
+            background-color: var(--darker-color);
+            box-shadow: 0 6px 12px -6px #0006;
+            border-radius: 4px;
+        }
+        .custom-modal-preview {
+            background: var(--background-color);
+            border-radius: 4px;
+            box-shadow: 0 6px 12px -6px #0006;
+        }
+        .custom-modal-header {
+            display: flex;
+            align-items: center;
+            padding: 12px var(--gap);
+
+            .custom-modal-image {
+                width: 32px;
+                height: 32px;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .custom-modal-name {
+                margin-left: var(--margin);
+                flex: 1;
+                font-weight: 600;
+                letter-spacing: .25px;
+            }
+        }
+        
+    `;
+
+    initialise();
+
+    return exports;
+}
+);
 // pageDetector
 window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
 
@@ -9084,16 +9222,10 @@ window.moduleRegistry.add('marketPriceButtons', (configuration, util, elementWat
 }
 );
 // messagingPage
-window.moduleRegistry.add('messagingPage', (pages, components, configuration, hotkey, events, elementCreator) => {
+window.moduleRegistry.add('messagingPage', (pages, components, configuration, hotkey, events, elementCreator, modal) => {
 
     const PAGE_NAME = 'Messages';
     let messagesPageIsOpen = false;
-    const disclaimerMessage = {
-        content: {
-            type: 'chat_system',
-            message: "@C:red@Do NOT share your chat key or account password with anyone. This is a private, encrypted channel for your guild only. If your key is compromised, anyone can read your messages. Note: This chat is *not* affiliated with the game developers.",
-        }
-    }
 
     async function initialise() {
         await pages.register({
@@ -9141,22 +9273,96 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
         //     list.entries = changelogs[index].entries;
         //     components.addComponent(componentBlueprint);
         // }
-        renderLeftColumn();
-        renderRightColumn();
+        await renderLeftColumn();
+        await renderRightColumn();
     }
 
-    function renderLeftColumn() {
-        components.addComponent(leftColumnComponent);
+    async function renderLeftColumn() {
+
+        components.addComponent(conversationListComponent);
     }
 
-    function renderRightColumn() {
-        const chatMessagesContainer = components.search(rightColumnComponent, 'chatMessagesContainer');
-        chatMessagesContainer.messages = [disclaimerMessage, ...[]];
+    async function renderRightColumn() {
+        const chatMessagesContainer = components.search(selectedConversationComponent, 'chatMessagesContainer');
+        chatMessagesContainer.messages = [disclaimerMessage("The Pope"), ...[]];
 
-        components.addComponent(rightColumnComponent);
+        components.addComponent(selectedConversationComponent);
     }
 
-    const leftColumnComponent = {
+    function disclaimerMessage(otherPartyName) {
+        const disclaimerMessage = {
+            content: {
+                type: 'chat_system',
+                message: `@C:red@Do NOT share your account password with anyone. This is a private, encrypted channel for you and ${otherPartyName}. Note: This chat is *not* affiliated with the game or its developers.`,
+            }
+        }
+        return disclaimerMessage;
+    }
+
+    async function createNewChat() {
+        const modalId = await modal.create({
+            title: 'Select a recipient',
+            image: 'https://cdn-icons-png.flaticon.com/512/610/610413.png',
+            maxWidth: 300
+        });
+        selectRecipientComponent.parent = `#${modalId}`;
+
+        components.addComponent(selectRecipientComponent);
+    }
+
+    const selectRecipientComponent = {
+        componentId: 'selectRecipientComponent',
+        dependsOn: 'custom-page',
+        parent: 'MODAL ID GOES HERE',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                id: 'availableRecipientsList',
+                type: 'listView',
+                maxHeight: 500,
+                render: ($element, item) => {
+                    $element.append(
+                        $('<div/>').addClass('selectRecipientComponentItemWrapper').append(
+                            $('<span/>').addClass('selectRecipientComponentItemName').text(String(item || 'Unnamed'))
+                        ).on('click', () => {
+                            console.log(item);
+                            modal.close();
+                        })
+                    );
+                    return $element;
+                },
+                entries: [
+                    "Spaghetti Man",
+                    "Captain Cool",
+                    "MuffinTop",
+                    "JellyBean",
+                    "Banana Split",
+                    "The Warden",
+                    "Ghosty",
+                    "IronToast",
+                    "Sir Hopsalot",
+                    "DJ Noodle",
+                    "PickleRick",
+                    "Major Mayhem",
+                    "Agent Z",
+                    "SassySue",
+                    "Cranky Carl",
+                    "Quiet Quinn",
+                    "LoFi Larry",
+                    "QueenBean",
+                    "WaffleKing",
+                    "Mr. Wiggles",
+                    "Nana Banana",
+                    "SlickRick",
+                    "CodeGoblin",
+                    "Dr. Pepperoni"
+                ]
+            }]
+        }]
+    };
+
+    const conversationListComponent = {
         componentId: 'leftColumnComponent',
         dependsOn: 'custom-page',
         parent: '.column0',
@@ -9167,11 +9373,12 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
                 id: 'header',
                 type: 'header',
                 title: 'Inbox',
-                action: () => { console.log('New Chat'); },
+                action: async () => { createNewChat(); },
                 name: 'New Chat',
             }, {
                 id: 'chatsList',
                 type: 'listView',
+                maxHeight: 1000,
                 render: ($element, item) => {
                     $element.append(
                         $('<div/>').addClass('chatListViewContent').append(
@@ -9191,7 +9398,7 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
                     );
                     return $element;
                 },
-                entries: [{
+                entries: [{ // hardcoded for now, will be replaced with actual data later gather from legit messages
                     sender: "Pancake",
                     time: "12:45 PM",
                     lastMessage: "Please respond to my messages.",
@@ -9215,12 +9422,17 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
                     sender: "Santa Claus",
                     time: "12:45 PM",
                     unreadCount: 0
+                }, {
+                    sender: "Patt",
+                    time: "12:45 PM",
+                    lastMessage: "You have been invited to join the Rift Guild Chat.",
+                    unreadCount: 0
                 }]
             }]
         }]
     };
 
-    const rightColumnComponent = {
+    const selectedConversationComponent = {
         componentId: 'rightColumnComponent',
         dependsOn: 'custom-page',
         parent: '.column1',
@@ -9261,25 +9473,22 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
             flex-direction: column;
             height: 100%;
             width: 100%;
+            padding: 0.75rem 1rem;
             justify-content: space-between;
         }
-
         .chatListViewTop,
         .chatListViewBottom {
             display: flex;
             justify-content: space-between;
             padding: 0 0.25rem;
         }
-
         .chatListViewSender {
             font-weight: bold;
         }
-
         .chatListViewTimestamp {
             color: #999;
             font-size: 0.85em;
         }
-
         .chatListViewLastMessage {
             color: #ccc;
             white-space: nowrap;
@@ -9287,7 +9496,6 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
             text-overflow: ellipsis;
             max-width: 70%;
         }
-
         .chatListViewNotification {
             color: white;
             background-color: #b35c5c;
@@ -9295,6 +9503,20 @@ window.moduleRegistry.add('messagingPage', (pages, components, configuration, ho
             border-radius: 10px;
             padding: 0 6px;
             align-self: center;
+        }
+        .selectRecipientComponentItemWrapper {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+        }
+        .selectRecipientComponentItemName {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #ddd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     `;
 

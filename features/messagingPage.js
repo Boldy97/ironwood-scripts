@@ -1,13 +1,7 @@
-(pages, components, configuration, hotkey, events, elementCreator) => {
+(pages, components, configuration, hotkey, events, elementCreator, modal) => {
 
     const PAGE_NAME = 'Messages';
     let messagesPageIsOpen = false;
-    const disclaimerMessage = {
-        content: {
-            type: 'chat_system',
-            message: "@C:red@Do NOT share your chat key or account password with anyone. This is a private, encrypted channel for your guild only. If your key is compromised, anyone can read your messages. Note: This chat is *not* affiliated with the game developers.",
-        }
-    }
 
     async function initialise() {
         await pages.register({
@@ -55,22 +49,96 @@
         //     list.entries = changelogs[index].entries;
         //     components.addComponent(componentBlueprint);
         // }
-        renderLeftColumn();
-        renderRightColumn();
+        await renderLeftColumn();
+        await renderRightColumn();
     }
 
-    function renderLeftColumn() {
-        components.addComponent(leftColumnComponent);
+    async function renderLeftColumn() {
+
+        components.addComponent(conversationListComponent);
     }
 
-    function renderRightColumn() {
-        const chatMessagesContainer = components.search(rightColumnComponent, 'chatMessagesContainer');
-        chatMessagesContainer.messages = [disclaimerMessage, ...[]];
+    async function renderRightColumn() {
+        const chatMessagesContainer = components.search(selectedConversationComponent, 'chatMessagesContainer');
+        chatMessagesContainer.messages = [disclaimerMessage("The Pope"), ...[]];
 
-        components.addComponent(rightColumnComponent);
+        components.addComponent(selectedConversationComponent);
     }
 
-    const leftColumnComponent = {
+    function disclaimerMessage(otherPartyName) {
+        const disclaimerMessage = {
+            content: {
+                type: 'chat_system',
+                message: `@C:red@Do NOT share your account password with anyone. This is a private, encrypted channel for you and ${otherPartyName}. Note: This chat is *not* affiliated with the game or its developers.`,
+            }
+        }
+        return disclaimerMessage;
+    }
+
+    async function createNewChat() {
+        const modalId = await modal.create({
+            title: 'Select a recipient',
+            image: 'https://cdn-icons-png.flaticon.com/512/610/610413.png',
+            maxWidth: 300
+        });
+        selectRecipientComponent.parent = `#${modalId}`;
+
+        components.addComponent(selectRecipientComponent);
+    }
+
+    const selectRecipientComponent = {
+        componentId: 'selectRecipientComponent',
+        dependsOn: 'custom-page',
+        parent: 'MODAL ID GOES HERE',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                id: 'availableRecipientsList',
+                type: 'listView',
+                maxHeight: 500,
+                render: ($element, item) => {
+                    $element.append(
+                        $('<div/>').addClass('selectRecipientComponentItemWrapper').append(
+                            $('<span/>').addClass('selectRecipientComponentItemName').text(String(item || 'Unnamed'))
+                        ).on('click', () => {
+                            console.log(item);
+                            modal.close();
+                        })
+                    );
+                    return $element;
+                },
+                entries: [
+                    "Spaghetti Man",
+                    "Captain Cool",
+                    "MuffinTop",
+                    "JellyBean",
+                    "Banana Split",
+                    "The Warden",
+                    "Ghosty",
+                    "IronToast",
+                    "Sir Hopsalot",
+                    "DJ Noodle",
+                    "PickleRick",
+                    "Major Mayhem",
+                    "Agent Z",
+                    "SassySue",
+                    "Cranky Carl",
+                    "Quiet Quinn",
+                    "LoFi Larry",
+                    "QueenBean",
+                    "WaffleKing",
+                    "Mr. Wiggles",
+                    "Nana Banana",
+                    "SlickRick",
+                    "CodeGoblin",
+                    "Dr. Pepperoni"
+                ]
+            }]
+        }]
+    };
+
+    const conversationListComponent = {
         componentId: 'leftColumnComponent',
         dependsOn: 'custom-page',
         parent: '.column0',
@@ -81,11 +149,12 @@
                 id: 'header',
                 type: 'header',
                 title: 'Inbox',
-                action: () => { console.log('New Chat'); },
+                action: async () => { createNewChat(); },
                 name: 'New Chat',
             }, {
                 id: 'chatsList',
                 type: 'listView',
+                maxHeight: 1000,
                 render: ($element, item) => {
                     $element.append(
                         $('<div/>').addClass('chatListViewContent').append(
@@ -105,7 +174,7 @@
                     );
                     return $element;
                 },
-                entries: [{
+                entries: [{ // hardcoded for now, will be replaced with actual data later gather from legit messages
                     sender: "Pancake",
                     time: "12:45 PM",
                     lastMessage: "Please respond to my messages.",
@@ -129,12 +198,17 @@
                     sender: "Santa Claus",
                     time: "12:45 PM",
                     unreadCount: 0
+                }, {
+                    sender: "Patt",
+                    time: "12:45 PM",
+                    lastMessage: "You have been invited to join the Rift Guild Chat.",
+                    unreadCount: 0
                 }]
             }]
         }]
     };
 
-    const rightColumnComponent = {
+    const selectedConversationComponent = {
         componentId: 'rightColumnComponent',
         dependsOn: 'custom-page',
         parent: '.column1',
@@ -175,25 +249,22 @@
             flex-direction: column;
             height: 100%;
             width: 100%;
+            padding: 0.75rem 1rem;
             justify-content: space-between;
         }
-
         .chatListViewTop,
         .chatListViewBottom {
             display: flex;
             justify-content: space-between;
             padding: 0 0.25rem;
         }
-
         .chatListViewSender {
             font-weight: bold;
         }
-
         .chatListViewTimestamp {
             color: #999;
             font-size: 0.85em;
         }
-
         .chatListViewLastMessage {
             color: #ccc;
             white-space: nowrap;
@@ -201,7 +272,6 @@
             text-overflow: ellipsis;
             max-width: 70%;
         }
-
         .chatListViewNotification {
             color: white;
             background-color: #b35c5c;
@@ -209,6 +279,20 @@
             border-radius: 10px;
             padding: 0 6px;
             align-self: center;
+        }
+        .selectRecipientComponentItemWrapper {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+        }
+        .selectRecipientComponentItemName {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #ddd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     `;
 

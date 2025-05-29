@@ -459,7 +459,8 @@
         parentRow
             .append(
                 $('<div/>')
-                    .addClass('listViewContainer')
+                    .addClass('listViewContainer customScroller')
+                    .css('max-height', `${listViewBlueprint.maxHeight ? `${listViewBlueprint.maxHeight}px` : '80vh'}`)
                     .addClass(listViewBlueprint.class || '')
                     .append(...listViewBlueprint.entries.map(entry => {
                         const listViewElement = $('<div/>')
@@ -521,8 +522,9 @@
         };
 
         const wrapper = $('<div/>');
-        const ChatMessagesRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
-
+        const chatMessagesRow = $('<div/>').addClass('customRow');
+        const chatMessagesContainer = $('<div/>').addClass('chatMessageContainer customScroller').attr('id', chatblueprint.id);
+        chatMessagesRow.append(chatMessagesContainer)
         chatblueprint.messages.forEach(message => {
             const msgElem = $('<p/>').addClass('myChatMessage');
 
@@ -633,7 +635,7 @@
                 }
             }
 
-            ChatMessagesRow.append(msgElem);
+            chatMessagesContainer.append(msgElem);
         });
 
 
@@ -708,7 +710,7 @@
         }
 
         chatInputRow.append(input, sendButton);
-        wrapper.append(ChatMessagesRow, chatInputRow);
+        wrapper.append(chatMessagesRow, chatInputRow);
         return wrapper;
     }
 
@@ -890,11 +892,11 @@
             pointer-events: none;
         }
         .sort {
-           padding: 12px var(--gap);
-           border-top: 1px solid var(--border-color);
-           display: flex;
-           align-items: center;
-           justify-content: space-between;
+            padding: 12px var(--gap);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         .sortButtonContainer {
             display: flex;
@@ -905,29 +907,29 @@
             overflow: hidden;
         }
         .sortButton {
-           display: flex;
-           border: none;
-           background: transparent;
-           font-family: inherit;
-           font-size: inherit;
-           line-height: 1.5;
-           font-weight: inherit;
-           color: inherit;
-           resize: none;
-           text-transform: inherit;
-           letter-spacing: inherit;
-           cursor: pointer;
-           padding: 4px var(--gap);
-           flex: 1;
-           text-align: center;
-           justify-content: center;
-           background-color: var(--darker-color);
+            display: flex;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 1.5;
+            font-weight: inherit;
+            color: inherit;
+            resize: none;
+            text-transform: inherit;
+            letter-spacing: inherit;
+            cursor: pointer;
+            padding: 4px var(--gap);
+            flex: 1;
+            text-align: center;
+            justify-content: center;
+            background-color: var(--darker-color);
         }
         .tabs {
-           display: flex;
-           align-items: center;
-           overflow: hidden;
-           border-radius: inherit;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            border-radius: inherit;
         }
         .tabButton {
             border: none;
@@ -1023,18 +1025,16 @@
             align-items: center;
             border-radius: 4px;
         }
-        .chatMessageRow {
+        .chatMessageContainer {
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
             height: 500px;
             overflow-y: auto;
-            gap: 5px;
-            padding: 5px 5px;
-            border-top: 1px solid var(--border-color);
-            
-            scrollbar-color: var(--border-color) var(--darker-color);
+            gap: var(--gap);
+            padding: calc(var(--gap) / 2) 0;
+            width: 100%;
         }
         .chatInputRow {
             display: flex;
@@ -1043,14 +1043,22 @@
             border-top: 1px solid var(--border-color);
             min-height: 0px;
             min-width: 0px;
-            gap: 10px;
-            padding: 5px 5px;
+            gap: var(--gap);
+            padding: calc(var(--gap)) var(--gap);
         }
-        .chatMessageRow::-webkit-scrollbar {
+        .customScroller {
+            padding-right: 8px !important;   
+            box-sizing: content-box;
+        }
+        .customScroller::-webkit-scrollbar {
             width: 8px;
+            background: transparent;
         }
-        .chatMessageRow::-webkit-scrollbar-thumb {
+        .customScroller::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
             border-radius: 4px;
+            border: 2px solid transparent
+            background-clip: padding-box;
         }
         .myChatMessageTime {
 
@@ -1073,7 +1081,7 @@
         .chatTradeMessageContainer {
             display: flex;
             flex-direction: row;
-            gap: 8px;
+            gap: var(--gap);
         }
         .chatTradeMessageImage {
             width: 96px;
@@ -1092,14 +1100,14 @@
         .listViewContainer {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 4px 0px;
+            gap: var(--gap);
+            padding: calc(var(--gap) / 2) 0;
             width: 100%;
+            overflow-y: auto;
         }
         .listViewElement {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1rem;
             border: 1px solid var(--border-color);
             background: var(--darker-color);
             border-radius: 4px;
