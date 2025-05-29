@@ -225,7 +225,8 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         progress: createRow_Progress,
         chart: createRow_Chart,
         list: createRow_List,
-        chat: createCompositeRow_Chat
+        listView: createRow_ListView,
+        chat: createCompositeRow_Chat,
     };
     let selectedTabs = null;
 
@@ -656,6 +657,23 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         return parentRow;
     }
 
+    function createRow_ListView(listViewBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+        parentRow
+            .append(
+                $('<div/>')
+                    .addClass('listViewContainer')
+                    .addClass(listViewBlueprint.class || '')
+                    .append(...listViewBlueprint.entries.map(entry => {
+                        const listViewElement = $('<div/>')
+                            .addClass('listViewElement')
+                        return listViewBlueprint.render(listViewElement, entry)
+                    }))
+            );
+        return parentRow;
+    }
+
+    //fuuuuuuuuk, overly "complex", but works, needs refactoring
     function createCompositeRow_Chat(chatblueprint, rootBlueprint) {
         const colorMap = {
             'C:red': '#b35c5c',
@@ -669,96 +687,233 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             'C:ora': '#b37c5c'
         };
 
+        const modifiers = {
+            'C': {
+                update: (value, state) => {
+                    const colorKey = `C:${value.toLowerCase()}`;
+                    if (colorMap[colorKey]) {
+                        state.backgroundColor = colorMap[colorKey];
+                    }
+                },
+                apply: (elem, state) => {
+                    if (state.backgroundColor) {
+                        elem.css('background-color', state.backgroundColor);
+                    }
+                }
+            },
+            'B': {
+                update: (_, state) => {
+                    state.bold = true;
+                },
+                apply: (elem, state) => {
+                    if (state.bold) {
+                        elem.css('font-weight', 'bold');
+                    }
+                }
+            },
+            'I': {
+                update: (_, state) => {
+                    state.italic = true;
+                },
+                apply: (elem, state) => {
+                    if (state.italic) {
+                        elem.css('font-style', 'italic');
+                    }
+                }
+            }
+        };
+
+        const wrapper = $('<div/>');
         const ChatMessagesRow = $('<div/>').addClass('chatMessageRow').attr('id', chatblueprint.id);
 
         chatblueprint.messages.forEach(message => {
-            let msgText = message.content.message;
-            let bgColor = null;
-
-            const prefixMatch = msgText.match(/^@(.+?)@/);
-            if (prefixMatch) {
-                msgText = msgText.replace(/^@.+?@/, '').trim();
-
-                if (colorMap[prefixMatch[1]]) {
-                    bgColor = colorMap[prefixMatch[1]];
-                }
-            }
-
             const msgElem = $('<p/>').addClass('myChatMessage');
-            if (bgColor) {
-                msgElem.css('background-color', bgColor);
-            }
 
-            if (message.time) {
-                msgElem.append(
-                    $('<span/>')
-                        .addClass('myChatMessageTime')
-                        .text(`[${util.unixToHMS(message.time)}] `)
-                );
-            }
+            const content = message.content || {};
+            const type = content.type || 'chat_raw';
 
-            if (message.content.sender) {
-                msgElem.append(
-                    $('<span/>')
-                        .addClass('myChatMessageSender')
-                        .text(`${message.content.sender}: `)
-                );
-            }
+            const { cleanedText, currentStyle } = parseModifiersAndCleanText(content.message, modifiers);
 
-            // anti html inject
-            msgText.split('\n').forEach((line, i, arr) => {
-                msgElem.append(document.createTextNode(line));
-                if (i < arr.length - 1) {
-                    msgElem.append(document.createElement('br'));
+            switch (type) {
+                case 'chat_system': {
+
+                    for (const key in modifiers) {
+                        modifiers[key].apply?.(msgElem, currentStyle);
+                    }
+
+                    cleanedText.split('\n').forEach((line, i, arr) => {
+                        msgElem.append(document.createTextNode(line));
+                        if (i < arr.length - 1) {
+                            msgElem.append(document.createElement('br'));
+                        }
+                    });
+
+                    break;
                 }
-            });
+                case 'chat_message': {
+                    appendTimestamp(msgElem, message.time);
+                    appendSender(msgElem, content.sender);
+
+                    for (const key in modifiers) {
+                        if (key === 'C') {
+                            modifiers[key].apply?.(msgElem, currentStyle);
+                        }
+                    }
+
+                    const textWrapper = $('<span/>').append(document.createTextNode(cleanedText));
+                    for (const key in modifiers) {
+                        if (key !== 'C') {
+                            modifiers[key].apply?.(textWrapper, currentStyle);
+                        }
+                    }
+
+                    msgElem.append(textWrapper);
+
+                    break;
+                }
+                case "chat_roleplay": {
+                    appendTimestamp(msgElem, message.time);
+
+                    for (const key in modifiers) {
+                        if (key === 'C') {
+                            modifiers[key].apply?.(msgElem, currentStyle);
+                        }
+                    }
+
+                    const wrapper = $('<span/>');
+                    wrapper
+                        .append($('<span/>')
+                            .css('font-weight', 'bold')
+                            .css('font-style', 'italic')
+                            .text(content.sender + ' ' + cleanedText));
+                    msgElem.append(wrapper);
+                    break;
+                }
+                case "chat_raw": {
+                    appendTimestamp(msgElem, message.time);
+                    appendSender(msgElem, content.sender);
+                    msgElem.append($('<span/>').text(content.message));
+                    break;
+                }
+                case "chat_trade": {
+
+                    // todo different layouts for buy or sell
+                    // if buying, go to orders tab after navigating to market
+
+                    appendTimestamp(msgElem, message.time);
+                    msgElem.append($('<span/>')
+                        .text(content.sender + ' ' + "is looking to sell:"));
+                    msgElem.addClass('chatTradeMessage');
+
+                    const container = $('<div/>').addClass('chatTradeMessageContainer image')
+                    container.append(
+                        $('<img/>')
+                            .addClass('chatTradeMessageImage')
+                            .attr('src', `https://ironwoodrpg.com/assets/items/rock-silver.png`)
+                    )
+                    const infoContainer = $('<div/>').addClass('chatTradeMessageInformation');
+                    container.append(
+                        infoContainer
+                            .append($('<span/>').text(`Name: ${content.message || 'Skibidi'}`))
+                            .append($('<span/>').text(`Price: ${content.price || '420'}`))
+                            .append($('<span/>').text(`Quantity: ${content.quantity || '69'}`))
+                            .append(
+                                $('<a/>')
+                                    .text(`Click here to view`)
+                                    .click(async () => {
+                                        util.goToPage('market');
+                                        await elementWatcher.exists('market-listings-component .search > input');
+                                        const searchReference = $('market-listings-component .search > input');
+                                        searchReference.val(content.message);
+                                        searchReference[0].dispatchEvent(new Event('input'));
+                                    })
+                            )
+                    )
+
+                    msgElem.append(container);
+
+                    break;
+                }
+            }
 
             ChatMessagesRow.append(msgElem);
         });
 
+
         const chatInputRow = $('<div/>').addClass('chatInputRow');
 
         const input = $('<input/>')
-            .attr('id', `${chatblueprint.id}_input`)
-            .addClass('myItemInput')
-            .addClass('chatMessageInput')
+            .attr({
+                id: `${chatblueprint.id}_input`,
+                type: chatblueprint.inputType || 'text',
+                placeholder: chatblueprint.inputPlaceholder,
+                value: chatblueprint.inputValue || '',
+                autocomplete: 'off'
+            })
+            .addClass('myItemInput chatMessageInput')
             .addClass(chatblueprint.class || '')
-            .attr('type', chatblueprint.inputType || 'text')
-            .attr('placeholder', chatblueprint.inputPlaceholder)
-            .attr('value', chatblueprint.inputValue || '')
             .css('flex', `${chatblueprint.inputLayout?.split('/')[1] || 1}`)
-            .on('focusin', onInputFocusIn.bind(null, rootBlueprint, chatblueprint))
-            .on('focusout', onInputFocusOut.bind(null, rootBlueprint, chatblueprint))
-            .attr('autocomplete', 'off')
-            .keyup(e => {
+            .on('focusin', () => onInputFocusIn(rootBlueprint, chatblueprint))
+            .on('focusout', () => onInputFocusOut(rootBlueprint, chatblueprint))
+            .on('keyup', e => {
                 chatblueprint.inputValue = $(`#${chatblueprint.id}_input`).val();
                 if (e.key === 'Enter' || e.keyCode === 13) {
                     chatblueprint.submit(chatblueprint.inputValue);
                     clearOnSubmit();
                 }
-            })
-        chatInputRow.append(input);
+            });
 
-        chatInputRow
-            .append(
-                $('<button/>')
-                    .addClass('myItemInputSendMessageButton')
-                    .addClass(chatblueprint.class || '')
-                    .text('Send')
-                    .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
-                    .click(() => {
-                        chatblueprint.submit(chatblueprint.inputValue);
-                        clearOnSubmit();
-                    })
-            )
+        const sendButton = $('<button/>')
+            .addClass('myItemInputSendMessageButton')
+            .addClass(chatblueprint.class || '')
+            .text('Send')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
+            .on('click', () => {
+                chatblueprint.submit(chatblueprint.inputValue);
+                clearOnSubmit();
+            });
 
         function clearOnSubmit() {
             $(`#${chatblueprint.id}_input`).val('').trigger('keyup').trigger('focusout');
         }
 
-        return $('<div/>').append(ChatMessagesRow).append(chatInputRow);
-    }
+        function appendTimestamp(container, timestamp) {
+            if (!timestamp) return;
+            container.append(
+                $('<span/>')
+                    .addClass('myChatMessageTime')
+                    .text(`[${util.unixToHMS(timestamp)}] `)
+            );
+        }
 
+        function appendSender(container, sender) {
+            if (!sender) return;
+            container.append(
+                $('<span/>')
+                    .addClass('myChatMessageSender')
+                    .text(`${sender}: `)
+            );
+        }
+        function parseModifiersAndCleanText(msgText, modifiers) {
+            const modifierRegex = /@([A-Z])(?::([^@]+))?@/gi;
+            const currentStyle = {};
+
+            const cleanedText = msgText.replace(modifierRegex, (_, key, val) => {
+                const upperKey = key.toUpperCase();
+                const mod = modifiers[upperKey];
+                if (mod) {
+                    mod.update(val, currentStyle);
+                }
+                return '';
+            }).trim();
+
+            return { cleanedText, currentStyle };
+        }
+
+        chatInputRow.append(input, sendButton);
+        wrapper.append(ChatMessagesRow, chatInputRow);
+        return wrapper;
+    }
 
     function createImage(blueprint) {
         return $('<div/>')
@@ -1114,6 +1269,48 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             width: 100%;
             border-radius: 4px;
             padding: 2px 4px;
+        }
+        .chatTradeMessage {
+            background-color: #7c5c8f;
+        }
+        .chatTradeMessageContainer {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+        }
+        .chatTradeMessageImage {
+            width: 96px;
+            height: 96px;
+            image-rendering: pixelated;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        .chatTradeMessageInformation {
+            display: flex;
+            flex-direction: column;
+            a {
+                text-decoration: underline;
+            }
+        }
+        .listViewContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 4px 0px;
+            width: 100%;
+        }
+        .listViewElement {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--darker-color);
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .listViewElement:hover {
+            background-color: rgba(0, 0, 0, 0.04);
+            cursor: pointer;
         }
     `;
 
@@ -7434,6 +7631,9 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
     // DONE username no whitespace allowed trim
     // DONE esc to unfocus chat input
     // DONE socket opensocketfor keep set op requireds, if requireds empty, close it
+    // integration with guild quests, pledging resources, etc.
+
+    // add icon / unread notification left of gold
 
     let enabled = false;
     let audionotification = false;
@@ -7442,6 +7642,8 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
     let missedMessageCount = 0;
     let chatOpened = false;
     let openChatHotkey = '';
+    const MAX_MESSAGE_LENGTH = 200;
+
     const activeChatters = new Map();
     const HEARTBEAT_TIMEOUT = 30000;
     const HEARTBEAT_INTERVAL = 10000;
@@ -7449,10 +7651,20 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
 
     const disclaimerMessage = {
         content: {
+            type: 'chat_system',
             message: "@C:red@Do NOT share your chat key or account password with anyone. This is a private, encrypted channel for your guild only. If your key is compromised, anyone can read your messages. Note: This chat is *not* affiliated with the game developers.",
         }
     }
     let messages = [];
+
+    const demoResponse = {
+        time: Date.now(), // unix timestamp
+        content: { // encrypted with channelKey
+            type: 'chat_message',
+            message: "in nomine patris et filii et spiritus sancti",
+            sender: "leroy jenkins",
+        }
+    };
 
     function initialise() {
         configuration.registerCheckbox({
@@ -7566,33 +7778,60 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
         }
     }
 
-    // Menu Notification missed messages
     function addMissedMessageNotification() {
         const $btn = $('nav-component button[routerLink="/guild"]');
-        if ($btn.find('.missedMessageNotification').length) return;
+        if (!$btn.find('.missedMessageNotification').length) {
+            const $reminderMenu = $('<div>', {
+                class: 'missedMessageNotification',
+                text: `${missedMessageCount} 💬`,
+            });
+            $btn.append($reminderMenu);
+        }
 
-        const $reminder = $('<div>', {
-            class: `missedMessageNotification`,
-            id: 'missedMessageNotification',
-            text: `${missedMessageCount} 💬`,
-        });
+        const $header = $('header-component > .header > .wrapper > .title');
+        if (!$header.next('.missedMessageNotification').length) {
+            const $reminderHeader = $('<div>', {
+                class: 'missedMessageNotification missedMessageNotificationHeader',
+                text: `${missedMessageCount} 💬`,
+            });
+            $header.after($reminderHeader);
+        }
 
-        $btn.append($reminder);
+        // const $hamborgir = $('header-component > .header > .wrapper > .nav-menu');
+        // if (!$('.dot2').length) {
+        //     const $dot = $('<div>', {
+        //         class: 'dot2',
+        //     });
+        //     $hamborgir.append($dot);
+        // }
     }
+
     function removeMissedMessageNotification() {
-        $('#missedMessageNotification').remove();
+        $('.missedMessageNotification').remove();
+        $('.dot2').remove();
     }
+
     function updateMissedMessageNotification() {
         if (!enabled || missedMessageCount === 0) {
             removeMissedMessageNotification();
             return;
         }
-        const notification = $('#missedMessageNotification');
-        if (!notification.length) {
+
+        const text = `${missedMessageCount} 💬`;
+
+        const $btn = $('nav-component button[routerLink="/guild"]').find('.missedMessageNotification');
+        if ($btn.length) {
+            $btn.text(text);
+        } else {
             addMissedMessageNotification();
-            return;
         }
-        notification.text(`${missedMessageCount} 💬`);
+
+        const $header = $('header-component > .header > .wrapper > .title').next('.missedMessageNotification');
+        if ($header.length) {
+            $header.text(text);
+        } else {
+            addMissedMessageNotification();
+        }
     }
 
     function handleSocketEvent(socketEventData) {
@@ -7607,7 +7846,10 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
 
                 switch (decryptedContent.type) {
                     case 'chat_message':
+                    case 'chat_roleplay':
+                        //replace encrypted content with decrypted content
                         messages.push({ ...socketEventData, content: decryptedContent });
+
                         activeChatters.set(decryptedContent.sender, socketEventData.time || now);
 
                         if (!chatOpened) {
@@ -7654,6 +7896,11 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
 
     function sendMessage(text) {
         if (text === '') return;
+        let type = 'chat_message';
+
+        if (text.length > MAX_MESSAGE_LENGTH) {
+            text = text.substring(0, MAX_MESSAGE_LENGTH);
+        }
 
         const commands = [
             {
@@ -7662,7 +7909,8 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
                 action: () => {
                     messages = [{
                         content: {
-                            message: "@C:blu@Cleared",
+                            type: 'chat_system',
+                            message: "@C:blu@Cleared chat messages.",
                         },
                     }];
                     buildComponent();
@@ -7675,6 +7923,7 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
                     const helpMessage = 'Available commands:\n' + commands.map(cmd => `${cmd.command} - ${cmd.description}`).join('\n');
                     messages.push({
                         content: {
+                            type: 'chat_system',
                             message: "@C:blu@" + helpMessage,
                         },
                     });
@@ -7703,13 +7952,37 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
 
                     messages.push({
                         content: {
+                            type: 'chat_system',
                             message: "@C:blu@" + messageText,
                         },
                     });
 
                     buildComponent();
                 }
-            }
+            },
+            {
+                command: '/me',
+                description: 'For roleplay purposes',
+                transmit: true,
+                action: () => {
+                    type = 'chat_roleplay';
+                    text = text.replace(/^\s*\/me\s+/, '').trim();
+                }
+            },
+            {
+                command: '/test',
+                description: 'For testing purposes',
+                action: () => {
+                    messages.push({
+                        time: Date.now(),
+                        content: {
+                            type: 'chat_trade',
+                            message: "silver ore",
+                            sender: "leroy jenkins",
+                        }
+                    });
+                }
+            },
         ];
 
         if (text.startsWith('/')) {
@@ -7717,11 +7990,14 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
             const cmd = commands.find(c => c.command === command);
             if (cmd) {
                 cmd.action(text.split(' ')[1]);
-                buildComponent();
-                if (!cmd.transmit) return;
+                if (!cmd.transmit) {
+                    buildComponent();
+                    return
+                };
             } else {
                 messages.push({
                     content: {
+                        type: 'chat_system',
                         message: "@C:red@Unknown command: " + command,
                     },
                 });
@@ -7730,7 +8006,7 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
             }
         }
 
-        const encryptedMessage = crypto.encrypt(JSON.stringify({ type: 'chat_message', message: text, sender: displayName }), channelKey)
+        const encryptedMessage = crypto.encrypt(JSON.stringify({ type: type, message: text, sender: displayName }), channelKey)
         socket.sendMessage(encryptedMessage);
     }
 
@@ -7817,10 +8093,24 @@ window.moduleRegistry.add('guildChat', (events, elementWatcher, components, conf
             font-size: .875rem;
             background-color: #db6565;
         }
+        .missedMessageNotificationHeader {
+            font-size: unset;
+            padding: 4px 8px;
+        }
         .inlineImage {
             width: 20px;
             height: 20px;
             vertical-align: middle;
+        }
+        .dot2 {
+            background-color: var(--border-color);
+            box-shadow: 0 2px 3px #0000004d;
+            width: 10px;
+            height: 10px;
+            position: absolute;
+            bottom: 6px;
+            right: 0;
+            border-radius: 100px;
         }
     `;
 
@@ -8408,6 +8698,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             amount: 0
         });
         syncCustomView();
+        showComponent();
     }
 
     async function applyFilter(filter) {
@@ -8474,12 +8765,14 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         });        
         componentBlueprint.selectedTabIndex = 0;
         syncCustomView();
+        showComponent();
     }
 
     async function removeFilter(filter) {
         localDatabase.removeEntry(STORE_NAME, filter.key);
         savedFilters = savedFilters.filter(a => a.key !== filter.key);
         syncCustomView();
+        showComponent();
     }
 
     function syncListingsView() {
@@ -8565,6 +8858,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
                     action: async function() {
                         await applyFilter(savedFilter);
                         syncCustomView();
+                        showComponent();
                     }
                 },{
                     text: 'Remove',
@@ -8573,7 +8867,6 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
                 }]
             });
         }
-        showComponent();
     }
 
     function hideComponent() {
@@ -8788,6 +9081,225 @@ window.moduleRegistry.add('marketPriceButtons', (configuration, util, elementWat
     }
 
     initialise();
+}
+);
+// messagingPage
+window.moduleRegistry.add('messagingPage', (pages, components, configuration, hotkey, events, elementCreator) => {
+
+    const PAGE_NAME = 'Messages';
+    let messagesPageIsOpen = false;
+    const disclaimerMessage = {
+        content: {
+            type: 'chat_system',
+            message: "@C:red@Do NOT share your chat key or account password with anyone. This is a private, encrypted channel for your guild only. If your key is compromised, anyone can read your messages. Note: This chat is *not* affiliated with the game developers.",
+        }
+    }
+
+    async function initialise() {
+        await pages.register({
+            category: 'Communication',
+            //after: 'Changelog',
+            name: PAGE_NAME,
+            image: 'https://cdn-icons-png.flaticon.com/512/610/610413.png',
+            columns: 2,
+            render: renderPage
+        });
+        configuration.registerCheckbox({
+            category: 'Pages',
+            key: 'messages-enabled',
+            name: 'Messaging',
+            default: true, // TODO: Change to false when ready
+            handler: handleConfigStateChange
+        });
+        elementCreator.addStyles(styles);
+        events.register('page', hanglePageEvent);
+    }
+
+    function hanglePageEvent(event) {
+        //to track when a user leaves this page to start accumulating missed message notifications
+        if (events.getLast('page').type !== PAGE_NAME.toLowerCase()) {
+            messagesPageIsOpen = false;
+            return;
+        }
+    }
+
+    function handleConfigStateChange(state) {
+        if (state) {
+            pages.show(PAGE_NAME);
+        } else {
+            pages.hide(PAGE_NAME);
+        }
+    }
+
+    async function renderPage() {
+        // const header = components.search(componentBlueprint, 'header');
+        // const list = components.search(componentBlueprint, 'list');
+
+        // for (const index in changelogs) {
+        //     header.title = changelogs[index].title;
+        //     header.textRight = new Date(changelogs[index].time).toLocaleDateString();
+        //     list.entries = changelogs[index].entries;
+        //     components.addComponent(componentBlueprint);
+        // }
+        renderLeftColumn();
+        renderRightColumn();
+    }
+
+    function renderLeftColumn() {
+        components.addComponent(leftColumnComponent);
+    }
+
+    function renderRightColumn() {
+        const chatMessagesContainer = components.search(rightColumnComponent, 'chatMessagesContainer');
+        chatMessagesContainer.messages = [disclaimerMessage, ...[]];
+
+        components.addComponent(rightColumnComponent);
+    }
+
+    const leftColumnComponent = {
+        componentId: 'leftColumnComponent',
+        dependsOn: 'custom-page',
+        parent: '.column0',
+        selectedTabIndex: 0,
+        tabs: [{
+            title: 'tab',
+            rows: [{
+                id: 'header',
+                type: 'header',
+                title: 'Inbox',
+                action: () => { console.log('New Chat'); },
+                name: 'New Chat',
+            }, {
+                id: 'chatsList',
+                type: 'listView',
+                render: ($element, item) => {
+                    $element.append(
+                        $('<div/>').addClass('chatListViewContent').append(
+                            $('<div/>').addClass('chatListViewTop').append(
+                                $('<span/>').addClass('chatListViewSender').text(String(item.sender || 'Unknown')),
+                                $('<span/>').addClass('chatListViewTimestamp').text(String(item.time || ''))
+                            ),
+                            $('<div/>').addClass('chatListViewBottom').append(
+                                $('<span/>').addClass('chatListViewLastMessage').text(item.lastMessage ? String(item.lastMessage) : 'No messages yet'),
+                                $('<span/>').addClass('chatListViewNotification').text(
+                                    item.unreadCount > 0 ? (String(item.unreadCount) + ' new') : ''
+                                )
+                            )
+                        ).on('click', () => {
+                            console.log(item);
+                        })
+                    );
+                    return $element;
+                },
+                entries: [{
+                    sender: "Pancake",
+                    time: "12:45 PM",
+                    lastMessage: "Please respond to my messages.",
+                    unreadCount: 9
+                }, {
+                    sender: "Sexy Lady",
+                    time: "12:45 PM",
+                    lastMessage: "*image*",
+                    unreadCount: 1
+                }, {
+                    sender: "Miccyboye",
+                    time: "12:45 PM",
+                    lastMessage: "I'm sorry to inform you you're banned again for violating tos.",
+                    unreadCount: 1
+                }, {
+                    sender: "LEROY JENKINS",
+                    time: "12:45 PM",
+                    lastMessage: "IM GOING IN!",
+                    unreadCount: 1
+                }, {
+                    sender: "Santa Claus",
+                    time: "12:45 PM",
+                    unreadCount: 0
+                }]
+            }]
+        }]
+    };
+
+    const rightColumnComponent = {
+        componentId: 'rightColumnComponent',
+        dependsOn: 'custom-page',
+        parent: '.column1',
+        selectedTabIndex: 0,
+        after: () => {
+            scrollChatToBottom()
+        },
+        tabs: [{
+            title: 'private-message-tab',
+            rows: [{
+                id: 'privateMessageHeader',
+                type: 'header',
+                title: 'Santa Claus',
+            }, {
+                id: 'chatMessagesContainer',
+                type: 'chat',
+                inputPlaceholder: 'Type a message...',
+                inputType: 'text',
+                inputValue: '',
+                inputLayout: '1/6',
+                messages: [],
+                action: () => setTimeout(() => renderPage(), 100), // onfocusout
+                submit: (value) => { console.log('Message sent:', value); },
+            }]
+        }]
+    };
+
+    function scrollChatToBottom() {
+        const $container = $('#chatMessagesContainer');
+        if ($container.length) {
+            $container.scrollTop($container[0].scrollHeight);
+        }
+    }
+
+    const styles = `
+        .chatListViewContent {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .chatListViewTop,
+        .chatListViewBottom {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 0.25rem;
+        }
+
+        .chatListViewSender {
+            font-weight: bold;
+        }
+
+        .chatListViewTimestamp {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .chatListViewLastMessage {
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 70%;
+        }
+
+        .chatListViewNotification {
+            color: white;
+            background-color: #b35c5c;
+            font-size: 0.75em;
+            border-radius: 10px;
+            padding: 0 6px;
+            align-self: center;
+        }
+    `;
+
+    initialise();
+
 }
 );
 // petFilter

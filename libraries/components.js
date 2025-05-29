@@ -22,7 +22,8 @@
         progress: createRow_Progress,
         chart: createRow_Chart,
         list: createRow_List,
-        chat: createCompositeRow_Chat
+        listView: createRow_ListView,
+        chat: createCompositeRow_Chat,
     };
     let selectedTabs = null;
 
@@ -449,6 +450,22 @@
                             .addClass('myListLine')
                             .text(entry)
                     ))
+            );
+        return parentRow;
+    }
+
+    function createRow_ListView(listViewBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+        parentRow
+            .append(
+                $('<div/>')
+                    .addClass('listViewContainer')
+                    .addClass(listViewBlueprint.class || '')
+                    .append(...listViewBlueprint.entries.map(entry => {
+                        const listViewElement = $('<div/>')
+                            .addClass('listViewElement')
+                        return listViewBlueprint.render(listViewElement, entry)
+                    }))
             );
         return parentRow;
     }
@@ -1071,6 +1088,26 @@
             a {
                 text-decoration: underline;
             }
+        }
+        .listViewContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 4px 0px;
+            width: 100%;
+        }
+        .listViewElement {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--darker-color);
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .listViewElement:hover {
+            background-color: rgba(0, 0, 0, 0.04);
+            cursor: pointer;
         }
     `;
 
