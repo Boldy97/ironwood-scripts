@@ -7,6 +7,7 @@
         'Arcane Powder': itemCache.byName['Arcane Powder'].id,
         'Pet Snacks': itemCache.byName['Pet Snacks'].id,
         'Metal Parts': itemCache.byName['Metal Parts'].id,
+        'Sigil Pieces': itemCache.byName['Sigil Pieces'].id,
     };
     let savedFilters = [];
     let enabled = false;
