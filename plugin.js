@@ -6233,6 +6233,9 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         const action = actionCache.byId[actionId];
         const result = {};
         const potionMultiplier = 1 + statsStore.get('DECREASED_POTION_DURATION') / 100;
+        // sigils
+        statsStore.getManyEquipmentItems(itemCache.specialIds.sigil)
+            .forEach(a => result[a.id] = 20);
         if(isCombat) {
             if(action.type !== 'OUTSKIRTS') {
                 // combat potions
@@ -10334,10 +10337,11 @@ window.moduleRegistry.add('itemCache', (request) => {
             telescope: null,
             lantern: null,
             food: null,
+            sigil: null,
+            dungeonKey: null,
             gatheringPotion: null,
             craftingPotion: null,
             combatPotion: null,
-            dungeonKey: null,
             woodcuttingRune: null,
             miningRune: null,
             farmingRune: null,
@@ -10411,6 +10415,7 @@ window.moduleRegistry.add('itemCache', (request) => {
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
+        exports.specialIds.sigil = getAllIdsEnding('Sigil');
         exports.specialIds.dungeonKey = getAllIdsStarting('Dungeon Key');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);

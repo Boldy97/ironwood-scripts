@@ -107,6 +107,9 @@
         const action = actionCache.byId[actionId];
         const result = {};
         const potionMultiplier = 1 + statsStore.get('DECREASED_POTION_DURATION') / 100;
+        // sigils
+        statsStore.getManyEquipmentItems(itemCache.specialIds.sigil)
+            .forEach(a => result[a.id] = 20);
         if(isCombat) {
             if(action.type !== 'OUTSKIRTS') {
                 // combat potions
