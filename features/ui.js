@@ -38,7 +38,7 @@
     }
 
     function add() {
-        document.documentElement.style.setProperty('--gap', '10px');
+        document.documentElement.style.setProperty('--gap', '12px');
         const element = $(`
             <style>
                 ${selector} :not(.multi-row) > :is(
