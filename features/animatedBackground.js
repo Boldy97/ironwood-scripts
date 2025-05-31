@@ -63,16 +63,16 @@
             name: `png, jpeg, jpg, svg`,
             default: customImageUrl,
             inputType: 'text',
-            text: 'Custom Item URL',
+            text: 'Custom image URL',
             light: true,
             noHeader: true,
-            layout: '1/3',
+            layout: '2/5',
             handler: handleConfigCustomItemChange,
         });
         configuration.registerCheckbox({
             category: 'Animated Background',
             key: 'animated-background-custom-image-only',
-            name: 'Only Custom Item',
+            name: 'Only Custom image',
             default: onlyCustomItem,
             handler: handleConfigOnlyCustomItemChange
         });
@@ -178,14 +178,18 @@
             special: true
         }));
 
-        specialItems.push({
-            imageUrl: customImageUrl.trim(),
-            special: true
-        });
+        if (customImageUrl !== '') {
+            specialItems.push({
+                imageUrl: customImageUrl.trim(),
+                special: true
+            });
+        }
 
         const combinedItems = [...itemCache.list, ...specialItems];
         const randomItemIndex = util.randomIntFromInterval(0, combinedItems.length - 1);
-        return combinedItems[randomItemIndex];
+        const randomItem = combinedItems[randomItemIndex];
+        if (!randomItem) console.log(`itemindex ${randomItemIndex} is ${randomItem}`);
+        return randomItem;
     }
 
     function stopFallingItems() {
@@ -247,8 +251,10 @@
 
                 const offCtx = offCanvas.getContext('2d');
                 offCtx.filter = `blur(${blurAmount}px)`;
-                offCtx.drawImage(this.img, 0, 0, this.size, this.size);
-                offCtx.filter = 'none';
+
+                try {
+                    offCtx.drawImage(this.img, 0, 0, this.size, this.size);
+                } catch (error) { }
 
                 this.blurredCanvas = offCanvas;
 
@@ -277,9 +283,7 @@
                     ctx.rotate(this.rotation);
                     ctx.drawImage(this.blurredCanvas, -this.size / 2, -this.size / 2);
                     ctx.restore();
-                } catch (error) {
-                    debugger;
-                }
+                } catch (error) { }
             }
         }
 
