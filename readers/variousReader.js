@@ -15,11 +15,12 @@
         const various = {};
         if(page.type === 'action') {
             readActionScreen(various, page.skill);
+            emitEvent(various);
         }
         if(page.type === 'settings') {
             readSettingsScreen(various);
+            emitEvent(various);
         }
-        emitEvent(various);
     }
 
     function readActionScreen(various, skillId) {

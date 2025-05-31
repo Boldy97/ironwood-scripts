@@ -69,6 +69,11 @@
             name: 'Marks',
             event: 'reader-marks',
             page: 'marks'
+        },
+        traits: {
+            name: 'Traits',
+            event: 'reader-traits',
+            page: 'traits'
         }
     };
 

@@ -75,6 +75,7 @@
     request.listSkills = () => requestWithFallback('{SKILL_CACHE_DATA}', 'public/list/skill');
     request.listSkillSets = () => requestWithFallback('{SKILLSET_CACHE_DATA}', 'public/list/skillSet');
     request.listStructures = () => requestWithFallback('{STRUCTURE_CACHE_DATA}', 'public/list/structure');
+    request.listTraits = () => requestWithFallback('{TRAIT_CACHE_DATA}', 'public/list/trait');
 
     request.report = (data) => request('public/report', data);
 

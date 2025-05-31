@@ -13,6 +13,8 @@
         $(document).on('click', 'taming-page .header:contains("Expeditions") > button', () => debouncedUpdate());
         // marks - right menu
         $(document).on('click', 'marks-page .header:contains("Menu") ~ button', () => debouncedUpdate());
+        // traits - right menu
+        $(document).on('click', 'traits-page .header:contains("Menu") ~ button', () => debouncedUpdate());
         // action - menu
         $(document).on('click', 'skill-page actions-component .filters', () => debouncedUpdate());
         // action - submenu
@@ -42,6 +44,12 @@
             const menu = $('marks-page .header:contains("Menu") ~ button.row-active .name').text().toLowerCase();
             result = {
                 type: 'marks',
+                menu
+            };
+        } else if(url.includes('/traits')) {
+            const menu = $('traits-page .header:contains("Menu") ~ button.row-active .name').text().toLowerCase();
+            result = {
+                type: 'traits',
                 menu
             };
         } else if(url.includes('/skill/') && url.includes('/action/')) {

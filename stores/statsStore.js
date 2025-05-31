@@ -23,6 +23,7 @@
     let enchantments = {};
     let guildStructures = {};
     let marks = {};
+    let traits = {};
     let various = {};
 
     let stats;
@@ -38,6 +39,7 @@
         events.register('state-enchantments', event => (enchantments = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
         events.register('state-marks', event => (marks = event, _update()));
+        events.register('state-traits', event => (traits = event, _update()));
         events.register('state-various', event => (various = event, _update()));
     }
 
@@ -104,6 +106,8 @@
         processEnhancements();
         processGuildStructures();
         processMarks();
+        processBonusLevels();
+        processTraits();
         processVarious();
         cleanup();
         if(!excludedItemIds) {
@@ -238,6 +242,42 @@
         }
     }
 
+    function processBonusLevels() {
+        const potionMultiplier = get('INCREASED_POTION_EFFECT');
+        if(stats.bySkill['BONUS_LEVEL']) {
+            for(const skill in stats.bySkill['BONUS_LEVEL']) {
+                let bonusLevels = stats.bySkill['BONUS_LEVEL'][skill];
+                bonusLevels *+ 1 + potionMultiplier + 100;
+                bonusLevels = Math.ceil(bonusLevels);
+                addStats({
+                    bySkill: {
+                        EFFICIENCY_CHANCE: {
+                            [skill]: 0.25
+                        }
+                    }
+                }, bonusLevels, 4);
+            }
+        }
+    }
+
+    function processTraits() {
+        const traitEffectMultiplier = get('TRAIT_EFFECT_PERCENT');
+        for(const stat in traits) {
+            for(const id in traits[stat]) {
+                const skill = skillCache.byId[id];
+                const current = get(stat, skill.technicalName);
+                const value = traits[stat][id] * (1 + traitEffectMultiplier / 100);
+                addStats({
+                    bySkill: {
+                        [stat]: {
+                            [skill.technicalName]: current * value / 100 + value
+                        }
+                    }
+                }, 1, 100);
+            }
+        }
+    }
+
     function processVarious() {
         if(various.maxAmount) {
             const stats = {
@@ -280,18 +320,6 @@
                     HEALTH : Math.floor(healthPercent * health / 100)
                 }
             })
-        }
-        // bonus level efficiency
-        if(stats.bySkill['BONUS_LEVEL']) {
-            for(const skill in stats.bySkill['BONUS_LEVEL']) {
-                addStats({
-                    bySkill: {
-                        EFFICIENCY_CHANCE: {
-                            [skill]: 0.25
-                        }
-                    }
-                }, Math.round(stats.bySkill['BONUS_LEVEL'][skill]), 4);
-            }
         }
     }
 

@@ -7,7 +7,8 @@
         'structures',
         'enchantments',
         'structures-guild',
-        'marks'
+        'marks',
+        'traits'
     ];
 
     const stateBySource = {};
