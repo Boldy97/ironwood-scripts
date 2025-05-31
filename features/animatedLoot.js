@@ -1,4 +1,4 @@
-(events, elementWatcher, itemCache, configuration, util) => {
+(events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil) => {
     const THICCNESS = 60;
 
     const Engine = Matter.Engine;
@@ -42,7 +42,6 @@
     let clumpCountsByItem = {};
 
     async function initialise() {
-        addStyles();
         configuration.registerCheckbox({
             category: 'Animated Loot',
             key: 'animated-loot-enabled',
@@ -92,6 +91,7 @@
             noHeader: true,
             handler: handleConfigBackgroundStateChange,
         });
+        elementCreator.addStyles(styles);
         events.register('page', handlePage);
         events.register('state-loot', handleLoot);
     }
@@ -196,8 +196,7 @@
 
             for (const [id, val] of Object.entries(lootState.loot)) {
                 if (val > 0) {
-                    await loadImage(id);
-                    updateItem(+id, val);
+                    if (await assetUtil.loadItemImage(id)) updateItem(+id, val);
                 }
             }
         }
@@ -410,7 +409,7 @@
         const gameItem = itemCache.byId[item.id];
 
         const matterContainer = document.querySelector('#itemWrapper');
-        const spread = randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
+        const spread = util.randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
 
         const itemSize = DESIRED_IMAGESIZE + util.log(item.density, clumpsize) * (DESIRED_IMAGESIZE * (imagesize_increase - 1));
         const imageScale = itemSize / DESIRED_IMAGESIZE;
@@ -430,38 +429,6 @@
         });
         World.add(engine.world, itemObject);
         item.ref = itemObject;
-    }
-
-    async function loadImage(itemId) {
-        const item = itemCache.byId[itemId];
-        if (!item) return;
-        if (loadedImages.includes(itemId)) {
-            return;
-        }
-        await new Promise((res, rej) => {
-            let img = new Image();
-            img.onload = () => {
-                loadedImages.push(itemId);
-                res();
-            };
-            img.onerror = rej;
-            img.src = 'assets/' + item.image;
-        });
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0];
-        if (!head) {
-            return;
-        }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
-    }
-
-    function randomIntFromInterval(min, max) {
-        return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
     function isDifferentAction(page) {

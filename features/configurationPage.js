@@ -27,23 +27,26 @@
             categories[item.category].items.push(item);
         }
         const blueprints = [];
-        let column = 1;
+        const columnHeights = [0, 0]; // rows per column
+
         for (const category in categories) {
-            column = 1 - column;
             const rows = [{
                 type: 'header',
                 title: category,
                 centered: true
             }];
             rows.push(...categories[category].items.flatMap(createRows));
+
+            const targetColumn = columnHeights[0] <= columnHeights[1] ? 0 : 1;
+
+            columnHeights[targetColumn] += rows.length;
+
             blueprints.push({
                 componentId: `configurationComponent_${category}`,
                 dependsOn: 'custom-page',
-                parent: `.column${column}`,
+                parent: `.column${targetColumn}`,
                 selectedTabIndex: 0,
-                tabs: [{
-                    rows: rows
-                }]
+                tabs: [{ rows }]
             });
         }
         return blueprints;

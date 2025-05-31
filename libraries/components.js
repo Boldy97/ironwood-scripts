@@ -202,6 +202,12 @@
             .attr('value', inputBlueprint.value || '')
             .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
             .keyup(e => inputBlueprint.value = e.target.value)
+            // .keyup(inputDelay(function (e) {
+            //     inputBlueprint.value = e.target.value;
+            //     if (inputBlueprint.action) {
+            //         inputBlueprint.action(inputBlueprint.value);
+            //     }
+            // }, inputBlueprint.delay || 0))
             .on('focusin', onInputFocusIn.bind(null, rootBlueprint, inputBlueprint))
             .on('focusout', onInputFocusOut.bind(null, rootBlueprint, inputBlueprint));
         if (inputBlueprint.light) {
