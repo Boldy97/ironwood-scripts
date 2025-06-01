@@ -47,7 +47,7 @@
             name: `Amount`,
             default: DEFAULT_AMOUNT,
             inputType: 'number',
-            text: 'Amount of items on screen',
+            text: 'Amount of items on screen [Falling]',
             light: true,
             noHeader: true,
             handler: handleConfigMaxItemCountChange,
