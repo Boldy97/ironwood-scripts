@@ -1,8 +1,8 @@
 (configuration, events, elementCreator, elementWatcher, itemCache, util, assetUtil) => {
 
     let enabled = false;
-
     let animation = null;
+    let allGameItems = undefined;
 
     const MAX_AMOUNT = 300;
     const DEFAULT_AMOUNT = 100;
@@ -79,7 +79,7 @@
         elementCreator.addStyles(styles);
         events.register('page', handlePage);
 
-        getRandomItem();
+        console.log(itemCache.list)
     }
 
     function handleConfigStateChange(state) {
@@ -185,8 +185,12 @@
             });
         }
 
-        const combinedItems = [...itemCache.list, ...specialItems];
-        const randomItemIndex = util.randomIntFromInterval(0, combinedItems.length - 1);
+        if (!allGameItems) {
+            allGameItems = itemCache.list.filter(i => i.id > 0);
+        }
+
+        const combinedItems = [...allGameItems, ...specialItems];
+        const randomItemIndex = util.randomIntFromInterval(1, combinedItems.length - 1);
         const randomItem = combinedItems[randomItemIndex];
         if (!randomItem) console.log(`itemindex ${randomItemIndex} is ${randomItem}`);
         return randomItem;
