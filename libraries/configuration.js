@@ -69,7 +69,7 @@
         if (item.type === 'toggle') {
             value = !!value;
         }
-        if (item.type === 'input' || item.type === 'json') {
+        if (item.type === 'input' || item.type === 'json' || item.type === 'dropdown') {
             value = JSON.stringify(value);
         }
         await configurationStore.save(item.key, value);

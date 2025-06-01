@@ -329,9 +329,26 @@
 
     function createRow_Select(selectBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
+
+        if (selectBlueprint.compact) {
+            const text = $('<div/>')
+                .addClass('myItemInputText')
+                .addClass(selectBlueprint.class || '')
+                .text(selectBlueprint.text || '')
+                .css('flex', `${selectBlueprint.layout?.split('/')[0] || 1}`);
+            parentRow.append(text);
+            if (selectBlueprint.light) {
+                text
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+        }
+
         const select = $('<select/>')
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
+            .css('flex', `${selectBlueprint.layout?.split('/')[1] || 1}`)
             .change(inputDelay(function (e) {
                 for (const option of selectBlueprint.options) {
                     option.selected = this.value === option.value;
@@ -340,9 +357,18 @@
                     selectBlueprint.action(this.value);
                 }
             }, selectBlueprint.delay || 0));
+
+        if (selectBlueprint.light) {
+            select
+                .css('padding', '0')
+                .css('height', 'inherit')
+                .css('color', '#aaa');
+        }
+
         for (const option of selectBlueprint.options) {
             select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}>${option.text}</option>`);
         }
+
         parentRow.append(select);
         return parentRow;
     }

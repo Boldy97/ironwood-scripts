@@ -108,22 +108,34 @@
 
     function createRows_Dropdown(item) {
         const value = item.value || item.default;
+        const result = [];
         const options = item.options.map(option => ({
             text: option,
             value: option,
             selected: option === value
         }));
-        return [{
-            type: 'item',
-            name: item.name
-        }, {
+
+        if (!item.noHeader) {
+            result.push({
+                type: 'item',
+                name: item.name
+            });
+        }
+
+        result.push({
             type: 'dropdown',
             options: options,
+            compact: item.compact,
+            layout: item.layout || '1/1',
+            text: item.name,
+            light: true,
             delay: 500,
             action: (value) => {
                 item.handler(value);
             }
-        }]
+        });
+
+        return result;
     }
 
     function createRows_Button(item) {

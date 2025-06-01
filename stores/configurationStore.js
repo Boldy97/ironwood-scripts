@@ -1,4 +1,4 @@
-(Promise, localConfigurationStore, _remoteConfigurationStore) =>  {
+(Promise, localConfigurationStore, _remoteConfigurationStore) => {
 
     const initialised = new Promise.Expiring(2000, 'configurationStore');
     let configs = null;
@@ -12,7 +12,7 @@
 
     async function initialise() {
         configs = await configurationStore.load();
-        for(const key in configs) {
+        for (const key in configs) {
             configs[key] = JSON.parse(configs[key]);
         }
         initialised.resolve(exports);
