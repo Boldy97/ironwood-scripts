@@ -151,6 +151,7 @@
 
     function processEquipment(excludedItemIds) {
         const potionMultiplier = get('INCREASED_POTION_EFFECT');
+        const sigilMultiplier = get('INCREASED_SIGIL_EFFECT');
         for(const id in equipment) {
             if(equipment[id] <= 0) {
                 continue;
@@ -168,8 +169,12 @@
             }
             let multiplier = 1;
             let accuracy = 2;
-            if(potionMultiplier && /(Potion|Mix)$/.exec(item.name)) {
+            if(potionMultiplier && itemCache.specialIds.potion.includes(item.id)) {
                 multiplier = 1 + potionMultiplier / 100;
+                accuracy = 10;
+            }
+            if(sigilMultiplier && itemCache.specialIds.sigil.includes(item.id)) {
+                multiplier = 1 + sigilMultiplier / 100;
                 accuracy = 10;
             }
             if(item.name.endsWith('Rune')) {
@@ -179,6 +184,7 @@
             addStats(item.stats, multiplier, accuracy);
         }
     }
+
     function processRunes() {
         for(const id in runes) {
             const item = itemCache.byId[id];
@@ -242,6 +248,23 @@
         }
     }
 
+    function processTraits() {
+        const traitEffectMultiplier = get('TRAIT_EFFECT_PERCENT');
+        for(const stat in traits) {
+            for(const id in traits[stat]) {
+                const skill = skillCache.byId[id];
+                const value = traits[stat][id] * (1 + traitEffectMultiplier / 100);
+                addStats({
+                    bySkill: {
+                        [stat]: {
+                            [skill.technicalName]: value
+                        }
+                    }
+                }, 1, 100);
+            }
+        }
+    }
+
     function processBonusLevels() {
         const potionMultiplier = get('INCREASED_POTION_EFFECT');
         if(stats.bySkill['BONUS_LEVEL']) {
@@ -256,24 +279,6 @@
                         }
                     }
                 }, bonusLevels, 4);
-            }
-        }
-    }
-
-    function processTraits() {
-        const traitEffectMultiplier = get('TRAIT_EFFECT_PERCENT');
-        for(const stat in traits) {
-            for(const id in traits[stat]) {
-                const skill = skillCache.byId[id];
-                const current = get(stat, skill.technicalName);
-                const value = traits[stat][id] * (1 + traitEffectMultiplier / 100);
-                addStats({
-                    bySkill: {
-                        [stat]: {
-                            [skill.technicalName]: current * value / 100 + value
-                        }
-                    }
-                }, 1, 100);
             }
         }
     }

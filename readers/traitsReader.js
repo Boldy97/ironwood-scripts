@@ -34,7 +34,7 @@
             if(!result[stat]) {
                 result[stat] = {};
             }
-            result[stat][skill.id] = trait.amount * level;
+            result[stat][skill.id] = trait.amount * level + trait.base;
         });
 
         emitEvent({

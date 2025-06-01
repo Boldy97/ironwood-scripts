@@ -32,6 +32,7 @@
             gatheringPotion: null,
             craftingPotion: null,
             combatPotion: null,
+            potion: null,
             woodcuttingRune: null,
             miningRune: null,
             farmingRune: null,
@@ -51,6 +52,7 @@
             opulentCraftingTome: null,
             insatiablePowerTome: null,
             potentConcoctionTome: null,
+            runicWisdomTome: null,
             gem: null,
             smithing: null
         }
@@ -110,6 +112,11 @@
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.potion = [
+            ...exports.specialIds.gatheringPotion,
+            ...exports.specialIds.craftingPotion,
+            ...exports.specialIds.combatPotion
+        ];
         exports.specialIds.woodcuttingRune = getAllIdsEnding('Woodcutting Rune');
         exports.specialIds.miningRune = getAllIdsEnding('Mining Rune');
         exports.specialIds.farmingRune = getAllIdsEnding('Farming Rune');
@@ -129,6 +136,7 @@
         exports.specialIds.opulentCraftingTome = getAllIdsStarting('Opulent Crafting Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
+        exports.specialIds.runicWisdomTome = getAllIdsStarting('Runic Wisdom Tome');
         exports.specialIds.gem = exports.list.filter(a => a.arcanePowder).map(a => a.id);
         exports.specialIds.smithing = [
             ...exports.specialIds.mainHand,

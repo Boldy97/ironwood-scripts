@@ -4039,7 +4039,7 @@ window.moduleRegistry.add('traitsReader', (events, util, skillCache, traitCache)
             if(!result[stat]) {
                 result[stat] = {};
             }
-            result[stat][skill.id] = trait.amount * level;
+            result[stat][skill.id] = trait.amount * level + trait.base;
         });
 
         emitEvent({
@@ -9935,6 +9935,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
 
     function processEquipment(excludedItemIds) {
         const potionMultiplier = get('INCREASED_POTION_EFFECT');
+        const sigilMultiplier = get('INCREASED_SIGIL_EFFECT');
         for(const id in equipment) {
             if(equipment[id] <= 0) {
                 continue;
@@ -9952,8 +9953,12 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             }
             let multiplier = 1;
             let accuracy = 2;
-            if(potionMultiplier && /(Potion|Mix)$/.exec(item.name)) {
+            if(potionMultiplier && itemCache.specialIds.potion.includes(item.id)) {
                 multiplier = 1 + potionMultiplier / 100;
+                accuracy = 10;
+            }
+            if(sigilMultiplier && itemCache.specialIds.sigil.includes(item.id)) {
+                multiplier = 1 + sigilMultiplier / 100;
                 accuracy = 10;
             }
             if(item.name.endsWith('Rune')) {
@@ -9963,6 +9968,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             addStats(item.stats, multiplier, accuracy);
         }
     }
+
     function processRunes() {
         for(const id in runes) {
             const item = itemCache.byId[id];
@@ -10026,6 +10032,23 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         }
     }
 
+    function processTraits() {
+        const traitEffectMultiplier = get('TRAIT_EFFECT_PERCENT');
+        for(const stat in traits) {
+            for(const id in traits[stat]) {
+                const skill = skillCache.byId[id];
+                const value = traits[stat][id] * (1 + traitEffectMultiplier / 100);
+                addStats({
+                    bySkill: {
+                        [stat]: {
+                            [skill.technicalName]: value
+                        }
+                    }
+                }, 1, 100);
+            }
+        }
+    }
+
     function processBonusLevels() {
         const potionMultiplier = get('INCREASED_POTION_EFFECT');
         if(stats.bySkill['BONUS_LEVEL']) {
@@ -10040,24 +10063,6 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
                         }
                     }
                 }, bonusLevels, 4);
-            }
-        }
-    }
-
-    function processTraits() {
-        const traitEffectMultiplier = get('TRAIT_EFFECT_PERCENT');
-        for(const stat in traits) {
-            for(const id in traits[stat]) {
-                const skill = skillCache.byId[id];
-                const current = get(stat, skill.technicalName);
-                const value = traits[stat][id] * (1 + traitEffectMultiplier / 100);
-                addStats({
-                    bySkill: {
-                        [stat]: {
-                            [skill.technicalName]: current * value / 100 + value
-                        }
-                    }
-                }, 1, 100);
             }
         }
     }
@@ -10446,6 +10451,7 @@ window.moduleRegistry.add('itemCache', (request) => {
             gatheringPotion: null,
             craftingPotion: null,
             combatPotion: null,
+            potion: null,
             woodcuttingRune: null,
             miningRune: null,
             farmingRune: null,
@@ -10465,6 +10471,7 @@ window.moduleRegistry.add('itemCache', (request) => {
             opulentCraftingTome: null,
             insatiablePowerTome: null,
             potentConcoctionTome: null,
+            runicWisdomTome: null,
             gem: null,
             smithing: null
         }
@@ -10524,6 +10531,11 @@ window.moduleRegistry.add('itemCache', (request) => {
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.potion = [
+            ...exports.specialIds.gatheringPotion,
+            ...exports.specialIds.craftingPotion,
+            ...exports.specialIds.combatPotion
+        ];
         exports.specialIds.woodcuttingRune = getAllIdsEnding('Woodcutting Rune');
         exports.specialIds.miningRune = getAllIdsEnding('Mining Rune');
         exports.specialIds.farmingRune = getAllIdsEnding('Farming Rune');
@@ -10543,6 +10555,7 @@ window.moduleRegistry.add('itemCache', (request) => {
         exports.specialIds.opulentCraftingTome = getAllIdsStarting('Opulent Crafting Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
+        exports.specialIds.runicWisdomTome = getAllIdsStarting('Runic Wisdom Tome');
         exports.specialIds.gem = exports.list.filter(a => a.arcanePowder).map(a => a.id);
         exports.specialIds.smithing = [
             ...exports.specialIds.mainHand,
