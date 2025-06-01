@@ -187,7 +187,7 @@
 
     function getRandomItem() {
         if (onlyCustomItem) {
-            return { imageUrl: customImageUrl, special: true };
+            return { image: customImageUrl, special: true };
         }
 
         const specialImageUrls = [
@@ -196,19 +196,20 @@
         ];
 
         const specialItems = specialImageUrls.map(url => ({
-            imageUrl: url,
+            image: url,
             special: true
         }));
 
         if (customImageUrl !== '') {
             specialItems.push({
-                imageUrl: customImageUrl.trim(),
+                image: customImageUrl.trim(),
                 special: true
             });
         }
 
         if (!allGameItems) {
-            allGameItems = itemCache.list.filter(i => i.id > 0);
+            const seenImages = new Set();
+            allGameItems = itemCache.list.filter(i => i.id > 0 && !seenImages.has(i.image) && seenImages.add(i.image));
         }
 
         const combinedItems = [...allGameItems, ...specialItems];
@@ -253,7 +254,7 @@
 
                 let img;
                 if (item.special) {
-                    img = await assetUtil.loadImageFromUrl(item.imageUrl);
+                    img = await assetUtil.loadImageFromUrl(item.image);
                 } else {
                     img = await assetUtil.loadItemImage(item.id);
                 }
@@ -420,7 +421,7 @@
         async function loadNewImage(cell) {
             const item = getRandomItem();
             if (item.special) {
-                cell.img = await assetUtil.loadImageFromUrl(item.imageUrl);
+                cell.img = await assetUtil.loadImageFromUrl(item.image);
             } else {
                 cell.img = await assetUtil.loadItemImage(item.id);
             }
