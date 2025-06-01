@@ -78,8 +78,6 @@
         });
         elementCreator.addStyles(styles);
         events.register('page', handlePage);
-
-        console.log(itemCache.list)
     }
 
     function handleConfigStateChange(state) {
