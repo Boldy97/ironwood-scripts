@@ -28,7 +28,7 @@
     const grid_itemSize = 48;
     const grid_minLifetime = 5000;
     const grid_maxLifetime = 15000;
-    const grid_fadeDuration = 2500;
+    const grid_fadeDuration = 1000;
 
     let customImageUrl = '';
     let onlyCustomItem = false;
