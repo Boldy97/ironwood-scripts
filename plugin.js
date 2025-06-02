@@ -2665,6 +2665,8 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
         $(document).on('click', 'taming-page .header:contains("Expeditions") > button', () => debouncedUpdate());
         // marks - right menu
         $(document).on('click', 'marks-page .header:contains("Menu") ~ button', () => debouncedUpdate());
+        // traits - right menu
+        $(document).on('click', 'traits-page .header:contains("Menu") ~ button', () => debouncedUpdate());
         // action - menu
         $(document).on('click', 'skill-page actions-component .filters', () => debouncedUpdate());
         // action - submenu
@@ -2694,6 +2696,12 @@ window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
             const menu = $('marks-page .header:contains("Menu") ~ button.row-active .name').text().toLowerCase();
             result = {
                 type: 'marks',
+                menu
+            };
+        } else if(url.includes('/traits')) {
+            const menu = $('traits-page .header:contains("Menu") ~ button.row-active .name').text().toLowerCase();
+            result = {
+                type: 'traits',
                 menu
             };
         } else if(url.includes('/skill/') && url.includes('/action/')) {
@@ -3445,6 +3453,7 @@ window.moduleRegistry.add('request', (logService, Promise) => {
     request.listSkills = () => requestWithFallback('[{"id":-4,"displayName":"Challenges","technicalName":"Challenges","type":"Other","color":"#b6b77a","image":"misc/challenges.png","defaultActionId":null},{"id":-3,"displayName":"Total-exp","technicalName":"TotalExp","type":"Other","color":"#b6b77a","image":"misc/rank-one.png","defaultActionId":null},{"id":-2,"displayName":"Total-level","technicalName":"TotalLevel","type":"Other","color":"#b6b77a","image":"misc/rank-one.png","defaultActionId":null},{"id":-1,"displayName":"Combat","technicalName":"Combat","type":"Other","color":"#000000","image":"misc/one-handed.png","defaultActionId":302},{"id":15,"displayName":"Taming","technicalName":"Taming","type":"Other","color":"#637a71","image":"misc/taming.png","defaultActionId":null},{"id":1,"displayName":"Woodcutting","technicalName":"Woodcutting","type":"Gathering","color":"#647a63","image":"misc/woodcutting.png","defaultActionId":10},{"id":2,"displayName":"Mining","technicalName":"Mining","type":"Gathering","color":"#637a76","image":"misc/mining.png","defaultActionId":20},{"id":3,"displayName":"Smelting","technicalName":"Smelting","type":"Crafting","color":"#63657a","image":"misc/smelting.png","defaultActionId":30},{"id":4,"displayName":"Smithing","technicalName":"Smithing","type":"Crafting","color":"#7a7676","image":"misc/smithing.png","defaultActionId":100},{"id":11,"displayName":"Enchanting","technicalName":"Enchanting","type":"Crafting","color":"#63657a","image":"misc/enchanting.png","defaultActionId":70},{"id":13,"displayName":"Farming","technicalName":"Farming","type":"Gathering","color":"#637a71","image":"misc/farming.png","defaultActionId":350},{"id":12,"displayName":"Alchemy","technicalName":"Alchemy","type":"Crafting","color":"#7a7363","image":"misc/alchemy.png","defaultActionId":710},{"id":9,"displayName":"Fishing","technicalName":"Fishing","type":"Gathering","color":"#60808f","image":"misc/fishing.png","defaultActionId":40},{"id":10,"displayName":"Cooking","technicalName":"Cooking","type":"Crafting","color":"#637a71","image":"misc/cooking.png","defaultActionId":50},{"id":5,"displayName":"Delving","technicalName":"Delving","type":"Gathering","color":"#70738f","image":"misc/delving.png","defaultActionId":800},{"id":16,"displayName":"Imbuing","technicalName":"Imbuing","type":"Crafting","color":"#54647b","image":"misc/imbuing.png","defaultActionId":810},{"id":6,"displayName":"One-handed","technicalName":"OneHanded","type":"Combat","color":"#7a6363","image":"misc/one-handed.png","defaultActionId":302},{"id":7,"displayName":"Two-handed","technicalName":"TwoHanded","type":"Combat","color":"#7a7563","image":"misc/two-handed.png","defaultActionId":302},{"id":14,"displayName":"Ranged","technicalName":"Ranged","type":"Combat","color":"#637a70","image":"misc/ranged.png","defaultActionId":302},{"id":8,"displayName":"Defense","technicalName":"Defense","type":"Combat","color":"#767672","image":"misc/defense.png","defaultActionId":302}]', 'public/list/skill');
     request.listSkillSets = () => requestWithFallback('[{"skills":[1,2,13,9,5],"name":"Gathering","id":1},{"skills":[3,4,12,10,11,16],"name":"Crafting","id":2},{"skills":[6,7,14,8],"name":"Combat","id":3},{"skills":[1,13,12,14,8],"name":"Forest","id":4},{"skills":[2,3,4,6,8,5],"name":"Mountain","id":5},{"skills":[9,10,11,7,8,16],"name":"Ocean","id":6},{"skills":[1,2,13,9,5,3,4,12,10,11,16,6,7,14,8],"name":"All","id":-1},{"skills":[-4,-3,-2,-1,15],"name":"Other","id":-2}]', 'public/list/skillSet');
     request.listStructures = () => requestWithFallback('[{"id":1,"name":"Cooking Pot","regular":{"global":{},"bySkill":{"SKILL_SPEED":{"Cooking":9}}},"enchant":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Cooking":1}}}},{"id":2,"name":"Furnace","regular":{"global":{},"bySkill":{"SKILL_SPEED":{"Smelting":9}}},"enchant":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Smelting":1}}}},{"id":3,"name":"Imbuing Forge","regular":{"global":{},"bySkill":{"SKILL_SPEED":{"Imbuing":9}}},"enchant":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Imbuing":1}}}},{"id":4,"name":"Anvil","regular":{"global":{},"bySkill":{"SKILL_SPEED":{"Smithing":9}}},"enchant":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Smithing":1}}}},{"id":5,"name":"Enchanting Table","regular":{"global":{},"bySkill":{"SKILL_SPEED":{"Enchanting":9}}},"enchant":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Enchanting":1}}}},{"id":6,"name":"Alchemy Lab","regular":{"global":{},"bySkill":{"SKILL_SPEED":{"Alchemy":9}}},"enchant":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Alchemy":1}}}},{"id":7,"name":"Smelter","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":8,"name":"Spit Roast","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":9,"name":"Cauldron","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":10,"name":"Kiln","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":11,"name":"Engraver","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":1001,"name":"Guild Hall","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":1002,"name":"Guild Library","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":1003,"name":"Guild Bank","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":1004,"name":"Guild Storehouse","regular":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Mining":1,"Woodcutting":1,"Fishing":1,"Delving":1,"Farming":1}}},"enchant":{"global":{},"bySkill":{}}},{"id":1005,"name":"Guild Workshop","regular":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Enchanting":1,"Cooking":1,"Alchemy":1,"Smelting":1,"Smithing":1,"Imbuing":1}}},"enchant":{"global":{},"bySkill":{}}},{"id":1006,"name":"Guild Armoury","regular":{"global":{},"bySkill":{"EFFICIENCY_CHANCE":{"Ranged":1,"TwoHanded":1,"OneHanded":1,"Defense":1}}},"enchant":{"global":{},"bySkill":{}}},{"id":1007,"name":"Guild Event Hall","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":2001,"name":"Pet Barn","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}},{"id":2002,"name":"Pet Training Grounds","regular":{"global":{},"bySkill":{}},"enchant":{"global":{},"bySkill":{}}}]', 'public/list/structure');
+    request.listTraits = () => requestWithFallback('[{"id":1,"name":"Woodcutting XP","image":"misc/woodcutting.png","amount":0.04},{"id":2,"name":"Woodcutting Yield","image":"misc/woodcutting.png","amount":0.04},{"id":3,"name":"Woodcutting Efficiency","image":"misc/woodcutting.png","amount":0.02},{"id":4,"name":"Mining XP","image":"misc/mining.png","amount":0.04},{"id":5,"name":"Mining Yield","image":"misc/mining.png","amount":0.04},{"id":6,"name":"Mining Efficiency","image":"misc/mining.png","amount":0.02},{"id":7,"name":"Smelting XP","image":"misc/smelting.png","amount":0.04},{"id":8,"name":"Smelting Multi Craft","image":"misc/smelting.png","amount":0.04},{"id":9,"name":"Smelting Efficiency","image":"misc/smelting.png","amount":0.02},{"id":10,"name":"Smithing XP","image":"misc/smithing.png","amount":0.04},{"id":11,"name":"Smithing Multi Craft","image":"misc/smithing.png","amount":0.04},{"id":12,"name":"Smithing Efficiency","image":"misc/smithing.png","amount":0.02},{"id":13,"name":"Enchanting XP","image":"misc/enchanting.png","amount":0.04},{"id":14,"name":"Enchanting Multi Craft","image":"misc/enchanting.png","amount":0.04},{"id":15,"name":"Enchanting Efficiency","image":"misc/enchanting.png","amount":0.02},{"id":16,"name":"Farming XP","image":"misc/farming.png","amount":0.04},{"id":17,"name":"Farming Yield","image":"misc/farming.png","amount":0.04},{"id":18,"name":"Farming Efficiency","image":"misc/farming.png","amount":0.02},{"id":19,"name":"Alchemy XP","image":"misc/alchemy.png","amount":0.04},{"id":20,"name":"Alchemy Multi Craft","image":"misc/alchemy.png","amount":0.04},{"id":21,"name":"Alchemy Efficiency","image":"misc/alchemy.png","amount":0.02},{"id":22,"name":"Fishing XP","image":"misc/fishing.png","amount":0.04},{"id":23,"name":"Fishing Yield","image":"misc/fishing.png","amount":0.04},{"id":24,"name":"Fishing Efficiency","image":"misc/fishing.png","amount":0.02},{"id":25,"name":"Cooking XP","image":"misc/cooking.png","amount":0.04},{"id":26,"name":"Cooking Multi Craft","image":"misc/cooking.png","amount":0.04},{"id":27,"name":"Cooking Efficiency","image":"misc/cooking.png","amount":0.02},{"id":28,"name":"Delving XP","image":"misc/delving.png","amount":0.04},{"id":29,"name":"Delving Yield","image":"misc/delving.png","amount":0.04},{"id":30,"name":"Delving Efficiency","image":"misc/delving.png","amount":0.02},{"id":31,"name":"Imbuing XP","image":"misc/imbuing.png","amount":0.04},{"id":32,"name":"Imbuing Multi Craft","image":"misc/imbuing.png","amount":0.04},{"id":33,"name":"Imbuing Efficiency","image":"misc/imbuing.png","amount":0.02},{"id":34,"name":"One-handed XP","image":"misc/one-handed.png","amount":0.04},{"id":35,"name":"One-handed Loot","image":"misc/one-handed.png","amount":0.04},{"id":36,"name":"One-handed Efficiency","image":"misc/one-handed.png","amount":0.02},{"id":37,"name":"Two-handed XP","image":"misc/two-handed.png","amount":0.04},{"id":38,"name":"Two-handed Loot","image":"misc/two-handed.png","amount":0.04},{"id":39,"name":"Two-handed Efficiency","image":"misc/two-handed.png","amount":0.02},{"id":40,"name":"Ranged XP","image":"misc/ranged.png","amount":0.04},{"id":41,"name":"Ranged Loot","image":"misc/ranged.png","amount":0.04},{"id":42,"name":"Ranged Efficiency","image":"misc/ranged.png","amount":0.02},{"id":43,"name":"Defense XP","image":"misc/defense.png","amount":0.04},{"id":44,"name":"Defense Loot","image":"misc/defense.png","amount":0.04},{"id":45,"name":"Defense Efficiency","image":"misc/defense.png","amount":0.02}]', 'public/list/trait');
 
     request.report = (data) => request('public/report', data);
 
@@ -4699,6 +4708,66 @@ window.moduleRegistry.add('structuresReader', (events, util, structuresCache) =>
 
 }
 );
+// traitsReader
+window.moduleRegistry.add('traitsReader', (events, util, skillCache, traitCache) => {
+
+    const emitEvent = events.emit.bind(null, 'reader-traits');
+
+    function initialise() {
+        events.register('page', update);
+        window.setInterval(update, 1000);
+    }
+
+    function update() {
+        const page = events.getLast('page');
+        if(!page) {
+            return;
+        }
+        if(page.type === 'traits' && page.menu === 'traits') {
+            readTraitsScreen();
+        }
+    }
+
+    function readTraitsScreen() {
+        const result = {};
+
+        $('traits-page .header:contains("Equipped"), traits-page .header:contains("Traits")').parent().find('.row').each((i,element) => {
+            element = $(element);
+            const traitName = element.find('.name')
+                .text()
+                .replace(/ Multi./, '');
+            const level = util.parseNumber(element.find('.level').text());
+            const skillName = traitName.match(/^\w+/)[0];
+            const effectName = traitName.substring(skillName.length + 1);
+            const stat = traitEffectToStat(effectName);
+            const skill = skillCache.byName[skillName];
+            const trait = traitCache.byName[traitName];
+            if(!result[stat]) {
+                result[stat] = {};
+            }
+            result[stat][skill.id] = trait.amount * level + trait.base;
+        });
+
+        emitEvent({
+            type: 'full',
+            value: result
+        });
+    }
+
+    function traitEffectToStat(effect) {
+        switch(effect) {
+            case 'XP': return 'DOUBLE_EXP_CHANCE';
+            case 'Yield': return 'DOUBLE_DROP_CHANCE';
+            case 'Efficiency': return 'EFFICIENCY_CHANCE';
+            case 'Multi Craft': return 'MULTICRAFT_CHANCE';
+            case 'Loot': return 'DOUBLE_DROP_CHANCE';
+        }
+    }
+
+    initialise();
+
+}
+);
 // variousReader
 window.moduleRegistry.add('variousReader', (events, util) => {
 
@@ -4717,11 +4786,12 @@ window.moduleRegistry.add('variousReader', (events, util) => {
         const various = {};
         if(page.type === 'action') {
             readActionScreen(various, page.skill);
+            emitEvent(various);
         }
         if(page.type === 'settings') {
             readSettingsScreen(various);
+            emitEvent(various);
         }
-        emitEvent(various);
     }
 
     function readActionScreen(various, skillId) {
@@ -6922,6 +6992,9 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
         const action = actionCache.byId[actionId];
         const result = {};
         const potionMultiplier = 1 + statsStore.get('DECREASED_POTION_DURATION') / 100;
+        // sigils
+        statsStore.getManyEquipmentItems(itemCache.specialIds.sigil)
+            .forEach(a => result[a.id] = 20);
         if(isCombat) {
             if(action.type !== 'OUTSKIRTS') {
                 // combat potions
@@ -8205,6 +8278,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         'Arcane Powder': itemCache.byName['Arcane Powder'].id,
         'Pet Snacks': itemCache.byName['Pet Snacks'].id,
         'Metal Parts': itemCache.byName['Metal Parts'].id,
+        'Sigil Pieces': itemCache.byName['Sigil Pieces'].id,
     };
     let savedFilters = [];
     let enabled = false;
@@ -9291,6 +9365,11 @@ window.moduleRegistry.add('syncTracker', (events, localDatabase, pages, componen
             name: 'Marks',
             event: 'reader-marks',
             page: 'marks'
+        },
+        traits: {
+            name: 'Traits',
+            event: 'reader-traits',
+            page: 'traits'
         }
     };
 
@@ -9876,7 +9955,8 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
         'structures',
         'enchantments',
         'structures-guild',
-        'marks'
+        'marks',
+        'traits'
     ];
 
     const stateBySource = {};
@@ -10276,6 +10356,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
     let enchantments = {};
     let guildStructures = {};
     let marks = {};
+    let traits = {};
     let various = {};
 
     let stats;
@@ -10291,6 +10372,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         events.register('state-enchantments', event => (enchantments = event, _update()));
         events.register('state-structures-guild', event => (guildStructures = event, _update()));
         events.register('state-marks', event => (marks = event, _update()));
+        events.register('state-traits', event => (traits = event, _update()));
         events.register('state-various', event => (various = event, _update()));
     }
 
@@ -10357,6 +10439,8 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         processEnhancements();
         processGuildStructures();
         processMarks();
+        processBonusLevels();
+        processTraits();
         processVarious();
         cleanup();
         if(!excludedItemIds) {
@@ -10400,6 +10484,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
 
     function processEquipment(excludedItemIds) {
         const potionMultiplier = get('INCREASED_POTION_EFFECT');
+        const sigilMultiplier = get('INCREASED_SIGIL_EFFECT');
         for(const id in equipment) {
             if(equipment[id] <= 0) {
                 continue;
@@ -10417,8 +10502,12 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             }
             let multiplier = 1;
             let accuracy = 2;
-            if(potionMultiplier && /(Potion|Mix)$/.exec(item.name)) {
+            if(potionMultiplier && itemCache.specialIds.potion.includes(item.id)) {
                 multiplier = 1 + potionMultiplier / 100;
+                accuracy = 10;
+            }
+            if(sigilMultiplier && itemCache.specialIds.sigil.includes(item.id)) {
+                multiplier = 1 + sigilMultiplier / 100;
                 accuracy = 10;
             }
             if(item.name.endsWith('Rune')) {
@@ -10428,6 +10517,7 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
             addStats(item.stats, multiplier, accuracy);
         }
     }
+
     function processRunes() {
         for(const id in runes) {
             const item = itemCache.byId[id];
@@ -10491,6 +10581,41 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
         }
     }
 
+    function processTraits() {
+        const traitEffectMultiplier = get('TRAIT_EFFECT_PERCENT');
+        for(const stat in traits) {
+            for(const id in traits[stat]) {
+                const skill = skillCache.byId[id];
+                const value = traits[stat][id] * (1 + traitEffectMultiplier / 100);
+                addStats({
+                    bySkill: {
+                        [stat]: {
+                            [skill.technicalName]: value
+                        }
+                    }
+                }, 1, 100);
+            }
+        }
+    }
+
+    function processBonusLevels() {
+        const potionMultiplier = get('INCREASED_POTION_EFFECT');
+        if(stats.bySkill['BONUS_LEVEL']) {
+            for(const skill in stats.bySkill['BONUS_LEVEL']) {
+                let bonusLevels = stats.bySkill['BONUS_LEVEL'][skill];
+                bonusLevels *+ 1 + potionMultiplier + 100;
+                bonusLevels = Math.ceil(bonusLevels);
+                addStats({
+                    bySkill: {
+                        EFFICIENCY_CHANCE: {
+                            [skill]: 0.25
+                        }
+                    }
+                }, bonusLevels, 4);
+            }
+        }
+    }
+
     function processVarious() {
         if(various.maxAmount) {
             const stats = {
@@ -10533,18 +10658,6 @@ window.moduleRegistry.add('statsStore', (events, util, skillCache, itemCache, st
                     HEALTH : Math.floor(healthPercent * health / 100)
                 }
             })
-        }
-        // bonus level efficiency
-        if(stats.bySkill['BONUS_LEVEL']) {
-            for(const skill in stats.bySkill['BONUS_LEVEL']) {
-                addStats({
-                    bySkill: {
-                        EFFICIENCY_CHANCE: {
-                            [skill]: 0.25
-                        }
-                    }
-                }, Math.round(stats.bySkill['BONUS_LEVEL'][skill]), 4);
-            }
         }
     }
 
@@ -10882,10 +10995,12 @@ window.moduleRegistry.add('itemCache', (request) => {
             telescope: null,
             lantern: null,
             food: null,
+            sigil: null,
+            dungeonKey: null,
             gatheringPotion: null,
             craftingPotion: null,
             combatPotion: null,
-            dungeonKey: null,
+            potion: null,
             woodcuttingRune: null,
             miningRune: null,
             farmingRune: null,
@@ -10905,6 +11020,7 @@ window.moduleRegistry.add('itemCache', (request) => {
             opulentCraftingTome: null,
             insatiablePowerTome: null,
             potentConcoctionTome: null,
+            runicWisdomTome: null,
             gem: null,
             smithing: null
         }
@@ -10959,10 +11075,16 @@ window.moduleRegistry.add('itemCache', (request) => {
         exports.specialIds.telescope = getAllIdsEnding('Telescope');
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
+        exports.specialIds.sigil = getAllIdsEnding('Sigil');
         exports.specialIds.dungeonKey = getAllIdsStarting('Dungeon Key');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
+        exports.specialIds.potion = [
+            ...exports.specialIds.gatheringPotion,
+            ...exports.specialIds.craftingPotion,
+            ...exports.specialIds.combatPotion
+        ];
         exports.specialIds.woodcuttingRune = getAllIdsEnding('Woodcutting Rune');
         exports.specialIds.miningRune = getAllIdsEnding('Mining Rune');
         exports.specialIds.farmingRune = getAllIdsEnding('Farming Rune');
@@ -10982,6 +11104,7 @@ window.moduleRegistry.add('itemCache', (request) => {
         exports.specialIds.opulentCraftingTome = getAllIdsStarting('Opulent Crafting Tome');
         exports.specialIds.insatiablePowerTome = getAllIdsStarting('Insatiable Power Tome');
         exports.specialIds.potentConcoctionTome = getAllIdsStarting('Potent Concoction Tome');
+        exports.specialIds.runicWisdomTome = getAllIdsStarting('Runic Wisdom Tome');
         exports.specialIds.gem = exports.list.filter(a => a.arcanePowder).map(a => a.id);
         exports.specialIds.smithing = [
             ...exports.specialIds.mainHand,
@@ -11283,6 +11406,32 @@ window.moduleRegistry.add('structuresCache', (request) => {
             exports.list.push(structure);
             exports.byId[structure.id] = structure;
             exports.byName[structure.name] = structure;
+        }
+        return exports;
+    }
+
+    return initialise();
+
+}
+);
+// traitCache
+window.moduleRegistry.add('traitCache', (request) => {
+
+    const exports = {
+        list: [],
+        byId: {},
+        byName: {},
+        byImage: {}
+    };
+
+    async function initialise() {
+        const traits = await request.listTraits();
+        for(const trait of traits) {
+            exports.list.push(trait);
+            exports.byId[trait.id] = trait;
+            exports.byName[trait.name] = trait;
+            const lastPart = trait.image.split('/').at(-1);
+            exports.byImage[lastPart] = trait;
         }
         return exports;
     }
