@@ -1110,7 +1110,7 @@
             width: 100%;
         }
         .customScroller {
-            padding-right: calc(var(--gap) / 2) !important;   
+            padding-right: calc(var(--gap) / 2) !important;
             box-sizing: content-box;
         }
         .customScroller::-webkit-scrollbar {
