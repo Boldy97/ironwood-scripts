@@ -35,6 +35,8 @@
             return;
         };
 
+        if (sortType === 'None') return;
+
         await elementWatcher.exists('traits-page .header > .name:contains("Equipped")');
 
         observeCardChanges();
