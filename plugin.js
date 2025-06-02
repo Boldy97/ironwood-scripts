@@ -8,8 +8,6 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=ironwoodrpg.com
 // @grant        none
 // @require      https://code.jquery.com/jquery-3.6.4.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
@@ -1509,40 +1507,6 @@ window.moduleRegistry.add('configuration', (configurationStore) => {
 
 }
 );
-// crypto
-window.moduleRegistry.add('crypto', () => {
-
-    const exports = {
-        encrypt,
-        decrypt
-    };
-
-    function initialise() {
-        $('<script>', {
-            src: 'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js',
-            type: 'text/javascript'
-        }).appendTo('head');
-    }
-
-    function encrypt(text, key) {
-        return CryptoJS.AES.encrypt(text, key).toString();
-    }
-
-    function decrypt(ciphertext, key) {
-        try {
-            const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-            const originalText = bytes.toString(CryptoJS.enc.Utf8);
-            return originalText || null; // null if fail
-        } catch {
-            return null;
-        }
-    }
-
-    initialise();
-
-    return exports;
-}
-);
 // Distribution
 window.moduleRegistry.add('Distribution', () => {
 
@@ -1780,6 +1744,7 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
 
     const exports = {
         addStyles,
+        addScript,
         getButton,
         getTag
     };
@@ -1797,6 +1762,13 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
         const style = document.createElement('style');
         style.innerHTML = css;
         head.appendChild(style);
+    }
+
+    function addScript(url) {
+        $('<script>', {
+            src: url,
+            type: 'text/javascript'
+        }).appendTo('head');
     }
 
     function getButton(text, onClick) {
@@ -9287,6 +9259,18 @@ window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, uti
 
     function followRecipe(recipe) {
         util.goToPage(recipe.url);
+    }
+
+    initialise();
+
+}
+);
+// scriptRegistry
+window.moduleRegistry.add('scriptRegistry', (elementCreator) => {
+
+    function initialise() {
+        elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js');
+        elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js');
     }
 
     initialise();
