@@ -57,6 +57,7 @@
         const component =
             $('<div/>')
                 .addClass('customComponent')
+                .addClass(blueprint.class || '')
                 .attr('id', blueprint.componentId)
                 .append('<div class="componentStateMessage" style="display: none"></div>');
         if (blueprint.onClick) {
@@ -287,7 +288,11 @@
             .show();
         hotkey.attach("Escape", () => {
             $(`#${inputBlueprint.id}`)?.blur();
-            $(`#${inputBlueprint.id}_input`)?.blur();
+            $(`#${inputBlueprint.id} [id$='_input']`)?.blur();
+        }, true);
+        hotkey.attach("Enter", () => {
+            $(`#${inputBlueprint.id}`)?.blur();
+            $(`#${inputBlueprint.id} [id$='_input']`)?.blur();
         }, true);
     }
 
@@ -300,6 +305,7 @@
             .find('.componentStateMessage')
             .hide();
         hotkey.detach("Escape");
+        hotkey.detach("Enter");
         if (inputBlueprint.action) {
             inputBlueprint.action(inputBlueprint.value);
         }
@@ -857,6 +863,9 @@
             border-radius: 4px;
             width: 100%;
         }
+        .customComponent.noMarginTop {
+            margin-top: unset;
+        }
         .myHeader {
             display: flex;
             align-items: center;
@@ -917,7 +926,7 @@
             height: 40px;
             width: 100%;
             background-color: #ffffff0a;
-            padding: 0 12px;
+            padding: 0 16px;
             text-align: center;
             border-radius: 4px;
             border: 1px solid var(--border-color);
@@ -926,7 +935,6 @@
             height: 40px;
             width: 100%;
             background-color: #ffffff0a;
-            padding: 0 12px;
             text-align: center;
             border-radius: 4px;
             border: 1px solid var(--border-color);
@@ -1102,7 +1110,7 @@
             width: 100%;
         }
         .customScroller {
-            padding-right: calc(var(--gap) / 2) !important;   
+            padding-right: calc(var(--gap) / 2) !important;
             box-sizing: content-box;
         }
         .customScroller::-webkit-scrollbar {
