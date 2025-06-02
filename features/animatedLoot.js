@@ -1,4 +1,4 @@
-(events, elementWatcher, itemCache, configuration, util) => {
+(events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil) => {
     const THICCNESS = 60;
 
     const Engine = Matter.Engine;
@@ -42,7 +42,6 @@
     let clumpCountsByItem = {};
 
     async function initialise() {
-        addStyles();
         configuration.registerCheckbox({
             category: 'Animated Loot',
             key: 'animated-loot-enabled',
@@ -92,6 +91,7 @@
             noHeader: true,
             handler: handleConfigBackgroundStateChange,
         });
+        elementCreator.addStyles(styles);
         events.register('page', handlePage);
         events.register('state-loot', handleLoot);
     }
@@ -101,21 +101,21 @@
     }
 
     function handleConfigMaxSameDensityStateChange(state) {
-        if(!state || state === '') {
+        if (!state || state === '') {
             max_same_density = MAX_SAME_DENSITY_DEFAULT;
             return;
         }
-        if(state < clumpsize) {
+        if (state < clumpsize) {
             //just reset it to default to prevent stuck in while
             max_same_density = MAX_SAME_DENSITY_DEFAULT;
             clumpsize = CLUMPDENSITY_DEFAULT;
             return;
         }
-        if(state < MAX_SAME_DENSITY_MIN) {
+        if (state < MAX_SAME_DENSITY_MIN) {
             max_same_density = MAX_SAME_DENSITY_MIN;
             return;
         }
-        if(state > MAX_SAME_DENSITY_MAX) {
+        if (state > MAX_SAME_DENSITY_MAX) {
             max_same_density = MAX_SAME_DENSITY_MAX;
             return;
         }
@@ -123,21 +123,21 @@
     }
 
     function handleConfigClumpSizeStateChange(state) {
-        if(!state || state === '') {
+        if (!state || state === '') {
             clumpsize = CLUMPDENSITY_DEFAULT;
             return;
         }
-        if(state > max_same_density) {
+        if (state > max_same_density) {
             //just reset it to default to prevent stuck in while
             clumpsize = CLUMPDENSITY_DEFAULT;
             max_same_density = MAX_SAME_DENSITY_DEFAULT;
             return;
         }
-        if(state < CLUMPDENSITY_MIN) {
+        if (state < CLUMPDENSITY_MIN) {
             clumpsize = CLUMPDENSITY_MIN;
             return;
         }
-        if(state > CLUMPDENSITY_MAX) {
+        if (state > CLUMPDENSITY_MAX) {
             clumpsize = CLUMPDENSITY_MAX;
             return;
         }
@@ -145,15 +145,15 @@
     }
 
     function handleConfigClumpImageSizeIncreaseStateChange(state) {
-        if(!state || state === '') {
+        if (!state || state === '') {
             imagesize_increase = IMAGESIZE_INCREASE_DEFAULT;
             return;
         }
-        if(state < IMAGESIZE_INCREASE_MIN) {
+        if (state < IMAGESIZE_INCREASE_MIN) {
             imagesize_increase = IMAGESIZE_INCREASE_MIN;
             return;
         }
-        if(state > IMAGESIZE_INCREASE_MAX) {
+        if (state > IMAGESIZE_INCREASE_MAX) {
             imagesize_increase = IMAGESIZE_INCREASE_MAX;
             return;
         }
@@ -166,7 +166,7 @@
 
     async function handlePage(page) {
         if (!enabled) return;
-        if(isDifferentAction(page)) {
+        if (isDifferentAction(page)) {
             reset();
         }
         lastPage = page;
@@ -196,8 +196,7 @@
 
             for (const [id, val] of Object.entries(lootState.loot)) {
                 if (val > 0) {
-                    await loadImage(id);
-                    updateItem(+id, val);
+                    if (await assetUtil.loadItemImage(id)) updateItem(+id, val);
                 }
             }
         }
@@ -214,7 +213,7 @@
             return;
         }
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
-        if(backgroundUrl) {
+        if (backgroundUrl) {
             itemWrapper.css('background-image', 'linear-gradient(0deg, rgba(0, 0, 0, 0) 66%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
             itemWrapper.css('background-position', 'center');
         } else {
@@ -304,7 +303,7 @@
         Runner.run(runner, engine);
 
         function handleResize(matterContainer) {
-            if(!render.canvas) {
+            if (!render.canvas) {
                 return;
             }
 
@@ -352,20 +351,20 @@
 
         const previousClumps = clumpCountsByItem[itemId] || [];
         const maxLength = Math.max(clumps.length, previousClumps.length);
-        for(let i=0;i<maxLength;i++) {
+        for (let i = 0; i < maxLength; i++) {
             const density = Math.pow(clumpsize, i);
             let diff = (clumps[i] || 0) - (previousClumps[i] || 0);
             // cull
-            for(let j=0;j>diff;j--) {
+            for (let j = 0; j > diff; j--) {
                 const index = items.findIndex(item => item.id === itemId && item.density === density);
-                if(index === -1) {
+                if (index === -1) {
                     throw `Unexpected : could not cull itemId ${itemId} with density ${density} because no match found`;
                 }
                 const item = items.splice(index, 1)[0];
                 cullItem(item);
             }
             // spawn
-            for(let j=0;j<diff;j++) {
+            for (let j = 0; j < diff; j++) {
                 const item = {
                     id: itemId,
                     density
@@ -384,7 +383,7 @@
 
         // minimal clump count first
         const array = [];
-        while(currentClumpSize >= 1) {
+        while (currentClumpSize >= 1) {
             array[index] = Math.floor(amount / currentClumpSize);
             amount -= array[index] * currentClumpSize;
             // TODO add to array
@@ -393,10 +392,10 @@
         }
 
         // then split to reach max_same_density
-        for(let i=array.length-2;i>=0;i--) {
+        for (let i = array.length - 2; i >= 0; i--) {
             let splitCount = Math.floor((max_same_density - array[i] - 1) / clumpsize);
-            splitCount = Math.min(splitCount, array[i+1]);
-            array[i+1] -= splitCount;
+            splitCount = Math.min(splitCount, array[i + 1]);
+            array[i + 1] -= splitCount;
             array[i] += splitCount * clumpsize;
         }
         return array;
@@ -410,7 +409,7 @@
         const gameItem = itemCache.byId[item.id];
 
         const matterContainer = document.querySelector('#itemWrapper');
-        const spread = randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
+        const spread = util.randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
 
         const itemSize = DESIRED_IMAGESIZE + util.log(item.density, clumpsize) * (DESIRED_IMAGESIZE * (imagesize_increase - 1));
         const imageScale = itemSize / DESIRED_IMAGESIZE;
@@ -430,38 +429,6 @@
         });
         World.add(engine.world, itemObject);
         item.ref = itemObject;
-    }
-
-    async function loadImage(itemId) {
-        const item = itemCache.byId[itemId];
-        if(!item) return;
-        if(loadedImages.includes(itemId)) {
-            return;
-        }
-        await new Promise((res, rej) => {
-            let img = new Image();
-            img.onload = () => {
-                loadedImages.push(itemId);
-                res();
-            };
-            img.onerror = rej;
-            img.src = 'assets/' + item.image;
-        });
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0];
-        if (!head) {
-            return;
-        }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
-    }
-
-    function randomIntFromInterval(min, max) {
-        return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
     function isDifferentAction(page) {

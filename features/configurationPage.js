@@ -1,4 +1,4 @@
-(pages, components, configuration, elementCreator) => {
+(pages, components, configuration, elementCreator, util) => {
 
     const PAGE_NAME = 'Configuration';
 
@@ -17,8 +17,8 @@
 
     function generateBlueprint() {
         const categories = {};
-        for(const item of configuration.items) {
-            if(!categories[item.category]) {
+        for (const item of configuration.items) {
+            if (!categories[item.category]) {
                 categories[item.category] = {
                     name: item.category,
                     items: []
@@ -27,30 +27,33 @@
             categories[item.category].items.push(item);
         }
         const blueprints = [];
-        let column = 1;
-        for(const category in categories) {
-            column = 1 - column;
+        const columnHeights = [0, 0]; // rows per column
+
+        for (const category in categories) {
             const rows = [{
                 type: 'header',
                 title: category,
                 centered: true
             }];
             rows.push(...categories[category].items.flatMap(createRows));
+
+            const targetColumn = columnHeights[0] <= columnHeights[1] ? 0 : 1;
+
+            columnHeights[targetColumn] += rows.length;
+
             blueprints.push({
                 componentId: `configurationComponent_${category}`,
                 dependsOn: 'custom-page',
-                parent: `.column${column}`,
+                parent: `.column${targetColumn}`,
                 selectedTabIndex: 0,
-                tabs: [{
-                    rows: rows
-                }]
+                tabs: [{ rows }]
             });
         }
         return blueprints;
     }
 
     function createRows(item) {
-        switch(item.type) {
+        switch (item.type) {
             case 'checkbox': return createRows_Checkbox(item);
             case 'input': return createRows_Input(item);
             case 'dropdown': return createRows_Dropdown(item);
@@ -84,6 +87,7 @@
         }
 
         result.push({
+            id: util.generateRandomId(),
             type: 'input',
             name: item.name,
             value: value,
@@ -104,22 +108,34 @@
 
     function createRows_Dropdown(item) {
         const value = item.value || item.default;
+        const result = [];
         const options = item.options.map(option => ({
             text: option,
             value: option,
             selected: option === value
         }));
-        return [{
-            type: 'item',
-            name: item.name
-        },{
+
+        if (!item.noHeader) {
+            result.push({
+                type: 'item',
+                name: item.name
+            });
+        }
+
+        result.push({
             type: 'dropdown',
             options: options,
+            compact: item.compact,
+            layout: item.layout || '1/1',
+            text: item.name,
+            light: true,
             delay: 500,
             action: (value) => {
                 item.handler(value);
             }
-        }]
+        });
+
+        return result;
     }
 
     function createRows_Button(item) {
@@ -135,7 +151,7 @@
 
     function renderPage() {
         const blueprints = generateBlueprint();
-        for(const blueprint of blueprints) {
+        for (const blueprint of blueprints) {
             components.addComponent(blueprint);
         }
     }

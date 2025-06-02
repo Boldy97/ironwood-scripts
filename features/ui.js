@@ -30,7 +30,7 @@
     }
 
     function handleConfigStateChange(state) {
-        if(state) {
+        if (state) {
             add();
         } else {
             remove();
@@ -38,7 +38,7 @@
     }
 
     function add() {
-        document.documentElement.style.setProperty('--gap', '8px');
+        document.documentElement.style.setProperty('--gap', '10px');
         const element = $(`
             <style>
                 ${selector} :not(.multi-row) > :is(
@@ -76,7 +76,7 @@
                 }
 
                 ${selector} button.filter {
-                    padding: 2px 6px !important;
+                    padding: 1px 6px !important;
                     min-width: 0 !important;
                 }
 

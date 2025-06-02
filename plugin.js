@@ -8,8 +8,6 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=ironwoodrpg.com
 // @grant        none
 // @require      https://code.jquery.com/jquery-3.6.4.min.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js
-// @require      https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js
 // ==/UserScript==
 
 window.PANCAKE_ROOT = 'https://iwrpg.vectordungeon.com';
@@ -171,6 +169,40 @@ Object.defineProperty(Array.prototype, '_distinct', {
     }
 
 })();
+// assetUtil
+window.moduleRegistry.add('assetUtil', (itemCache) => {
+    const loadedImages = new Map();
+
+    const exports = {
+        loadImageFromUrl,
+        loadItemImage
+    };
+
+    async function loadImageFromUrl(url) {
+        if (loadedImages.has(url)) {
+            return loadedImages.get(url);
+        }
+
+        return await new Promise((res) => {
+            const img = new Image();
+            img.onload = () => {
+                loadedImages.set(url, img);
+                res(img);
+            };
+            img.onerror = () => res(null);
+            img.src = url;
+        });
+    }
+
+    async function loadItemImage(itemId) {
+        const item = itemCache.byId[itemId];
+        if (!item) return null;
+        return await loadImageFromUrl('assets/' + item.image);
+    }
+
+    return exports;
+}
+);
 // colorMapper
 window.moduleRegistry.add('colorMapper', () => {
 
@@ -201,7 +233,7 @@ window.moduleRegistry.add('colorMapper', () => {
 }
 );
 // components
-window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCreator, localDatabase, Promise) => {
+window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCreator, localDatabase, Promise, util, hotkey) => {
 
     const exports = {
         addComponent,
@@ -224,7 +256,9 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         segment: createRow_Segment,
         progress: createRow_Progress,
         chart: createRow_Chart,
-        list: createRow_List
+        list: createRow_List,
+        listView: createRow_ListView,
+        chat: createCompositeRow_Chat,
     };
     let selectedTabs = null;
 
@@ -243,10 +277,10 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     async function addComponent(blueprint) {
-        if(blueprint?.meta?.focused) {
+        if (blueprint?.meta?.focused) {
             return; // delay until no longer having focus
         }
-        if($(blueprint.dependsOn).length) {
+        if ($(blueprint.dependsOn).length) {
             actualAddComponent(blueprint);
             return;
         }
@@ -260,7 +294,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                 .addClass('customComponent')
                 .attr('id', blueprint.componentId)
                 .append('<div class="componentStateMessage" style="display: none"></div>');
-        if(blueprint.onClick) {
+        if (blueprint.onClick) {
             component
                 .click(blueprint.onClick)
                 .css('cursor', 'pointer');
@@ -268,7 +302,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
         // TABS
         const selectedTabMatch = selectedTabs.find(a => a.key === blueprint.componentId);
-        if(selectedTabMatch) {
+        if (selectedTabMatch) {
             blueprint.selectedTabIndex = selectedTabMatch.value;
             selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
         }
@@ -282,25 +316,43 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         });
 
         const existing = $(`#${blueprint.componentId}`);
-        if(existing.length) {
+
+        if (existing.length) {
+            const scrollPositions = [];
+            existing.find('.customScroller').each(function () {
+                scrollPositions.push($(this).scrollTop());
+            });
+
             existing.replaceWith(component);
-        } else if(blueprint.prepend) {
+
+            const $newScrollables = component.find('.customScroller');
+            $newScrollables.each(function (i) {
+                if (scrollPositions[i] !== undefined) {
+                    $(this).scrollTop(scrollPositions[i]);
+                }
+            });
+
+        } else if (blueprint.prepend) {
             $(blueprint.parent).prepend(component);
         } else {
             $(blueprint.parent).append(component);
         }
+
+        if (blueprint.after) {
+            blueprint.after();
+        }
     }
 
     function createTab(blueprint) {
-        if(!blueprint.selectedTabIndex) {
+        if (!blueprint.selectedTabIndex) {
             blueprint.selectedTabIndex = 0;
         }
-        if(blueprint.tabs.length === 1) {
+        if (blueprint.tabs.filter(t => !t.hidden).length === 1) {
             return;
         }
         const tabContainer = $('<div/>').addClass('tabs');
         blueprint.tabs.forEach((element, index) => {
-            if(element.hidden) {
+            if (element.hidden) {
                 return;
             }
             const tab = $('<button/>')
@@ -308,10 +360,10 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                 .addClass('tabButton')
                 .text(element.title)
                 .click(changeTab.bind(null, blueprint, index));
-            if(blueprint.selectedTabIndex !== index) {
+            if (blueprint.selectedTabIndex !== index) {
                 tab.addClass('tabButtonInactive')
             }
-            if(index !== 0) {
+            if (index !== 0) {
                 tab.addClass('lineLeft')
             }
             tabContainer.append(tab);
@@ -320,11 +372,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     function createRow(rowBlueprint, rootBlueprint) {
-        if(!rowTypeMappings[rowBlueprint.type]) {
+        if (!rowTypeMappings[rowBlueprint.type]) {
             console.warn(`Skipping unknown row type in blueprint: ${rowBlueprint.type}`, rowBlueprint);
             return;
         }
-        if(rowBlueprint.hidden) {
+        if (rowBlueprint.hidden) {
             return;
         }
         return rowTypeMappings[rowBlueprint.type](rowBlueprint, rootBlueprint);
@@ -332,10 +384,10 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function createRow_Item(itemBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
-        if(itemBlueprint.image) {
+        if (itemBlueprint.image) {
             parentRow.append(createImage(itemBlueprint));
         }
-        if(itemBlueprint?.name) {
+        if (itemBlueprint?.name) {
             parentRow
                 .append(
                     $('<div/>')
@@ -349,7 +401,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                     .addClass('myItemValue')
                     .text(itemBlueprint?.extra || '')
             );
-        if(itemBlueprint?.value) {
+        if (itemBlueprint?.value) {
             parentRow
                 .append(
                     $('<div/>')
@@ -362,13 +414,13 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function createRow_Input(inputBlueprint, rootBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
-        if(inputBlueprint.text) {
+        if (inputBlueprint.text) {
             const text = $('<div/>')
                 .addClass('myItemInputText')
                 .addClass(inputBlueprint.class || '')
                 .text(inputBlueprint.text)
                 .css('flex', `${inputBlueprint.layout?.split('/')[0] || 1}`);
-            if(inputBlueprint.light) {
+            if (inputBlueprint.light) {
                 text
                     .css('padding', '0')
                     .css('height', 'inherit')
@@ -385,14 +437,20 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             .attr('value', inputBlueprint.value || '')
             .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
             .keyup(e => inputBlueprint.value = e.target.value)
-            .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
+            // .keyup(inputDelay(function (e) {
+            //     inputBlueprint.value = e.target.value;
+            //     if (inputBlueprint.action) {
+            //         inputBlueprint.action(inputBlueprint.value);
+            //     }
+            // }, inputBlueprint.delay || 0))
+            .on('focusin', onInputFocusIn.bind(null, rootBlueprint, inputBlueprint))
             .on('focusout', onInputFocusOut.bind(null, rootBlueprint, inputBlueprint));
-            if(inputBlueprint.light) {
-                input
-                    .css('padding', '0')
-                    .css('height', 'inherit')
-                    .css('color', '#aaa');
-            }
+        if (inputBlueprint.light) {
+            input
+                .css('padding', '0')
+                .css('height', 'inherit')
+                .css('color', '#aaa');
+        }
         parentRow.append(input)
         return parentRow;
     }
@@ -400,11 +458,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     function createRow_ItemWithInput(itemWithInputBlueprint, rootBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
 
-        if(itemWithInputBlueprint.image) {
+        if (itemWithInputBlueprint.image) {
             parentRow.append(createImage(itemWithInputBlueprint));
         }
 
-        if(itemWithInputBlueprint?.name) {
+        if (itemWithInputBlueprint?.name) {
             parentRow
                 .append(
                     $('<div/>')
@@ -425,14 +483,14 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                     .css('flex', `${itemWithInputBlueprint.layout?.split('/')[1] || 1}`)
                     .css('max-width', '80px')
                     .css('height', 'inherit')
-                    .keyup(inputDelay(function(e) {
+                    .keyup(inputDelay(function (e) {
                         itemWithInputBlueprint.inputValue = e.target.value;
-                        if(itemWithInputBlueprint.action) {
+                        if (itemWithInputBlueprint.action) {
                             itemWithInputBlueprint.action(itemWithInputBlueprint.inputValue);
                         }
                     }, itemWithInputBlueprint.delay || 0))
-                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint))
-                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint))
+                    .on('focusin', onInputFocusIn.bind(null, rootBlueprint, itemWithInputBlueprint))
+                    .on('focusout', onInputFocusOut.bind(null, rootBlueprint, itemWithInputBlueprint))
             )
 
         parentRow
@@ -442,7 +500,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                     .text(itemWithInputBlueprint?.extra || '')
             );
 
-        if(itemWithInputBlueprint?.value) {
+        if (itemWithInputBlueprint?.value) {
             parentRow
                 .append(
                     $('<div/>')
@@ -453,8 +511,8 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         return parentRow;
     }
 
-    function onInputFocusIn(rootBlueprint) {
-        if(!rootBlueprint.meta) {
+    function onInputFocusIn(rootBlueprint, inputBlueprint) {
+        if (!rootBlueprint.meta) {
             rootBlueprint.meta = {};
         }
         rootBlueprint.meta.focused = true;
@@ -462,17 +520,22 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             .find('.componentStateMessage')
             .text('Focused - interrupted updates')
             .show();
+        hotkey.attach("Escape", () => {
+            $(`#${inputBlueprint.id}`)?.blur();
+            $(`#${inputBlueprint.id}_input`)?.blur();
+        }, true);
     }
 
     function onInputFocusOut(rootBlueprint, inputBlueprint) {
-        if(!rootBlueprint.meta) {
+        if (!rootBlueprint.meta) {
             rootBlueprint.meta = {};
         }
         rootBlueprint.meta.focused = false;
         $(`#${rootBlueprint.componentId}`)
             .find('.componentStateMessage')
             .hide();
-        if(inputBlueprint.action) {
+        hotkey.detach("Escape");
+        if (inputBlueprint.action) {
             inputBlueprint.action(inputBlueprint.value);
         }
     }
@@ -485,7 +548,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function createRow_Button(buttonBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
-        for(const button of buttonBlueprint.buttons) {
+        for (const button of buttonBlueprint.buttons) {
             parentRow
                 .append(
                     $(`<button class='myButton'>${button.text}</button>`)
@@ -501,20 +564,46 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function createRow_Select(selectBlueprint) {
         const parentRow = $('<div/>').addClass('customRow');
+
+        if (selectBlueprint.compact) {
+            const text = $('<div/>')
+                .addClass('myItemInputText')
+                .addClass(selectBlueprint.class || '')
+                .text(selectBlueprint.text || '')
+                .css('flex', `${selectBlueprint.layout?.split('/')[0] || 1}`);
+            parentRow.append(text);
+            if (selectBlueprint.light) {
+                text
+                    .css('padding', '0')
+                    .css('height', 'inherit')
+                    .css('color', '#aaa');
+            }
+        }
+
         const select = $('<select/>')
             .addClass('myItemSelect')
             .addClass(selectBlueprint.class || '')
-            .change(inputDelay(function(e) {
-                for(const option of selectBlueprint.options) {
+            .css('flex', `${selectBlueprint.layout?.split('/')[1] || 1}`)
+            .change(inputDelay(function (e) {
+                for (const option of selectBlueprint.options) {
                     option.selected = this.value === option.value;
                 }
-                if(selectBlueprint.action) {
+                if (selectBlueprint.action) {
                     selectBlueprint.action(this.value);
                 }
             }, selectBlueprint.delay || 0));
-        for(const option of selectBlueprint.options) {
+
+        if (selectBlueprint.light) {
+            select
+                .css('padding', '0')
+                .css('height', 'inherit')
+                .css('color', '#aaa');
+        }
+
+        for (const option of selectBlueprint.options) {
             select.append(`<option value='${option.value}' ${option.selected ? 'selected' : ''} ${option.disabled ? 'disabled' : ''}>${option.text}</option>`);
         }
+
         parentRow.append(select);
         return parentRow;
     }
@@ -523,7 +612,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         const parentRow =
             $('<div/>')
                 .addClass('myHeader lineTop')
-        if(headerBlueprint.image) {
+        if (headerBlueprint.image) {
             parentRow.append(createImage(headerBlueprint));
         }
         parentRow.append(
@@ -531,7 +620,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                 .addClass('myName')
                 .text(headerBlueprint.title)
         )
-        if(headerBlueprint.action) {
+        if (headerBlueprint.action) {
             parentRow
                 .append(
                     $('<button/>')
@@ -541,7 +630,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                         .css('background-color', colorMapper(headerBlueprint.color || 'success'))
                         .click(headerBlueprint.action)
                 )
-        } else if(headerBlueprint.textRight) {
+        } else if (headerBlueprint.textRight) {
             parentRow.append(
                 $('<div/>')
                     .addClass('level')
@@ -550,7 +639,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                     .html(headerBlueprint.textRight)
             )
         }
-        if(headerBlueprint.centered) {
+        if (headerBlueprint.centered) {
             parentRow.css('justify-content', 'center');
         }
         return parentRow;
@@ -576,7 +665,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
                             .html(buttonInnerHTML)
                             .click(() => {
                                 checkboxBlueprint.checked = !checkboxBlueprint.checked;
-                                if(checkboxBlueprint.action) {
+                                if (checkboxBlueprint.action) {
                                     checkboxBlueprint.action(checkboxBlueprint.checked);
                                 }
                             })
@@ -588,7 +677,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
     }
 
     function createRow_Segment(segmentBlueprint, rootBlueprint) {
-        if(segmentBlueprint.hidden) {
+        if (segmentBlueprint.hidden) {
             return;
         }
         return segmentBlueprint.rows.flatMap(a => createRow(a, rootBlueprint));
@@ -623,7 +712,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function createRow_Chart(chartBlueprint) {
         const parentRow = $('<div/>')
-        .addClass('lineTop')
+            .addClass('lineTop')
             .append(
                 $('<canvas/>')
                     .attr('id', chartBlueprint.chartId)
@@ -645,7 +734,277 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             );
         return parentRow;
     }
-    
+
+    function createRow_ListView(listViewBlueprint) {
+        const parentRow = $('<div/>').addClass('customRow');
+        parentRow
+            .append(
+                $('<div/>')
+                    .addClass('listViewContainer customScroller')
+                    .css('max-height', `${listViewBlueprint.maxHeight ? `${listViewBlueprint.maxHeight}px` : '80vh'}`)
+                    .addClass(listViewBlueprint.class || '')
+                    .append(...listViewBlueprint.entries.map(entry => {
+                        const listViewElement = $('<div/>')
+                            .addClass('listViewElement')
+                        return listViewBlueprint.render(listViewElement, entry)
+                    }))
+            );
+        return parentRow;
+    }
+
+    //fuuuuuuuuk, overly "complex", but works, needs refactoring
+    function createCompositeRow_Chat(chatblueprint, rootBlueprint) {
+        const colorMap = {
+            'C:red': '#b35c5c',
+            'C:gre': '#5c8f5c',
+            'C:blu': '#5c7ca6',
+            'C:cya': '#5ca6a6',
+            'C:whi': '#aaa9a9',
+            'C:bla': '#444',
+            'C:pur': '#7c5c8f',
+            'C:yel': '#b3a35c',
+            'C:ora': '#b37c5c'
+        };
+
+        const modifiers = {
+            'C': {
+                update: (value, state) => {
+                    const colorKey = `C:${value.toLowerCase()}`;
+                    if (colorMap[colorKey]) {
+                        state.backgroundColor = colorMap[colorKey];
+                    }
+                },
+                apply: (elem, state) => {
+                    if (state.backgroundColor) {
+                        elem.css('background-color', state.backgroundColor);
+                    }
+                }
+            },
+            'B': {
+                update: (_, state) => {
+                    state.bold = true;
+                },
+                apply: (elem, state) => {
+                    if (state.bold) {
+                        elem.css('font-weight', 'bold');
+                    }
+                }
+            },
+            'I': {
+                update: (_, state) => {
+                    state.italic = true;
+                },
+                apply: (elem, state) => {
+                    if (state.italic) {
+                        elem.css('font-style', 'italic');
+                    }
+                }
+            }
+        };
+
+        const wrapper = $('<div/>');
+        const chatMessagesRow = $('<div/>').addClass('customRow');
+        const chatMessagesContainer = $('<div/>')
+            .css('maxHeight', `${chatblueprint.maxHeight || 500}px`)
+            .addClass('chatMessageContainer customScroller')
+            .attr('id', chatblueprint.id);
+        chatMessagesRow.append(chatMessagesContainer)
+        chatblueprint.messages.forEach(message => {
+            const msgElem = $('<p/>').addClass('myChatMessage');
+
+            const content = message.content || {};
+            const type = content.type || 'chat_raw';
+
+            const { cleanedText, currentStyle } = parseModifiersAndCleanText(content.message, modifiers);
+
+            switch (type) {
+                case 'chat_system': {
+
+                    for (const key in modifiers) {
+                        modifiers[key].apply?.(msgElem, currentStyle);
+                    }
+
+                    cleanedText.split('\n').forEach((line, i, arr) => {
+                        msgElem.append(document.createTextNode(line));
+                        if (i < arr.length - 1) {
+                            msgElem.append(document.createElement('br'));
+                        }
+                    });
+
+                    break;
+                }
+                case 'chat_message': {
+                    appendTimestamp(msgElem, message.time);
+                    appendSender(msgElem, content.sender);
+
+                    for (const key in modifiers) {
+                        if (key === 'C') {
+                            modifiers[key].apply?.(msgElem, currentStyle);
+                        }
+                    }
+
+                    const textWrapper = $('<span/>').append(document.createTextNode(cleanedText));
+                    for (const key in modifiers) {
+                        if (key !== 'C') {
+                            modifiers[key].apply?.(textWrapper, currentStyle);
+                        }
+                    }
+
+                    msgElem.append(textWrapper);
+
+                    break;
+                }
+                case "chat_roleplay": {
+                    appendTimestamp(msgElem, message.time);
+
+                    for (const key in modifiers) {
+                        if (key === 'C') {
+                            modifiers[key].apply?.(msgElem, currentStyle);
+                        }
+                    }
+
+                    const wrapper = $('<span/>');
+                    wrapper
+                        .append($('<span/>')
+                            .css('font-weight', 'bold')
+                            .css('font-style', 'italic')
+                            .text(content.sender + ' ' + cleanedText));
+                    msgElem.append(wrapper);
+                    break;
+                }
+                case "chat_raw": {
+                    appendTimestamp(msgElem, message.time);
+                    appendSender(msgElem, content.sender);
+                    msgElem.append($('<span/>').text(content.message));
+                    break;
+                }
+                case "chat_trade": {
+
+                    // todo different layouts for buy or sell
+                    // if buying, go to orders tab after navigating to market
+
+                    appendTimestamp(msgElem, message.time);
+                    msgElem.append($('<span/>')
+                        .text(content.sender + ' ' + "is looking to sell:"));
+                    msgElem.addClass('chatTradeMessage');
+
+                    const container = $('<div/>').addClass('chatTradeMessageContainer image')
+                    container.append(
+                        $('<img/>')
+                            .addClass('chatTradeMessageImage')
+                            .attr('src', `https://ironwoodrpg.com/assets/items/rock-silver.png`)
+                    )
+                    const infoContainer = $('<div/>').addClass('chatTradeMessageInformation');
+                    container.append(
+                        infoContainer
+                            .append($('<span/>').text(`Name: ${content.message || 'Skibidi'}`))
+                            .append($('<span/>').text(`Price: ${content.price || '420'}`))
+                            .append($('<span/>').text(`Quantity: ${content.quantity || '69'}`))
+                            .append(
+                                $('<a/>')
+                                    .text(`Click here to view`)
+                                    .click(async () => {
+                                        util.goToPage('market');
+                                        await elementWatcher.exists('market-listings-component .search > input');
+                                        const searchReference = $('market-listings-component .search > input');
+                                        searchReference.val(content.message);
+                                        searchReference[0].dispatchEvent(new Event('input'));
+                                    })
+                            )
+                    )
+
+                    msgElem.append(container);
+
+                    break;
+                }
+            }
+
+            chatMessagesContainer.append(msgElem);
+        });
+
+
+        const chatInputRow = $('<div/>').addClass('customRow');
+
+        const input = $('<input/>')
+            .attr({
+                id: `${chatblueprint.id}_input`,
+                type: chatblueprint.inputType || 'text',
+                placeholder: chatblueprint.inputPlaceholder,
+                value: chatblueprint.inputValue || '',
+                autocomplete: 'off'
+            })
+            .addClass('myItemInput chatMessageInput')
+            .addClass(chatblueprint.class || '')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[1] || 1}`)
+            .on('focusin', () => onInputFocusIn(rootBlueprint, chatblueprint))
+            .on('focusout', () => onInputFocusOut(rootBlueprint, chatblueprint))
+            .on('keyup', e => {
+                chatblueprint.inputValue = $(`#${chatblueprint.id}_input`).val();
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    chatblueprint.submit(chatblueprint.inputValue);
+                    clearOnSubmit();
+                }
+            });
+
+        const testButton = $('<button/>')
+            .addClass('myItemInputTestButton')
+            .addClass(chatblueprint.class || '')
+            .text('+')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
+            .on('click', () => { });
+
+        const sendButton = $('<button/>')
+            .addClass('myItemInputSendMessageButton')
+            .addClass(chatblueprint.class || '')
+            .text('Send')
+            .css('flex', `${chatblueprint.inputLayout?.split('/')[0] || 1}`)
+            .on('click', () => {
+                chatblueprint.submit(chatblueprint.inputValue);
+                clearOnSubmit();
+            });
+
+        function clearOnSubmit() {
+            $(`#${chatblueprint.id}_input`).val('').trigger('keyup').trigger('focusout');
+        }
+
+        function appendTimestamp(container, timestamp) {
+            if (!timestamp) return;
+            container.append(
+                $('<span/>')
+                    .addClass('myChatMessageTime')
+                    .text(`[${util.unixToHMS(timestamp)}] `)
+            );
+        }
+
+        function appendSender(container, sender) {
+            if (!sender) return;
+            container.append(
+                $('<span/>')
+                    .addClass('myChatMessageSender')
+                    .text(`${sender}: `)
+            );
+        }
+        function parseModifiersAndCleanText(msgText, modifiers) {
+            const modifierRegex = /@([A-Z])(?::([^@]+))?@/gi;
+            const currentStyle = {};
+
+            const cleanedText = msgText.replace(modifierRegex, (_, key, val) => {
+                const upperKey = key.toUpperCase();
+                const mod = modifiers[upperKey];
+                if (mod) {
+                    mod.update(val, currentStyle);
+                }
+                return '';
+            }).trim();
+
+            return { cleanedText, currentStyle };
+        }
+
+        chatInputRow.append(input, testButton, sendButton);
+        wrapper.append(chatMessagesRow, chatInputRow);
+        return wrapper;
+    }
+
     function createImage(blueprint) {
         return $('<div/>')
             .addClass('myItemImage image')
@@ -669,20 +1028,20 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function inputDelay(callback, ms) {
         var timer = 0;
-        return function() {
+        return function () {
             var context = this, args = arguments;
             window.clearTimeout(timer);
-            timer = window.setTimeout(function() {
+            timer = window.setTimeout(function () {
                 callback.apply(context, args);
             }, ms || 0);
         };
     }
 
     function search(blueprint, query) {
-        if(!blueprint.idMappings) {
+        if (!blueprint.idMappings) {
             generateIdMappings(blueprint);
         }
-        if(!blueprint.idMappings[query]) {
+        if (!blueprint.idMappings[query]) {
             throw `Could not find id ${query} in blueprint ${blueprint.componentId}`;
         }
         return blueprint.idMappings[query];
@@ -690,30 +1049,30 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
 
     function generateIdMappings(blueprint) {
         blueprint.idMappings = {};
-        for(const tab of blueprint.tabs) {
+        for (const tab of blueprint.tabs) {
             addIdMapping(blueprint, tab);
-            for(const row of tab.rows) {
+            for (const row of tab.rows) {
                 addIdMapping(blueprint, row);
             }
         }
     }
 
     function addIdMapping(blueprint, element) {
-        if(element.id) {
-            if(blueprint.idMappings[element.id]) {
+        if (element.id) {
+            if (blueprint.idMappings[element.id]) {
                 throw `Detected duplicate id ${element.id} in blueprint ${blueprint.componentId}`;
             }
             blueprint.idMappings[element.id] = element;
         }
         let subelements = null;
-        if(element.type === 'segment') {
+        if (element.type === 'segment') {
             subelements = element.rows;
         }
-        if(element.type === 'buttons') {
+        if (element.type === 'buttons') {
             subelements = element.buttons;
         }
-        if(subelements) {
-            for(const subelement of subelements) {
+        if (subelements) {
+            for (const subelement of subelements) {
                 addIdMapping(blueprint, subelement);
             }
         }
@@ -745,7 +1104,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         }
         .myHeaderAction{
             margin: 0px 0px 0px auto;
-            border: 1px solid var(--border-color);
+            /*border: 1px solid var(--border-color);*/
             border-radius: 4px;
             padding: 0px 5px;
         }
@@ -757,8 +1116,8 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             /*padding: 5px 12px 5px 6px;*/
             min-height: 0px;
             min-width: 0px;
-            gap: var(--margin);
-            padding: calc(var(--gap) / 2) var(--gap);
+            gap: calc(var(--gap) / 2);
+            padding: calc(var(--gap) / 2) calc(var(--gap) / 2);
         }
         .myItemImage {
             position: relative;
@@ -824,11 +1183,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             pointer-events: none;
         }
         .sort {
-           padding: 12px var(--gap);
-           border-top: 1px solid var(--border-color);
-           display: flex;
-           align-items: center;
-           justify-content: space-between;
+            padding: 12px var(--gap);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         .sortButtonContainer {
             display: flex;
@@ -839,29 +1198,29 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             overflow: hidden;
         }
         .sortButton {
-           display: flex;
-           border: none;
-           background: transparent;
-           font-family: inherit;
-           font-size: inherit;
-           line-height: 1.5;
-           font-weight: inherit;
-           color: inherit;
-           resize: none;
-           text-transform: inherit;
-           letter-spacing: inherit;
-           cursor: pointer;
-           padding: 4px var(--gap);
-           flex: 1;
-           text-align: center;
-           justify-content: center;
-           background-color: var(--darker-color);
+            display: flex;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 1.5;
+            font-weight: inherit;
+            color: inherit;
+            resize: none;
+            text-transform: inherit;
+            letter-spacing: inherit;
+            cursor: pointer;
+            padding: 4px var(--gap);
+            flex: 1;
+            text-align: center;
+            justify-content: center;
+            background-color: var(--darker-color);
         }
         .tabs {
-           display: flex;
-           align-items: center;
-           overflow: hidden;
-           border-radius: inherit;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            border-radius: inherit;
         }
         .tabButton {
             border: none;
@@ -947,6 +1306,109 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             border-radius: .4em;
             gap: .4em;
         }
+        .myItemInputSendMessageButton {
+            display: flex;
+            background-color: ${colorMapper('success')};
+            justify-content: center;
+            height: 40px;
+            width: 100%;
+            text-align: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+        .myItemInputTestButton {
+            display: flex;
+            background-color: ${colorMapper('info')};
+            justify-content: center;
+            height: 40px;
+            width: 100%;
+            text-align: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+        .chatMessageContainer {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 900px;
+            overflow-y: auto;
+            gap: var(--gap);
+            width: 100%;
+        }
+        .customScroller {
+            padding-right: calc(var(--gap) / 2) !important;   
+            box-sizing: content-box;
+        }
+        .customScroller::-webkit-scrollbar {
+            width: var(--gap);
+            background: transparent;
+        }
+        .customScroller::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 4px;
+            border: 2px solid transparent
+            background-clip: padding-box;
+        }
+        .myChatMessageTime {
+
+        }
+        .myChatMessageSender {
+            font-weight: 600;
+            letter-spacing: .25px;
+        }
+        .chatMessageInput {
+            text-align: unset !important;
+        }
+        .myChatMessage {
+            width: 100%;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        .chatTradeMessage {
+            background-color: #7c5c8f;
+        }
+        .chatTradeMessageContainer {
+            display: flex;
+            flex-direction: row;
+            gap: var(--gap);
+        }
+        .chatTradeMessageImage {
+            width: 96px;
+            height: 96px;
+            image-rendering: pixelated;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        .chatTradeMessageInformation {
+            display: flex;
+            flex-direction: column;
+            a {
+                text-decoration: underline;
+            }
+        }
+        .listViewContainer {
+            display: flex;
+            flex-direction: column;
+            gap: calc(var(--gap) / 2);
+            width: 100%;
+            overflow-y: auto;
+        }
+        .listViewElement {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            background: var(--darker-color);
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .listViewElement.selected {
+            box-shadow: inset 0 0 0 2px red;
+        }
+        .listViewElement:hover {
+            background-color: rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+        }
     `;
 
     initialise();
@@ -1005,12 +1467,12 @@ window.moduleRegistry.add('configuration', (configurationStore) => {
         item.handler = (value, isInitial) => {
             item.value = value;
             handler(value, item.key, isInitial);
-            if(!isInitial) {
+            if (!isInitial) {
                 save(item, value);
             }
         }
         let initialValue;
-        if(item.key in configs) {
+        if (item.key in configs) {
             initialValue = configs[item.key];
         } else {
             initialValue = item.default;
@@ -1021,21 +1483,21 @@ window.moduleRegistry.add('configuration', (configurationStore) => {
     }
 
     async function save(item, value) {
-        if(item.type === 'button') {
+        if (item.type === 'button') {
             return;
         }
-        if(item.type === 'toggle') {
+        if (item.type === 'toggle') {
             value = !!value;
         }
-        if(item.type === 'input' || item.type === 'json') {
+        if (item.type === 'input' || item.type === 'json' || item.type === 'dropdown') {
             value = JSON.stringify(value);
         }
         await configurationStore.save(item.key, value);
     }
 
     function validate(item, keys) {
-        for(const key of keys) {
-            if(!(key in item)) {
+        for (const key of keys) {
+            if (!(key in item)) {
                 throw `Missing ${key} while registering a configuration item`;
             }
         }
@@ -1282,6 +1744,7 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
 
     const exports = {
         addStyles,
+        addScript,
         getButton,
         getTag
     };
@@ -1299,6 +1762,13 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
         const style = document.createElement('style');
         style.innerHTML = css;
         head.appendChild(style);
+    }
+
+    function addScript(url) {
+        $('<script>', {
+            src: url,
+            type: 'text/javascript'
+        }).appendTo('head');
     }
 
     function getButton(text, onClick) {
@@ -1728,6 +2198,62 @@ window.moduleRegistry.add('events', () => {
 
 }
 );
+// hotkey
+window.moduleRegistry.add('hotkey', () => {
+    const keyHandlers = new Map();
+
+    const exports = {
+        attach,
+        detach,
+        detachAll
+    };
+
+    function initialise() {
+        $(window).on('keydown._globalKeyManager', onKeydown);
+    }
+
+    function onKeydown(e) {
+        const el = document.activeElement;
+        const isUserFocusable =
+            el.tagName === 'INPUT' ||
+            el.tagName === 'TEXTAREA' ||
+            el.tagName === 'BUTTON' ||
+            el.isContentEditable;
+
+        const key = e.key.toLowerCase();
+        const handler = keyHandlers.get(key);
+
+        if (!handler) return;
+
+        if (isUserFocusable && !handler.override) return;
+
+        e.preventDefault();
+        handler.callback(e);
+    }
+
+    function attach(key, callback, override = false) {
+        if (typeof key !== 'string' || typeof callback !== 'function' || key.trim() === '') return;
+
+        const normalizedKey = key.trim().toLowerCase();
+        keyHandlers.set(normalizedKey, { callback, override });
+    }
+
+    function detach(key) {
+        if (typeof key !== 'string' || key.trim() === '') return;
+
+        const normalizedKey = key.trim().toLowerCase();
+        keyHandlers.delete(normalizedKey);
+    }
+
+    function detachAll() {
+        keyHandlers.clear();
+    }
+
+    initialise();
+
+    return exports;
+}
+);
 // interceptor
 window.moduleRegistry.add('interceptor', (events) => {
 
@@ -1964,6 +2490,137 @@ window.moduleRegistry.add('logService', () => {
     return exports;
 
 });
+// modal
+window.moduleRegistry.add('modal', (util, elementCreator, elementWatcher) => {
+
+    let _modal = null;
+
+    const exports = {
+        create,
+        close
+    };
+
+    function initialise() {
+        elementCreator.addStyles(styles);
+    }
+
+
+    async function create(config) {
+        await elementWatcher.exists('app-component');
+
+        close();
+
+        const width = Math.max(200, Math.min(Number(config.maxWidth) || 450, 800));
+        if (!config.title) throw new Error('Modal requires a title');
+        const title = config.title;
+        const image = config.image ?? 'https://ironwoodrpg.com/assets/misc/smelting.png';
+
+        const modalId = util.generateRandomId();
+
+        _modal = $(`
+            <div class="custom-modal custom-route-nav">
+            <div class="custom-modal-backdrop"></div>
+            <div class="custom-modal-wrapper" style="max-width: ${width}px;">
+                <div class="custom-modal-container">
+                <div class="custom-modal-preview" id="${modalId}">
+                    <div class="custom-modal-header">
+                        <div class="custom-modal-image">
+                            <img src="${image}" alt="Skill Icon">
+                        </div>
+                        <div class="custom-modal-name">${title}</div>
+                        <button type="button" class="custom-modal-close">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            </div>
+        `);
+
+        _modal.find('.custom-modal-close, .custom-modal-backdrop').on('click', close);
+
+        //  > .scroll > .padding > .wrapper // location of real modals
+        $('app-component').append(_modal);
+
+        return modalId;
+    }
+
+    function close() {
+        if (_modal) {
+            _modal.remove();
+            _modal = null;
+        }
+    }
+
+    const styles = `
+        .custom-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+
+            .customComponent {
+                margin-top: unset !important;
+            }
+        }
+        .custom-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background-color: #00000080;
+        }
+        .custom-modal-wrapper {
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+            padding: var(--gap);
+            overflow-y: auto;
+            z-index: 1;
+        }
+        .custom-modal-container {
+            position: relative;
+            background-color: var(--darker-color);
+            box-shadow: 0 6px 12px -6px #0006;
+            border-radius: 4px;
+        }
+        .custom-modal-preview {
+            background: var(--background-color);
+            border-radius: 4px;
+            box-shadow: 0 6px 12px -6px #0006;
+        }
+        .custom-modal-header {
+            display: flex;
+            align-items: center;
+            padding: 12px var(--gap);
+
+            .custom-modal-image {
+                width: 32px;
+                height: 32px;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .custom-modal-name {
+                margin-left: var(--margin);
+                flex: 1;
+                font-weight: 600;
+                letter-spacing: .25px;
+            }
+        }
+        
+    `;
+
+    initialise();
+
+    return exports;
+}
+);
 // pageDetector
 window.moduleRegistry.add('pageDetector', (events, elementWatcher, util) => {
 
@@ -2907,24 +3564,27 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
         compress,
         decompress,
         log,
-        clamp
+        clamp,
+        unixToHMS,
+        generateRandomId,
+        randomIntFromInterval
     };
 
     function levelToExp(level) {
-        if(level === 1) {
+        if (level === 1) {
             return 0;
         }
-        if(level <= 100) {
+        if (level <= 100) {
             return Math.floor(Math.pow(level, 3.5) * 6 / 5);
         }
         return Math.round(12_000_000 * Math.pow(Math.pow(3500, .01), level - 100));
     }
 
     function expToLevel(exp) {
-        if(exp <= 0) {
+        if (exp <= 0) {
             return 1;
         }
-        if(exp <= 12_000_000) {
+        if (exp <= 12_000_000) {
             return Math.floor(Math.pow((exp + 1) / 1.2, 1 / 3.5));
         }
         return 100 + Math.floor(Math.log((exp + 1) / 12_000_000) / Math.log(Math.pow(3500, .01)));
@@ -2943,7 +3603,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     function expToNextTier(exp) {
         const level = expToLevel(exp);
         let target = 10;
-        while(target <= level) {
+        while (target <= level) {
             target += 15;
         }
         return levelToExp(target) - exp;
@@ -2954,14 +3614,14 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     }
 
     function tierToLevel(tier) {
-        if(tier <= 1) {
+        if (tier <= 1) {
             return tier;
         }
         return tier * 15 - 20;
     }
 
     function levelToTier(level) {
-        if(level <= 1) {
+        if (level <= 1) {
             return level;
         }
         return (level + 20) / 15;
@@ -2969,37 +3629,37 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function formatNumber(number) {
         let digits = 2;
-        if(number < .1 && number > -.1) {
+        if (number < .1 && number > -.1) {
             digits = 3;
         }
-        if(number < .01 && number > -.01) {
+        if (number < .01 && number > -.01) {
             digits = 4;
         }
-        return number.toLocaleString(undefined, {maximumFractionDigits:digits});
+        return number.toLocaleString(undefined, { maximumFractionDigits: digits });
     }
 
     function parseNumber(text) {
-        if(!text) {
+        if (!text) {
             return 0;
         }
-        if(text.includes('Empty')) {
+        if (text.includes('Empty')) {
             return 0;
         }
         const regexMatch = /\d+[^\s]*/.exec(text);
-        if(!regexMatch) {
+        if (!regexMatch) {
             return 0;
         }
         text = regexMatch[0];
         text = text.replaceAll(/,/g, '');
         text = text.replaceAll(/&.*$/g, '');
         let multiplier = 1;
-        if(text.endsWith('%')) {
+        if (text.endsWith('%')) {
             multiplier = 1 / 100;
         }
-        if(text.endsWith('K')) {
+        if (text.endsWith('K')) {
             multiplier = 1_000;
         }
-        if(text.endsWith('M')) {
+        if (text.endsWith('M')) {
             multiplier = 1_000_000;
         }
         return roundToMultiple((parseFloat(text) || 0) * multiplier, 1 / 100);
@@ -3007,7 +3667,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function secondsToDuration(seconds) {
         seconds = Math.floor(seconds);
-        if(seconds > 60 * 60 * 24 * 100) {
+        if (seconds > 60 * 60 * 24 * 100) {
             // > 100 days
             return 'A very long time';
         }
@@ -3022,13 +3682,13 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
         days = `${days}`.padStart(2, '0');
 
         let result = '';
-        if(result || +days) {
+        if (result || +days) {
             result += `${days}d `;
         }
-        if(result || +hours) {
+        if (result || +hours) {
             result += `${hours}h `;
         }
-        if(result || +minutes) {
+        if (result || +minutes) {
             result += `${minutes}m `;
         }
         result += `${seconds}s`;
@@ -3039,15 +3699,15 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     function parseDuration(duration) {
         const parts = duration.split(' ');
         let seconds = 0;
-        for(const part of parts) {
+        for (const part of parts) {
             const value = parseFloat(part);
-            if(part.endsWith('s')) {
+            if (part.endsWith('s')) {
                 seconds += value;
-            } else if(part.endsWith('m')) {
+            } else if (part.endsWith('m')) {
                 seconds += value * 60;
-            } else if(part.endsWith('h')) {
+            } else if (part.endsWith('h')) {
                 seconds += value * 60 * 60;
-            } else if(part.endsWith('d')) {
+            } else if (part.endsWith('d')) {
                 seconds += value * 60 * 60 * 24;
             } else {
                 console.warn(`Unexpected duration being parsed : ${part}`);
@@ -3061,7 +3721,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     }
 
     async function goToPage(page) {
-        if(page === 'settings') {
+        if (page === 'settings') {
             goToPage('merchant');
             await elementWatcher.exists('merchant-page');
         }
@@ -3077,27 +3737,27 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     function compareObjects(object1, object2, doLog) {
         const keys1 = Object.keys(object1);
         const keys2 = Object.keys(object2);
-        if(keys1.length !== keys2.length) {
-            if(doLog) {
+        if (keys1.length !== keys2.length) {
+            if (doLog) {
                 console.warn(`key length not matching`, object1, object2);
             }
             return false;
         }
         keys1.sort();
         keys2.sort();
-        for(let i=0;i<keys1.length;i++) {
-            if(keys1[i] !== keys2[i]) {
-                if(doLog) {
+        for (let i = 0; i < keys1.length; i++) {
+            if (keys1[i] !== keys2[i]) {
+                if (doLog) {
                     console.warn(`keys not matching`, keys1[i], keys2[i], object1, object2);
                 }
                 return false;
             }
-            if(typeof object1[keys1[i]] === 'object' && typeof object2[keys2[i]] === 'object') {
-                if(!compareObjects(object1[keys1[i]], object2[keys2[i]], doLog)) {
+            if (typeof object1[keys1[i]] === 'object' && typeof object2[keys2[i]] === 'object') {
+                if (!compareObjects(object1[keys1[i]], object2[keys2[i]], doLog)) {
                     return false;
                 }
-            } else if(object1[keys1[i]] !== object2[keys2[i]]) {
-                if(doLog) {
+            } else if (object1[keys1[i]] !== object2[keys2[i]]) {
+                if (doLog) {
                     console.warn(`values not matching`, object1[keys1[i]], object2[keys2[i]], object1, object2);
                 }
                 return false;
@@ -3126,7 +3786,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function debounce(callback, delay) {
         let timer;
-        return function(...args) {
+        return function (...args) {
             clearTimeout(timer);
             timer = setTimeout(() => {
                 callback(...args);
@@ -3136,15 +3796,15 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function distinct(array) {
         return array.filter((value, index) => {
-          return array.indexOf(value) === index;
+            return array.indexOf(value) === index;
         });
     }
 
     function getDuplicates(array) {
         const sorted = array.slice().sort();
         const result = [];
-        for(let i=0;i<sorted.length-1;i++) {
-            if(sorted[i+1] == sorted[i]) {
+        for (let i = 0; i < sorted.length - 1; i++) {
+            if (sorted[i + 1] == sorted[i]) {
                 result.push(sorted[i]);
             }
         }
@@ -3153,9 +3813,9 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function sumObjects(array) {
         const result = {};
-        for(const element of array) {
-            for(const key of Object.keys(element)) {
-                if(typeof element[key] === 'number') {
+        for (const element of array) {
+            for (const key of Object.keys(element)) {
+                if (typeof element[key] === 'number') {
                     result[key] = (result[key] || 0) + element[key];
                 }
             }
@@ -3166,7 +3826,7 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     function startOfWeek(date) {
         const result = new Date();
         result.setDate(date.getDate() - date.getDay());
-        result.setHours(0,0,0,0);
+        result.setHours(0, 0, 0, 0);
         return result;
     }
 
@@ -3177,9 +3837,9 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function generateCombinations(objects, count, grouper) {
         const objectsByGroup = {};
-        for(const object of objects) {
+        for (const object of objects) {
             const group = grouper(object);
-            if(!objectsByGroup[group]) {
+            if (!objectsByGroup[group]) {
                 objectsByGroup[group] = [];
             }
             objectsByGroup[group].push(object);
@@ -3191,14 +3851,14 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
     }
 
     function addOneCombination(result, objectsByGroup, groups, count, combination = [], groupStart = 0) {
-        if(!count) {
+        if (!count) {
             result.push(combination);
             return;
         }
-        for(let i=groupStart;i<groups.length-count+1;i++) {
+        for (let i = groupStart; i < groups.length - count + 1; i++) {
             const contents = objectsByGroup[groups[i]];
-            for(let j=0;j<contents.length;j++) {
-                addOneCombination(result, objectsByGroup, groups, count-1, combination.concat([contents[j]]), i+1);
+            for (let j = 0; j < contents.length; j++) {
+                addOneCombination(result, objectsByGroup, groups, count - 1, combination.concat([contents[j]]), i + 1);
             }
         }
     }
@@ -3248,6 +3908,24 @@ window.moduleRegistry.add('util', (elementWatcher, Promise) => {
 
     function clamp(value, min, max) {
         return Math.min(max, Math.max(min, value));
+    }
+
+    function unixToHMS(unixMillis) {
+        const date = new Date(unixMillis);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${hours}:${minutes}:${seconds}`;
+    }
+
+    function generateRandomId() {
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+    }
+
+    function randomIntFromInterval(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
     return exports;
@@ -4149,7 +4827,7 @@ window.moduleRegistry.add('actionEnabler', (configuration, events) => {
 }
 );
 // animatedLoot
-window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, configuration, util) => {
+window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil) => {
     const THICCNESS = 60;
 
     const Engine = Matter.Engine;
@@ -4193,7 +4871,6 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
     let clumpCountsByItem = {};
 
     async function initialise() {
-        addStyles();
         configuration.registerCheckbox({
             category: 'Animated Loot',
             key: 'animated-loot-enabled',
@@ -4243,6 +4920,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
             noHeader: true,
             handler: handleConfigBackgroundStateChange,
         });
+        elementCreator.addStyles(styles);
         events.register('page', handlePage);
         events.register('state-loot', handleLoot);
     }
@@ -4252,21 +4930,21 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
     }
 
     function handleConfigMaxSameDensityStateChange(state) {
-        if(!state || state === '') {
+        if (!state || state === '') {
             max_same_density = MAX_SAME_DENSITY_DEFAULT;
             return;
         }
-        if(state < clumpsize) {
+        if (state < clumpsize) {
             //just reset it to default to prevent stuck in while
             max_same_density = MAX_SAME_DENSITY_DEFAULT;
             clumpsize = CLUMPDENSITY_DEFAULT;
             return;
         }
-        if(state < MAX_SAME_DENSITY_MIN) {
+        if (state < MAX_SAME_DENSITY_MIN) {
             max_same_density = MAX_SAME_DENSITY_MIN;
             return;
         }
-        if(state > MAX_SAME_DENSITY_MAX) {
+        if (state > MAX_SAME_DENSITY_MAX) {
             max_same_density = MAX_SAME_DENSITY_MAX;
             return;
         }
@@ -4274,21 +4952,21 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
     }
 
     function handleConfigClumpSizeStateChange(state) {
-        if(!state || state === '') {
+        if (!state || state === '') {
             clumpsize = CLUMPDENSITY_DEFAULT;
             return;
         }
-        if(state > max_same_density) {
+        if (state > max_same_density) {
             //just reset it to default to prevent stuck in while
             clumpsize = CLUMPDENSITY_DEFAULT;
             max_same_density = MAX_SAME_DENSITY_DEFAULT;
             return;
         }
-        if(state < CLUMPDENSITY_MIN) {
+        if (state < CLUMPDENSITY_MIN) {
             clumpsize = CLUMPDENSITY_MIN;
             return;
         }
-        if(state > CLUMPDENSITY_MAX) {
+        if (state > CLUMPDENSITY_MAX) {
             clumpsize = CLUMPDENSITY_MAX;
             return;
         }
@@ -4296,15 +4974,15 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
     }
 
     function handleConfigClumpImageSizeIncreaseStateChange(state) {
-        if(!state || state === '') {
+        if (!state || state === '') {
             imagesize_increase = IMAGESIZE_INCREASE_DEFAULT;
             return;
         }
-        if(state < IMAGESIZE_INCREASE_MIN) {
+        if (state < IMAGESIZE_INCREASE_MIN) {
             imagesize_increase = IMAGESIZE_INCREASE_MIN;
             return;
         }
-        if(state > IMAGESIZE_INCREASE_MAX) {
+        if (state > IMAGESIZE_INCREASE_MAX) {
             imagesize_increase = IMAGESIZE_INCREASE_MAX;
             return;
         }
@@ -4317,7 +4995,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
 
     async function handlePage(page) {
         if (!enabled) return;
-        if(isDifferentAction(page)) {
+        if (isDifferentAction(page)) {
             reset();
         }
         lastPage = page;
@@ -4347,8 +5025,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
 
             for (const [id, val] of Object.entries(lootState.loot)) {
                 if (val > 0) {
-                    await loadImage(id);
-                    updateItem(+id, val);
+                    if (await assetUtil.loadItemImage(id)) updateItem(+id, val);
                 }
             }
         }
@@ -4365,7 +5042,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
             return;
         }
         const itemWrapper = $('<div/>').addClass('itemWrapper').attr('id', 'itemWrapper')
-        if(backgroundUrl) {
+        if (backgroundUrl) {
             itemWrapper.css('background-image', 'linear-gradient(0deg, rgba(0, 0, 0, 0) 66%, rgba(13, 34, 52, 1) 100%), url(' + backgroundUrl + ')');
             itemWrapper.css('background-position', 'center');
         } else {
@@ -4455,7 +5132,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         Runner.run(runner, engine);
 
         function handleResize(matterContainer) {
-            if(!render.canvas) {
+            if (!render.canvas) {
                 return;
             }
 
@@ -4503,20 +5180,20 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
 
         const previousClumps = clumpCountsByItem[itemId] || [];
         const maxLength = Math.max(clumps.length, previousClumps.length);
-        for(let i=0;i<maxLength;i++) {
+        for (let i = 0; i < maxLength; i++) {
             const density = Math.pow(clumpsize, i);
             let diff = (clumps[i] || 0) - (previousClumps[i] || 0);
             // cull
-            for(let j=0;j>diff;j--) {
+            for (let j = 0; j > diff; j--) {
                 const index = items.findIndex(item => item.id === itemId && item.density === density);
-                if(index === -1) {
+                if (index === -1) {
                     throw `Unexpected : could not cull itemId ${itemId} with density ${density} because no match found`;
                 }
                 const item = items.splice(index, 1)[0];
                 cullItem(item);
             }
             // spawn
-            for(let j=0;j<diff;j++) {
+            for (let j = 0; j < diff; j++) {
                 const item = {
                     id: itemId,
                     density
@@ -4535,7 +5212,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
 
         // minimal clump count first
         const array = [];
-        while(currentClumpSize >= 1) {
+        while (currentClumpSize >= 1) {
             array[index] = Math.floor(amount / currentClumpSize);
             amount -= array[index] * currentClumpSize;
             // TODO add to array
@@ -4544,10 +5221,10 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         }
 
         // then split to reach max_same_density
-        for(let i=array.length-2;i>=0;i--) {
+        for (let i = array.length - 2; i >= 0; i--) {
             let splitCount = Math.floor((max_same_density - array[i] - 1) / clumpsize);
-            splitCount = Math.min(splitCount, array[i+1]);
-            array[i+1] -= splitCount;
+            splitCount = Math.min(splitCount, array[i + 1]);
+            array[i + 1] -= splitCount;
             array[i] += splitCount * clumpsize;
         }
         return array;
@@ -4561,7 +5238,7 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         const gameItem = itemCache.byId[item.id];
 
         const matterContainer = document.querySelector('#itemWrapper');
-        const spread = randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
+        const spread = util.randomIntFromInterval(-50, 50) + matterContainer.clientWidth / 2;
 
         const itemSize = DESIRED_IMAGESIZE + util.log(item.density, clumpsize) * (DESIRED_IMAGESIZE * (imagesize_increase - 1));
         const imageScale = itemSize / DESIRED_IMAGESIZE;
@@ -4581,38 +5258,6 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
         });
         World.add(engine.world, itemObject);
         item.ref = itemObject;
-    }
-
-    async function loadImage(itemId) {
-        const item = itemCache.byId[itemId];
-        if(!item) return;
-        if(loadedImages.includes(itemId)) {
-            return;
-        }
-        await new Promise((res, rej) => {
-            let img = new Image();
-            img.onload = () => {
-                loadedImages.push(itemId);
-                res();
-            };
-            img.onerror = rej;
-            img.src = 'assets/' + item.image;
-        });
-    }
-
-    function addStyles() {
-        const head = document.getElementsByTagName('head')[0];
-        if (!head) {
-            return;
-        }
-        const style = document.createElement('style');
-        style.type = 'text/css';
-        style.innerHTML = styles;
-        head.appendChild(style);
-    }
-
-    function randomIntFromInterval(min, max) {
-        return Math.floor(Math.random() * (max - min + 1) + min);
     }
 
     function isDifferentAction(page) {
@@ -4735,7 +5380,7 @@ window.moduleRegistry.add('changelog', (Promise, pages, components, request, uti
 }
 );
 // configurationPage
-window.moduleRegistry.add('configurationPage', (pages, components, configuration, elementCreator) => {
+window.moduleRegistry.add('configurationPage', (pages, components, configuration, elementCreator, util) => {
 
     const PAGE_NAME = 'Configuration';
 
@@ -4754,8 +5399,8 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
 
     function generateBlueprint() {
         const categories = {};
-        for(const item of configuration.items) {
-            if(!categories[item.category]) {
+        for (const item of configuration.items) {
+            if (!categories[item.category]) {
                 categories[item.category] = {
                     name: item.category,
                     items: []
@@ -4764,30 +5409,33 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
             categories[item.category].items.push(item);
         }
         const blueprints = [];
-        let column = 1;
-        for(const category in categories) {
-            column = 1 - column;
+        const columnHeights = [0, 0]; // rows per column
+
+        for (const category in categories) {
             const rows = [{
                 type: 'header',
                 title: category,
                 centered: true
             }];
             rows.push(...categories[category].items.flatMap(createRows));
+
+            const targetColumn = columnHeights[0] <= columnHeights[1] ? 0 : 1;
+
+            columnHeights[targetColumn] += rows.length;
+
             blueprints.push({
                 componentId: `configurationComponent_${category}`,
                 dependsOn: 'custom-page',
-                parent: `.column${column}`,
+                parent: `.column${targetColumn}`,
                 selectedTabIndex: 0,
-                tabs: [{
-                    rows: rows
-                }]
+                tabs: [{ rows }]
             });
         }
         return blueprints;
     }
 
     function createRows(item) {
-        switch(item.type) {
+        switch (item.type) {
             case 'checkbox': return createRows_Checkbox(item);
             case 'input': return createRows_Input(item);
             case 'dropdown': return createRows_Dropdown(item);
@@ -4821,6 +5469,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
         }
 
         result.push({
+            id: util.generateRandomId(),
             type: 'input',
             name: item.name,
             value: value,
@@ -4841,22 +5490,34 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
 
     function createRows_Dropdown(item) {
         const value = item.value || item.default;
+        const result = [];
         const options = item.options.map(option => ({
             text: option,
             value: option,
             selected: option === value
         }));
-        return [{
-            type: 'item',
-            name: item.name
-        },{
+
+        if (!item.noHeader) {
+            result.push({
+                type: 'item',
+                name: item.name
+            });
+        }
+
+        result.push({
             type: 'dropdown',
             options: options,
+            compact: item.compact,
+            layout: item.layout || '1/1',
+            text: item.name,
+            light: true,
             delay: 500,
             action: (value) => {
                 item.handler(value);
             }
-        }]
+        });
+
+        return result;
     }
 
     function createRows_Button(item) {
@@ -4872,7 +5533,7 @@ window.moduleRegistry.add('configurationPage', (pages, components, configuration
 
     function renderPage() {
         const blueprints = generateBlueprint();
-        for(const blueprint of blueprints) {
+        for (const blueprint of blueprints) {
             components.addComponent(blueprint);
         }
     }
@@ -7379,16 +8040,16 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
     }
 
     function handleTest(_val, _key, isInitial) {
-        if(!isInitial) {
+        if (!isInitial) {
             audio.play();
         }
     }
 
     function checkRevive() {
-        if(!enabled || reviving) {
+        if (!enabled || reviving) {
             return;
         }
-        if($('.revive').length) {
+        if ($('.revive').length) {
             reviving = true;
             actionStop();
         } else {
@@ -7407,10 +8068,10 @@ window.moduleRegistry.add('idleBeep', (configuration, util, elementWatcher) => {
     }
 
     function beep() {
-        if(!enabled) {
+        if (!enabled) {
             return;
         }
-        if(!started) {
+        if (!started) {
             audio.play();
         }
     }
@@ -8554,146 +9215,6 @@ window.moduleRegistry.add('questDisabler', (configuration, elementWatcher) => {
 
 }
 );
-// questReminder
-window.moduleRegistry.add('questReminder', (events, elementWatcher, configuration, elementCreator, toast) => {
-
-    let enabled = false;
-    let questData = undefined;
-    let timer = undefined;
-    let invalidationTimer = undefined;
-    const RESET_MARGIN = 120;
-
-    async function initialise() {
-        elementCreator.addStyles(styles);
-        configuration.registerCheckbox({
-            category: 'UI Features',
-            key: 'quest-reminder',
-            name: 'Quest Reminder',
-            default: false,
-            handler: toggle,
-        });
-
-        events.register('reader-quests', handleQuestData);
-
-        startReminderTimer();
-    }
-
-    async function toggle(state) {
-        enabled = state;
-
-        await elementWatcher.exists('nav-component button[routerLink="/quests"]');
-
-        updateQuestReminder();
-    }
-
-    function handleQuestData(event) {
-        questData = event;
-        updateQuestReminder();
-
-        if (!invalidationTimer) {
-            invalidationTimer = setTimeout(() => {
-
-                questData = undefined;
-                updateQuestReminder();
-                clearTimeout(invalidationTimer);
-                invalidationTimer = undefined;
-
-            }, (questData.resetTime - margin) * 1000);
-        };
-    }
-
-    function addQuestReminder() {
-        const { currentCompletedQuests, maxCompletedQuests } = questData;
-
-        const $btn = $('nav-component button[routerLink="/quests"]');
-        if ($btn.find('.questReminder').length) return;
-
-        const statusClass = currentCompletedQuests === maxCompletedQuests ? 'questReminderComplete' : 'questReminderIncomplete';
-
-        const $reminder = $('<div>', {
-            class: `questReminder ${statusClass}`,
-            id: 'questReminderValue',
-            text: `${currentCompletedQuests} / ${maxCompletedQuests}`
-        });
-
-        $btn.append($reminder);
-    }
-
-    function removeQuestReminder() {
-        $('#questReminderValue').remove();
-    }
-
-    function updateQuestReminder() {
-        if (!enabled || !questData || questData.resetTime < RESET_MARGIN) {
-            removeQuestReminder();
-            return;
-        }
-        const { currentCompletedQuests, maxCompletedQuests } = questData;
-
-        if (maxCompletedQuests === 0) return;
-
-        const $reminder = $('#questReminderValue');
-        if (!$reminder.length) addQuestReminder();
-
-        $reminder.text(`${currentCompletedQuests} / ${maxCompletedQuests}`);
-        $reminder
-            .removeClass('questReminderIncomplete questReminderComplete')
-            .addClass(currentCompletedQuests === maxCompletedQuests ? 'questReminderComplete' : 'questReminderIncomplete');
-    }
-
-    function startReminderTimer() {
-        // disabled for now, ill get back to this later... or not ...
-
-        // if (!questData) return;
-        // const { resetTimeSeconds } = questData;
-        // //const resetTimeSeconds = 305;
-
-        // if (timer) {
-        //     clearTimeout(timer);
-        // }
-
-        // const warningTime = 5 * 60; // maybe configurable idk
-
-        // // maybe calc min time required to complete quests based on  quest action times
-
-        // if (resetTimeSeconds > warningTime) {
-        //     console.log("timer")
-        //     timer = setTimeout(() => {
-        //         toast.create({
-        //             time: 10000,
-        //             text: `Less then ${5} minutes remaining to complete your quests`,
-        //             image: 'https://ironwoodrpg.com/assets/misc/quests.png'
-        //         });
-        //     }, Math.max(0, (resetTimeSeconds - warningTime) * 1000));
-        // }
-    }
-
-    const styles = `
-        .questReminder {
-            box-sizing: border-box;
-            padding: 2px 8px;
-            display: flex;
-            align-items: center;
-            font-weight: 600;
-            letter-spacing: .25px;
-            border-radius: 4px;
-            font-size: .875rem;
-        }
-        .questReminderIncomplete {
-            background-color: #e4a11b;
-        }
-        .questReminderComplete {
-            background-color: #53bd73;
-        }
-    `;
-
-    initialise();
-}
-
-
-
-
-);
 // recipeClickthrough
 window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, util) => {
 
@@ -8738,6 +9259,18 @@ window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, uti
 
     function followRecipe(recipe) {
         util.goToPage(recipe.url);
+    }
+
+    initialise();
+
+}
+);
+// scriptRegistry
+window.moduleRegistry.add('scriptRegistry', (elementCreator) => {
+
+    function initialise() {
+        elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js');
+        elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js');
     }
 
     initialise();
@@ -9264,7 +9797,7 @@ window.moduleRegistry.add('ui', (configuration) => {
     }
 
     function handleConfigStateChange(state) {
-        if(state) {
+        if (state) {
             add();
         } else {
             remove();
@@ -9272,7 +9805,7 @@ window.moduleRegistry.add('ui', (configuration) => {
     }
 
     function add() {
-        document.documentElement.style.setProperty('--gap', '8px');
+        document.documentElement.style.setProperty('--gap', '10px');
         const element = $(`
             <style>
                 ${selector} :not(.multi-row) > :is(
@@ -9310,7 +9843,7 @@ window.moduleRegistry.add('ui', (configuration) => {
                 }
 
                 ${selector} button.filter {
-                    padding: 2px 6px !important;
+                    padding: 1px 6px !important;
                     min-width: 0 !important;
                 }
 
@@ -9447,7 +9980,7 @@ window.moduleRegistry.add('abstractStateStore', (events, util) => {
 }
 );
 // configurationStore
-window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStore, _remoteConfigurationStore) =>  {
+window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStore, _remoteConfigurationStore) => {
 
     const initialised = new Promise.Expiring(2000, 'configurationStore');
     let configs = null;
@@ -9461,7 +9994,7 @@ window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStor
 
     async function initialise() {
         configs = await configurationStore.load();
-        for(const key in configs) {
+        for (const key in configs) {
             configs[key] = JSON.parse(configs[key]);
         }
         initialised.resolve(exports);

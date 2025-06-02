@@ -2,6 +2,7 @@
 
     const exports = {
         addStyles,
+        addScript,
         getButton,
         getTag
     };
@@ -19,6 +20,13 @@
         const style = document.createElement('style');
         style.innerHTML = css;
         head.appendChild(style);
+    }
+
+    function addScript(url) {
+        $('<script>', {
+            src: url,
+            type: 'text/javascript'
+        }).appendTo('head');
     }
 
     function getButton(text, onClick) {
