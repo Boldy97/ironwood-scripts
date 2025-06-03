@@ -307,7 +307,7 @@
         hotkey.detach("Escape");
         hotkey.detach("Enter");
         if (inputBlueprint.action) {
-            inputBlueprint.action(inputBlueprint.value);
+            inputBlueprint.action(inputBlueprint.inputValue);
         }
     }
 
