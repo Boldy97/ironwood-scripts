@@ -287,12 +287,12 @@
             .text('Focused - interrupted updates')
             .show();
         hotkey.attach("Escape", () => {
-            $(`#${inputBlueprint.id}`)?.blur();
-            $(`#${inputBlueprint.id} [id$='_input']`)?.blur();
+            $(`[id='${inputBlueprint.id}']`)?.blur();
+            $(`[id='${inputBlueprint.id}'] [id$='_input']`)?.blur();
         }, true);
         hotkey.attach("Enter", () => {
-            $(`#${inputBlueprint.id}`)?.blur();
-            $(`#${inputBlueprint.id} [id$='_input']`)?.blur();
+            $(`[id='${inputBlueprint.id}']`)?.blur();
+            $(`[id='${inputBlueprint.id}'] [id$='_input']`)?.blur();
         }, true);
     }
 
