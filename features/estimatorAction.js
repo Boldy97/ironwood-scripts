@@ -82,12 +82,13 @@
     }
 
     function getIngredients(skillId, actionId, multiplier) {
-        const ingredients = ingredientCache.byAction[actionId];
+        let ingredients = ingredientCache.byAction[actionId];
         if(!ingredients) {
             return [];
         }
+        ingredients = [...ingredients];
         multiplier *= 1 + statsStore.get('MULTICRAFT_CHANCE') / 100;
-        if(shouldApplyOpulence(skillId)) {
+        if(shouldApplyOpulence(skillId) && isOpulenceItemsMode()) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
@@ -149,9 +150,16 @@
     }
 
     function shouldApplyOpulence(skillId) {
-        return skillCache.byId[skillId].type === 'Crafting'
-            && statsStore.get('OPULENT_CHANCE')
-            && statsStore.getInventoryItem(itemCache.specialIds.stardust);
+        if(skillCache.byId[skillId].type !== 'Crafting') {
+            return false;
+        }
+        if(!statsStore.get('OPULENT_CHANCE')) {
+            return false;
+        }
+        if(isOpulenceItemsMode()) {
+            return statsStore.getInventoryItem(itemCache.specialIds.stardust);
+        }
+        return true;
     }
 
     function isOpulenceItemsMode() {
