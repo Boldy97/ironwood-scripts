@@ -336,7 +336,19 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         } else if (blueprint.prepend) {
             $(blueprint.parent).prepend(component);
         } else {
-            $(blueprint.parent).append(component);
+            const parent = $(blueprint.parent);
+            const index = blueprint.desiredChildIndex;
+
+            if (typeof index === 'number' && index >= 0) {
+                const children = parent.children();
+                if (index >= children.length) {
+                    parent.append(component);
+                } else {
+                    component.insertBefore(children.eq(index));
+                }
+            } else {
+                parent.append(component);
+            }
         }
 
         if (blueprint.after) {
@@ -10327,26 +10339,23 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
 
 }
 );
-// traitUtil
-window.moduleRegistry.add('traitUtil', (events, elementWatcher, configuration, components, localDatabase, modal, elementCreator, util) => {
+// traitFilter
+window.moduleRegistry.add('traitFilter', (events, elementWatcher, configuration, components, localDatabase, elementCreator, colorMapper, skillCache) => {
 
     const STORE_NAME = 'various';
-    const KEY_SORTTYPE = 'trait-util-sort-type'
+    const KEY_SORTTYPE = 'trait-sort-type'
 
     let enabled = false;
     let sortType = 'None';
     let traitNameFilter = '';
     let submenuObserver = null;
     let cardMutationObserver = null;
-    let traitPointMutationObserver = null
-
-    let traitPointData = [];
 
     async function initialise() {
         configuration.registerCheckbox({
-            category: 'UI Features',
-            key: 'trait-util-enabled',
-            name: 'Trait Utilities',
+            category: 'Traits',
+            key: 'trait-sort-enabled',
+            name: 'Sort / Filter',
             default: enabled,
             handler: handleConfigStateChange
         });
@@ -10366,19 +10375,263 @@ window.moduleRegistry.add('traitUtil', (events, elementWatcher, configuration, c
 
     function disconnectObservers() {
 
-            if (cardMutationObserver) {
-                cardMutationObserver.disconnect();
-                cardMutationObserver = null;
-            }
-            if (submenuObserver) {
-                submenuObserver.disconnect();
-                submenuObserver = null;
-            }
-            if (traitPointMutationObserver) {
-                traitPointMutationObserver.disconnect();
-                traitPointMutationObserver = null;
+        if (cardMutationObserver) {
+            cardMutationObserver.disconnect();
+            cardMutationObserver = null;
+        }
+        if (submenuObserver) {
+            submenuObserver.disconnect();
+            submenuObserver = null;
+        }
+    }
+
+    function updateSortAndFilterComponent() {
+        const sortDropdown = components.search(sortTraitComponentBlueprint, 'sortDropdown');
+        sortDropdown.default = sortType;
+        sortDropdown.options = [
+            'None',
+            'By Lv. Asc',
+            'By Lv. Desc',
+            'By name Asc',
+            'By name Desc',
+            'Only Gathering',
+            'Only Crafting',
+            'Only Combat',
+        ].map(option => ({
+            text: option,
+            value: option,
+            selected: option === sortType
+        }));
+    }
+
+    async function handlePage(last) {
+        if (!enabled) {
+            return;
+        }
+        if (!last || last.type !== 'traits') {
+            disconnectObservers();
+            return;
+        }
+
+        updateSortAndFilterComponent();
+
+        await elementWatcher.exists('traits-page .header > .name:contains("Equipped")');
+        components.addComponent(sortTraitComponentBlueprint);
+
+        observeCardChanges();
+        observeSubmenuClicks();
+        applySortOrFilter();
+    }
+
+    const STRATEGY = {
+        'None': { compare: (a, b) => getId(a) - getId(b) },
+        'By Lv. Asc': { compare: (a, b) => getLevel(a) - getLevel(b) },
+        'By Lv. Desc': { compare: (a, b) => getLevel(b) - getLevel(a) },
+        'By name Asc': { compare: (a, b) => getName(a).localeCompare(getName(b)) },
+        'By name Desc': { compare: (a, b) => getName(b).localeCompare(getName(a)) },
+        'Only Gathering': { filter: btn => getCategory(btn) === 'Gathering' },
+        'Only Crafting': { filter: btn => getCategory(btn) === 'Crafting' },
+        'Only Combat': { filter: btn => getCategory(btn) === 'Combat' },
+    }
+
+    function getLevel(btn) {
+        return +$(btn).find('.level').text().replace('Lv. ', '') || 0;
+    }
+
+    function getName(btn) {
+        return $(btn).find('.name').text().toLowerCase();
+    }
+
+    function getCategory(btn) {
+        const baseName = getName(btn).split(' ')[0];
+        const skill = skillCache.list.find(s => s.displayName.toLowerCase().startsWith(baseName));
+        return (skill && skill.type) || 'Other';
+    }
+
+    function getId(btn) {
+        const baseName = getName(btn).split(' ')[0];
+        const skill = skillCache.list.find(s => s.displayName.toLowerCase().startsWith(baseName));
+        return (skill && skill.type) || -1;
+    }
+
+    function applySortOrFilter() {
+        if (cardMutationObserver) cardMutationObserver.disconnect();
+
+        const { compare, filter } = STRATEGY[sortType] || {};
+
+        $('.last > .card').filter(function () {
+            const headerName = $(this).find('.header > .name').text().trim();
+            return headerName === 'Traits'; // headerName === 'Equipped' || 
+        }).each(function () {
+            const $card = $(this);
+            const $buttons = $card.find('button.row');
+            $buttons.show();
+
+            if (filter) {
+                $buttons.each((_, btn) => $(btn).toggle(filter(btn)));
             }
 
+            if (compare) {
+                const sorted = $buttons.toArray().sort(compare);
+                $(sorted).appendTo($card);
+            }
+
+            const $noResult = $card.find('.no-results');
+            const visibleCount = $buttons.filter(':visible').length;
+            const hasEmptyVisible = $card.find('.empty').length > 0;
+
+            if (visibleCount === 0 && !hasEmptyVisible) {
+                if ($noResult.length === 0) {
+                    $('<div>').addClass('no-results').text('No results')
+                        .appendTo($card);
+                }
+            } else {
+                $noResult.remove();
+            }
+
+            const hiddenCount = $buttons.filter(':hidden').length;
+            let $hiddenCountDiv = $card.find('.hidden-count');
+
+            if (hiddenCount > 0) {
+                if ($hiddenCountDiv.length === 0) {
+                    $hiddenCountDiv = $('<div>').addClass('hidden-count').appendTo($card);
+                }
+                $hiddenCountDiv.text(`${hiddenCount} trait${hiddenCount > 1 ? 's' : ''} hidden by filter`);
+            } else {
+                $hiddenCountDiv.remove();
+            }
+        });
+
+        observeCardChanges();
+    }
+
+    function observeCardChanges() {
+        if (cardMutationObserver) {
+            cardMutationObserver.disconnect();
+        }
+
+        const container = document.querySelector('traits-page > .groups > .last');
+        if (!container) {
+            return;
+        }
+
+        cardMutationObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.addedNodes.length || mutation.removedNodes.length) {
+                    applySortOrFilter();
+                    break;
+                }
+            }
+        });
+
+        cardMutationObserver.observe(container, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    function observeSubmenuClicks() {
+        if (submenuObserver) {
+            submenuObserver.disconnect();
+        }
+
+        submenuObserver = new MutationObserver(() => {
+            const traitsBtn = $('div.card:has(.header .name:contains("Menu")) button.row:contains("Traits")');
+            traitsBtn.off('click.traitSorter').on('click.traitSorter', refresh);
+        });
+
+        submenuObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    const sortTraitComponentBlueprint = {
+        componentId: 'trait-sort-component',
+        dependsOn: 'traits-page .header:contains("Traits")',
+        parent: 'traits-page .header:contains("Traits")',
+        desiredChildIndex: 1,
+        selectedTabIndex: 0,
+        light: true,
+        class: 'noMarginTop',
+        tabs: [{
+            rows: [{
+                id: 'sortDropdown',
+                type: 'dropdown',
+                options: [],
+                action: value => {
+                    sortType = value;
+                    localDatabase.saveEntry(STORE_NAME, { key: KEY_SORTTYPE, value: sortType });
+                    refresh();
+                }
+            }]
+        }]
+    };
+
+    const styles = `
+        #trait-sort-component {
+            width: auto;
+            visibility: hidden;
+            margin-left: auto;
+            margin-right: var(--gap);
+        }
+        #trait-sort-component .customRow {
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        #trait-sort-component .myItemSelect {
+            background-color: ${colorMapper('componentRegular')};
+            visibility: visible;
+            height: inherit;
+            padding: 0px var(--gap);
+        }
+        #trait-sort-component + * {
+            margin-left: 0;
+        }
+        .hidden-count,
+        .no-results {
+            padding: 6px 0;
+            text-align: center;
+            color: gray;
+            background-color: ${colorMapper('componentRegular')};
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+    `;
+
+    initialise();
+}
+);
+// traitPointPredicter
+window.moduleRegistry.add('traitPointPredicter', (events, configuration, components, modal, elementCreator, util) => {
+
+    let enabled = false;
+    let traitPointMutationObserver = null
+
+    let traitPointData = [];
+
+    async function initialise() {
+        configuration.registerCheckbox({
+            category: 'Traits',
+            key: 'trait-point-util-enabled',
+            name: 'Trait Point Predicter',
+            default: enabled,
+            handler: handleConfigStateChange
+        });
+        elementCreator.addStyles(styles);
+        events.register('page', handlePage);
+    }
+
+    function handleConfigStateChange(state) {
+        enabled = state;
+    }
+
+    function refresh() {
+        handlePage(events.getLast('page'));
+    }
+
+    function disconnectObservers() {
+        if (traitPointMutationObserver) {
+            traitPointMutationObserver.disconnect();
+            traitPointMutationObserver = null;
+        }
     }
 
     function updateTraitPointComponent() {
@@ -10422,21 +10675,11 @@ window.moduleRegistry.add('traitUtil', (events, elementWatcher, configuration, c
         }
     }
 
-    function updateSortAndFilterComponent() {
-        const sortDropdown = components.search(sortAndFilterComponentBlueprint, 'sortDropdown');
-        sortDropdown.default = sortType;
-        sortDropdown.options = ['None', 'Lv. ASC', 'Lv. DESC'].map(option => ({
-            text: option,
-            value: option,
-            selected: option === sortType
-        }));
-    }
-
     async function handlePage(last) {
-        if(!enabled) {
+        if (!enabled) {
             return;
         }
-        if(!last || last.type !== 'traits') {
+        if (!last || last.type !== 'traits') {
             disconnectObservers();
             traitPointData = [];
             return;
@@ -10445,99 +10688,7 @@ window.moduleRegistry.add('traitUtil', (events, elementWatcher, configuration, c
         updateTraitPointComponent();
         components.addComponent(traitPointComponentBlueprint);
 
-        updateSortAndFilterComponent();
         observePointsTillTrait();
-
-        await elementWatcher.exists('traits-page .header > .name:contains("Equipped")');
-        components.addComponent(sortAndFilterComponentBlueprint);
-
-        observeCardChanges();
-        observeSubmenuClicks();
-        applySort();
-        applyNameFilter();
-    }
-
-    function applySort() {
-        if (sortType === 'None') {
-            return;
-        }
-
-        if (cardMutationObserver) {
-            cardMutationObserver.disconnect();
-        }
-
-        $('.last > .card').each(function () {
-            const $card = $(this);
-            const $buttons = $card.find('button.row');
-
-            const sorted = $buttons.toArray().sort((a, b) => {
-                const levelA = parseInt($(a).find('.level').text().replace('Lv. ', '')) || 0;
-                const levelB = parseInt($(b).find('.level').text().replace('Lv. ', '')) || 0;
-
-                if (sortType === 'Lv. ASC') return levelA - levelB;
-                if (sortType === 'Lv. DESC') return levelB - levelA;
-                return 0;
-            });
-
-            $buttons.detach();
-            $card.append(sorted);
-        });
-
-        observeCardChanges();
-    }
-
-    function applyNameFilter() {
-        if (cardMutationObserver) {
-            cardMutationObserver.disconnect();
-        }
-
-        $('.last > .card').each(function () {
-            const $buttons = $(this).find('button.row');
-
-            $buttons.each(function () {
-                const $btn = $(this);
-                const traitName = $btn.find('.name').text().toLowerCase();
-                const filter = traitNameFilter.trim().toLowerCase();
-
-                if (!filter) {
-                    $btn.show();
-                    return;
-                }
-
-                if (traitName.includes(filter)) {
-                    $btn.show();
-                } else {
-                    $btn.hide();
-                }
-            });
-        });
-
-        observeCardChanges();
-    }
-
-    function observeCardChanges() {
-        if (cardMutationObserver) {
-            cardMutationObserver.disconnect();
-        }
-
-        const container = document.querySelector('traits-page > .groups > .last');
-        if (!container) {
-            return;
-        }
-
-        cardMutationObserver = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.addedNodes.length || mutation.removedNodes.length) {
-                    applySort();
-                    break;
-                }
-            }
-        });
-
-        cardMutationObserver.observe(container, {
-            childList: true,
-            subtree: true
-        });
     }
 
     function observePointsTillTrait() {
@@ -10587,19 +10738,6 @@ window.moduleRegistry.add('traitUtil', (events, elementWatcher, configuration, c
         });
     }
 
-    function observeSubmenuClicks() {
-        if (submenuObserver) {
-            submenuObserver.disconnect();
-        }
-
-        submenuObserver = new MutationObserver(() => {
-            const traitsBtn = $('div.card:has(.header .name:contains("Menu")) button.row:contains("Traits")');
-            traitsBtn.off('click.traitSorter').on('click.traitSorter', refresh);
-        });
-
-        submenuObserver.observe(document.body, { childList: true, subtree: true });
-    }
-
     async function reviewData() {
         const modalId = await modal.create({
             title: 'Trait Point gained history',
@@ -10613,49 +10751,6 @@ window.moduleRegistry.add('traitUtil', (events, elementWatcher, configuration, c
 
         components.addComponent(traitPointDataReviewComponent);
     }
-
-    const sortAndFilterComponentBlueprint = {
-        componentId: 'trait-util-sort-and-filter-component',
-        dependsOn: 'traits-page',
-        parent: 'traits-page > .groups > .last',
-        prepend: true,
-        selectedTabIndex: 0,
-        class: 'noMarginTop',
-        tabs: [{
-            title: 'tab',
-            rows: [{
-                type: 'header',
-                title: 'Trait Sorting and Filtering',
-            }, {
-                id: 'filterName_input',
-                type: 'input',
-                name: 'Trait Name',
-                value: '',
-                clearable: true,
-                inputType: 'text',
-                text: 'Filter by name',
-                layout: '1/2',
-                action: value => {
-                    traitNameFilter = value;
-                    refresh();
-                },
-            }, {
-                id: 'sortDropdown',
-                type: 'dropdown',
-                name: 'Trait Sorting',
-                compact: true,
-                default: '',
-                options: [],
-                text: 'Sort Traits',
-                layout: '1/2',
-                action: value => {
-                    sortType = value;
-                    localDatabase.saveEntry(STORE_NAME, { key: KEY_SORTTYPE, value: sortType });
-                    refresh();
-                }
-            }]
-        }]
-    };
 
     const traitPointComponentBlueprint = {
         componentId: 'trait-util-trait-point-component',
