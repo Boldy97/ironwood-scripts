@@ -10386,20 +10386,12 @@ window.moduleRegistry.add('traitFilter', (events, elementWatcher, configuration,
     function updateSortAndFilterComponent() {
         const sortDropdown = components.search(sortTraitComponentBlueprint, 'sortDropdown');
         sortDropdown.default = sortType;
-        sortDropdown.options = [
-            'None',
-            'By Lv. Asc',
-            'By Lv. Desc',
-            'By name Asc',
-            'By name Desc',
-            'Only Gathering',
-            'Only Crafting',
-            'Only Combat',
-        ].map(option => ({
-            text: option,
-            value: option,
-            selected: option === sortType
-        }));
+        sortDropdown.options = Object.keys(STRATEGY)
+            .map(option => ({
+                text: option,
+                value: option,
+                selected: option === sortType
+            }));
     }
 
     async function handlePage(last) {
