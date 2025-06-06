@@ -101,7 +101,19 @@
         } else if (blueprint.prepend) {
             $(blueprint.parent).prepend(component);
         } else {
-            $(blueprint.parent).append(component);
+            const parent = $(blueprint.parent);
+            const index = blueprint.desiredChildIndex;
+
+            if (typeof index === 'number' && index >= 0) {
+                const children = parent.children();
+                if (index >= children.length) {
+                    parent.append(component);
+                } else {
+                    component.insertBefore(children.eq(index));
+                }
+            } else {
+                parent.append(component);
+            }
         }
 
         if (blueprint.after) {
