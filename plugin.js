@@ -7512,12 +7512,13 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
     }
 
     function getIngredients(skillId, actionId, multiplier) {
-        const ingredients = ingredientCache.byAction[actionId];
+        let ingredients = ingredientCache.byAction[actionId];
         if(!ingredients) {
             return [];
         }
+        ingredients = [...ingredients];
         multiplier *= 1 + statsStore.get('MULTICRAFT_CHANCE') / 100;
-        if(shouldApplyOpulence(skillId)) {
+        if(shouldApplyOpulence(skillId) && isOpulenceItemsMode()) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
             const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
             ingredients.push({
@@ -7579,9 +7580,16 @@ window.moduleRegistry.add('estimatorAction', (dropCache, actionCache, ingredient
     }
 
     function shouldApplyOpulence(skillId) {
-        return skillCache.byId[skillId].type === 'Crafting'
-            && statsStore.get('OPULENT_CHANCE')
-            && statsStore.getInventoryItem(itemCache.specialIds.stardust);
+        if(skillCache.byId[skillId].type !== 'Crafting') {
+            return false;
+        }
+        if(!statsStore.get('OPULENT_CHANCE')) {
+            return false;
+        }
+        if(isOpulenceItemsMode()) {
+            return statsStore.getInventoryItem(itemCache.specialIds.stardust);
+        }
+        return true;
     }
 
     function isOpulenceItemsMode() {
@@ -10866,7 +10874,11 @@ window.moduleRegistry.add('ui', (configuration) => {
         'settings-page',
         'skill-page',
         'upgrade-page',
-        'taming-page'
+        'taming-page',
+        'traits-page',
+        'mastery-page',
+        'marks-page',
+        'profile-page'
     ].join(', ');
     const selector = `:is(${sections})`;
 
@@ -10909,7 +10921,9 @@ window.moduleRegistry.add('ui', (configuration) => {
                     button.row div.image,
                     div.item div.image,
                     div.item div.placeholder-image,
-                    div.row div.image
+                    div.row div.image,
+                    div.row div.image-missing,
+                    div.row div.avatar-missing
                 ) {
                     height: 32px !important;
                     width: 32px !important;
