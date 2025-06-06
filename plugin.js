@@ -4713,9 +4713,7 @@ window.moduleRegistry.add('traitsReader', (events, util, skillCache, traitCache)
 
         $('traits-page .header:contains("Equipped"), traits-page .header:contains("Traits")').parent().find('.row').each((i,element) => {
             element = $(element);
-            const traitName = element.find('.name')
-                .text()
-                .replace(/ Multi./, '');
+            const traitName = element.find('.name').text();
             const level = util.parseNumber(element.find('.level').text());
             const skillName = traitName.match(/^\w+/)[0];
             const effectName = traitName.substring(skillName.length + 1);
