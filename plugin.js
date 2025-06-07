@@ -12275,7 +12275,8 @@ window.moduleRegistry.add('itemCache', (request) => {
             ...exports.specialIds.hatchet,
             ...exports.specialIds.pickaxe,
             ...exports.specialIds.spade,
-            ...exports.specialIds.rod
+            ...exports.specialIds.rod,
+            ...exports.specialIds.lantern
         ];
         for(const key of Object.keys(exports.specialIds)) {
             if(!exports.specialIds[key]) {
