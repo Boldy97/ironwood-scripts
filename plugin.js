@@ -2856,8 +2856,10 @@ window.moduleRegistry.add('pages', (elementWatcher, events, colorMapper, util, s
     }
 
     function render(page) {
+        const before = $('.scroll.scroll-top').scrollTop();
         $('.customComponent').remove();
         page.render();
+        $('.scroll.scroll-top').scrollTop(before);
     }
 
     async function setupNavigation(page) {
