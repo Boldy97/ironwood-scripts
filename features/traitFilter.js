@@ -1,12 +1,9 @@
 (events, elementWatcher, configuration, components, localDatabase, elementCreator, colorMapper, skillCache) => {
 
-    const STORE_NAME = 'various';
-    const KEY_SORTTYPE = 'trait-sort-type'
+    const DATABASE_KEY = 'trait-sort-type';
 
     let enabled = false;
     let sortType = 'None';
-    let traitNameFilter = '';
-    let submenuObserver = null;
     let cardMutationObserver = null;
 
     async function initialise() {
@@ -19,8 +16,7 @@
         });
         elementCreator.addStyles(styles);
         events.register('page', handlePage);
-        const savedState = await localDatabase.getAllEntries(STORE_NAME);
-        sortType = savedState?.find(s => s.key === KEY_SORTTYPE)?.value || sortType;
+        sortType = (await localDatabase.getVariousEntry(DATABASE_KEY)) || sortType;
     }
 
     function handleConfigStateChange(state) {
@@ -32,14 +28,9 @@
     }
 
     function disconnectObservers() {
-
         if (cardMutationObserver) {
             cardMutationObserver.disconnect();
             cardMutationObserver = null;
-        }
-        if (submenuObserver) {
-            submenuObserver.disconnect();
-            submenuObserver = null;
         }
     }
 
@@ -58,7 +49,7 @@
         if (!enabled) {
             return;
         }
-        if (!last || last.type !== 'traits') {
+        if (!last || last.type !== 'traits' || last.menu !== 'traits') {
             disconnectObservers();
             return;
         }
@@ -69,7 +60,6 @@
         components.addComponent(sortTraitComponentBlueprint);
 
         observeCardChanges();
-        observeSubmenuClicks();
         applySortOrFilter();
     }
 
@@ -180,19 +170,6 @@
         });
     }
 
-    function observeSubmenuClicks() {
-        if (submenuObserver) {
-            submenuObserver.disconnect();
-        }
-
-        submenuObserver = new MutationObserver(() => {
-            const traitsBtn = $('div.card:has(.header .name:contains("Menu")) button.row:contains("Traits")');
-            traitsBtn.off('click.traitSorter').on('click.traitSorter', refresh);
-        });
-
-        submenuObserver.observe(document.body, { childList: true, subtree: true });
-    }
-
     const sortTraitComponentBlueprint = {
         componentId: 'trait-sort-component',
         dependsOn: 'traits-page .header:contains("Traits")',
@@ -208,7 +185,7 @@
                 options: [],
                 action: value => {
                     sortType = value;
-                    localDatabase.saveEntry(STORE_NAME, { key: KEY_SORTTYPE, value: sortType });
+                    localDatabase.saveVariousEntry(DATABASE_KEY, sortType);
                     refresh();
                 }
             }]
