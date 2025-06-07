@@ -1,4 +1,4 @@
-(colorMapper) => {
+(Promise, colorMapper) => {
 
     const exports = {
         addStyles,
@@ -23,10 +23,13 @@
     }
 
     function addScript(url) {
+        const result = new Promise.Deferred('script-' + url);
         $('<script>', {
             src: url,
-            type: 'text/javascript'
+            type: 'text/javascript',
+            onload: function() {result.resolve()}
         }).appendTo('head');
+        return result;
     }
 
     function getButton(text, onClick) {

@@ -3,7 +3,9 @@
     const exports = {
         getAllEntries,
         saveEntry,
-        removeEntry
+        removeEntry,
+        getVariousEntry,
+        saveVariousEntry
     };
 
     const initialised = new Promise.Expiring(2000, 'localDatabase');
@@ -84,7 +86,7 @@
         const result = new Promise.Expiring(1000, 'localDatabase - saveEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
-        request.onsuccess = function(event) {
+        request.onsuccess = function() {
             result.resolve();
         };
         request.onerror = function(event) {
@@ -97,7 +99,33 @@
         const result = new Promise.Expiring(1000, 'localDatabase - removeEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.delete(key);
-        request.onsuccess = function(event) {
+        request.onsuccess = function() {
+            result.resolve();
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result;
+    }
+
+    async function getVariousEntry(keyName) {
+        const result = new Promise.Expiring(1000, 'localDatabase - getVariousEntry');
+        const store = database.transaction('various', 'readonly').objectStore('various');
+        const request = store.get(keyName);
+        request.onsuccess = function() {
+            result.resolve(request.result?.value);
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result;
+    }
+
+    async function saveVariousEntry(key, value) {
+        const result = new Promise.Expiring(1000, 'localDatabase - saveVariousEntry');
+        const store = database.transaction('various', 'readwrite').objectStore('various');
+        const request = store.put({key, value});
+        request.onsuccess = function() {
             result.resolve();
         };
         request.onerror = function(event) {

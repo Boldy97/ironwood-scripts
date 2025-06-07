@@ -1,4 +1,4 @@
-(Promise, pages, components, request, util, configuration) => {
+(Promise, pages, components, request, configuration) => {
 
     const PAGE_NAME = 'Plugin changelog';
     const loaded = new Promise.Deferred('changelog');

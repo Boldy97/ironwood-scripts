@@ -1,6 +1,7 @@
-(events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil) => {
+async (events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil, scriptRegistry) => {
     const THICCNESS = 60;
 
+    await scriptRegistry.isLoaded();
     const Engine = Matter.Engine;
     const Render = Matter.Render;
     const Runner = Matter.Runner;
@@ -25,7 +26,6 @@
 
     const ENABLED_PAGES = ['action']; //,'taming','automation'
 
-    let loadedImages = [];
     let engine;
     let render;
     let killswitch;

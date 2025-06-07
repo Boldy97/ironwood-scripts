@@ -380,7 +380,11 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         if (rowBlueprint.hidden) {
             return;
         }
-        return rowTypeMappings[rowBlueprint.type](rowBlueprint, rootBlueprint);
+        const row = rowTypeMappings[rowBlueprint.type](rowBlueprint, rootBlueprint);
+        if(rowBlueprint.componentId) {
+            row.attr('id', rowBlueprint.componentId);
+        }
+        return row;
     }
 
     function createRow_Item(itemBlueprint) {
@@ -437,7 +441,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             .attr('placeholder', inputBlueprint.name)
             .attr('value', inputBlueprint.value || '')
             .css('flex', `${inputBlueprint.layout?.split('/')[1] || 1}`)
-            .keyup(e => inputBlueprint.value = e.target.value)
+            .keyup(e => inputBlueprint.inputValue = e.target.value)
             // .keyup(inputDelay(function (e) {
             //     inputBlueprint.value = e.target.value;
             //     if (inputBlueprint.action) {
@@ -557,7 +561,7 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         for (const button of buttonBlueprint.buttons) {
             parentRow
                 .append(
-                    $(`<button class='myButton'>${button.text}</button>`)
+                    $(`<button class='myButton'><span class='myButtonSpan'>${button.text}</span></button>`)
                         .css('background-color', button.disabled ? '#ffffff0a' : colorMapper(button.color || 'primary'))
                         .css('flex', `${button.size || 1} 1 0`)
                         .prop('disabled', !!button.disabled)
@@ -1030,6 +1034,9 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
         });
         selectedTabs = selectedTabs.filter(a => a.key !== blueprint.componentId);
         addComponent(blueprint);
+        if(blueprint.onTabChange) {
+            blueprint.onTabChange();
+        }
     }
 
     function inputDelay(callback, ms) {
@@ -1122,7 +1129,6 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             justify-content: center;
             align-items: center;
             border-top: 1px solid var(--border-color);
-            /*padding: 5px 12px 5px 6px;*/
             min-height: 0px;
             min-width: 0px;
             gap: calc(var(--gap) / 2);
@@ -1186,9 +1192,17 @@ window.moduleRegistry.add('components', (elementWatcher, colorMapper, elementCre
             height: 40px;
             font-weight: 600;
             letter-spacing: .25px;
+            overflow: hidden;
         }
         .myButton[disabled] {
             pointer-events: none;
+        }
+        .myButtonSpan {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            margin: var(--gap);
         }
         .sort {
             padding: 12px var(--gap);
@@ -1748,7 +1762,7 @@ window.moduleRegistry.add('Distribution', () => {
 }
 );
 // elementCreator
-window.moduleRegistry.add('elementCreator', (colorMapper) => {
+window.moduleRegistry.add('elementCreator', (Promise, colorMapper) => {
 
     const exports = {
         addStyles,
@@ -1773,10 +1787,13 @@ window.moduleRegistry.add('elementCreator', (colorMapper) => {
     }
 
     function addScript(url) {
+        const result = new Promise.Deferred('script-' + url);
         $('<script>', {
             src: url,
-            type: 'text/javascript'
+            type: 'text/javascript',
+            onload: function() {result.resolve()}
         }).appendTo('head');
+        return result;
     }
 
     function getButton(text, onClick) {
@@ -2349,7 +2366,9 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
     const exports = {
         getAllEntries,
         saveEntry,
-        removeEntry
+        removeEntry,
+        getVariousEntry,
+        saveVariousEntry
     };
 
     const initialised = new Promise.Expiring(2000, 'localDatabase');
@@ -2430,7 +2449,7 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         const result = new Promise.Expiring(1000, 'localDatabase - saveEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.put(entry);
-        request.onsuccess = function(event) {
+        request.onsuccess = function() {
             result.resolve();
         };
         request.onerror = function(event) {
@@ -2443,7 +2462,33 @@ window.moduleRegistry.add('localDatabase', (Promise) => {
         const result = new Promise.Expiring(1000, 'localDatabase - removeEntry');
         const store = database.transaction(storeName, 'readwrite').objectStore(storeName);
         const request = store.delete(key);
-        request.onsuccess = function(event) {
+        request.onsuccess = function() {
+            result.resolve();
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result;
+    }
+
+    async function getVariousEntry(keyName) {
+        const result = new Promise.Expiring(1000, 'localDatabase - getVariousEntry');
+        const store = database.transaction('various', 'readonly').objectStore('various');
+        const request = store.get(keyName);
+        request.onsuccess = function() {
+            result.resolve(request.result?.value);
+        };
+        request.onerror = function(event) {
+            result.reject(event.error);
+        };
+        return result;
+    }
+
+    async function saveVariousEntry(key, value) {
+        const result = new Promise.Expiring(1000, 'localDatabase - saveVariousEntry');
+        const store = database.transaction('various', 'readwrite').objectStore('various');
+        const request = store.put({key, value});
+        request.onsuccess = function() {
             result.resolve();
         };
         request.onerror = function(event) {
@@ -5388,9 +5433,10 @@ window.moduleRegistry.add('animatedBackground', (configuration, events, elementC
 }
 );
 // animatedLoot
-window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil) => {
+window.moduleRegistry.add('animatedLoot', async (events, elementWatcher, itemCache, configuration, util, elementCreator, assetUtil, scriptRegistry) => {
     const THICCNESS = 60;
 
+    await scriptRegistry.isLoaded();
     const Engine = Matter.Engine;
     const Render = Matter.Render;
     const Runner = Matter.Runner;
@@ -5415,7 +5461,6 @@ window.moduleRegistry.add('animatedLoot', (events, elementWatcher, itemCache, co
 
     const ENABLED_PAGES = ['action']; //,'taming','automation'
 
-    let loadedImages = [];
     let engine;
     let render;
     let killswitch;
@@ -5865,7 +5910,7 @@ window.moduleRegistry.add('authToast', (toast) => {
 }
 );
 // changelog
-window.moduleRegistry.add('changelog', (Promise, pages, components, request, util, configuration) => {
+window.moduleRegistry.add('changelog', (Promise, pages, components, request, configuration) => {
 
     const PAGE_NAME = 'Plugin changelog';
     const loaded = new Promise.Deferred('changelog');
@@ -8810,8 +8855,10 @@ window.moduleRegistry.add('itemHover', (configuration, itemCache, util, statsSto
 }
 );
 // marketFilter
-window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast) => {
-    const STORE_NAME = 'market-filters';
+window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast, scriptRegistry) => {
+
+    const STORE_NAME = 'market-filters'; // v1
+    const DATABASE_KEY = 'market-filters'; // v2
     const TYPE_TO_ITEM = {
         'Food': itemCache.byName['Health'].id,
         'Charcoal': itemCache.byName['Charcoal'].id,
@@ -8822,6 +8869,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         'Sigil Pieces': itemCache.byName['Sigil Pieces'].id,
     };
     let savedFilters = [];
+    const loadedFromDatabase = new Promise.Deferred('market-filter-db-loaded');
     let enabled = false;
     let currentFilter = {
         type: 'None',
@@ -8830,7 +8878,6 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
     };
     let pageInitialised = false;
     let listingsUpdatePromise = null;
-    const SAVED_FILTER_MAX_SEARCH_LENGTH = 25;
 
     async function initialise() {
         configuration.registerCheckbox({
@@ -8843,8 +8890,13 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         events.register('page', update);
         events.register('reader-market', update);
 
-        savedFilters = await localDatabase.getAllEntries(STORE_NAME);
-        syncCustomView();
+        savedFilters = await localDatabase.getVariousEntry(DATABASE_KEY);
+        if(!savedFilters) {
+            // fallback to v1
+            savedFilters = await localDatabase.getAllEntries(STORE_NAME);
+        }
+        loadedFromDatabase.resolve();
+        await syncCustomView();
 
         // detect elements changing
 
@@ -8866,11 +8918,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             marketReader.trigger();
         });
 
-        elementCreator.addStyles(`
-            .greenOutline {
-                outline: 2px solid rgb(83, 189, 115) !important;
-            }
-        `);
+        elementCreator.addStyles(styles);
 
         // on save hover, highlight saved fields
         $(document).on('mouseenter mouseleave click', '.saveFilterHoverTrigger', function(e) {
@@ -8927,7 +8975,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             type: 'None',
             amount: 0
         });
-        syncCustomView();
+        await syncCustomView();
         showComponent();
     }
 
@@ -8970,13 +9018,6 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             if(!filter.search) {
                 return;
             }
-            if(filter.search.length > SAVED_FILTER_MAX_SEARCH_LENGTH){
-                toast.create({
-                    text: 'Could not save filter, search text is too long (' + filter.search.length + '/'+ SAVED_FILTER_MAX_SEARCH_LENGTH + ')',
-                    image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
-                });
-                return;
-            }
         } else {
             filter.search = undefined;
         }
@@ -8986,22 +9027,22 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             filter.key = `${filter.type}-${filter.amount}`;
         }
         if(!savedFilters.find(a => a.key === filter.key)) {
-            localDatabase.saveEntry(STORE_NAME, filter);
             savedFilters.push(filter);
+            await localDatabase.saveVariousEntry(DATABASE_KEY, savedFilters);
         }
         toast.create({
             text: 'Saved filter',
             image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
         });        
         componentBlueprint.selectedTabIndex = 0;
-        syncCustomView();
+        await syncCustomView();
         showComponent();
     }
 
     async function removeFilter(filter) {
-        localDatabase.removeEntry(STORE_NAME, filter.key);
         savedFilters = savedFilters.filter(a => a.key !== filter.key);
-        syncCustomView();
+        await localDatabase.saveVariousEntry(DATABASE_KEY, savedFilters);
+        await syncCustomView();
         showComponent();
     }
 
@@ -9060,7 +9101,8 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         }
     }
 
-    function syncCustomView() {
+    async function syncCustomView() {
+        await loadedFromDatabase; // just to be sure, sometimes race conditions are not nice
         for(const option of components.search(componentBlueprint, 'filterDropdown').options) {
             option.selected = option.value === currentFilter.type;
         }
@@ -9072,22 +9114,18 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         const savedFiltersSegment = components.search(componentBlueprint, 'savedFiltersSegment');
         savedFiltersSegment.rows = [];
         for(const savedFilter of savedFilters) {
-            let text = `Type : ${savedFilter.type}`;
-            if(savedFilter.amount) {
-                text = `Type : ${savedFilter.amount} x ${savedFilter.type}`;
-            }
-            if(savedFilter.search) {
-                text = `Search : ${savedFilter.search}`;
-            }
+            const filterText = filterToText(savedFilter);
             savedFiltersSegment.rows.push({
                 type: 'buttons',
+                componentId: savedFilter.key,
                 buttons: [{
-                    text: text,
+                    text: filterText,
                     size: 3,
                     color: 'primary',
+                    class: 'marketFilterApplyButton',
                     action: async function() {
                         await applyFilter(savedFilter);
-                        syncCustomView();
+                        await syncCustomView();
                         showComponent();
                     }
                 },{
@@ -9099,6 +9137,19 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         }
     }
 
+    function filterToText(filter) {
+        if(filter.search) {
+            //if(filter.search.length <= 30) {
+                return filter.search;
+            //}
+            //return filter.search.substring(0, 25) + `… (${filter.search.length} chars)`;
+        }
+        if(filter.amount) {
+            return `${filter.amount} x [${filter.type}]`;
+        }
+        return `[${filter.type}]`;
+    }
+
     function hideComponent() {
         components.removeComponent(componentBlueprint);
     }
@@ -9107,8 +9158,42 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         if(!enabled) {
             return;
         }
-        componentBlueprint.prepend = screen.width < 750;
+        componentBlueprint.prepend = window.innerWidth < 750;
         components.addComponent(componentBlueprint);
+        addSortable();
+    }
+
+    let startDragTime;
+    async function addSortable() {
+        if(componentBlueprint.selectedTabIndex !== 0) {
+            return;
+        }
+        await scriptRegistry.isLoaded();
+        await elementWatcher.exists('#marketFilterComponent');
+        $('#marketFilterComponent').sortable({
+            cancel: 'input,textarea,select,option',
+            items: '> .customRow:not(:last-child)',
+            update: function() {
+                applySort($('#marketFilterComponent').sortable('toArray'));
+            },
+            start: function() {
+                startDragTime = Date.now();
+            },
+            stop: function(event) {
+                if(Date.now() - startDragTime < 100) {
+                    event.originalEvent.target.click();
+                }
+            }
+        });
+    }
+
+    function applySort(ids) {
+        const filtersByKey = {};
+        for(const filter of savedFilters) {
+            filtersByKey[filter.key] = filter;
+        }
+        savedFilters = ids.map(id => filtersByKey[id]);
+        localDatabase.saveVariousEntry(DATABASE_KEY, savedFilters);
     }
 
     const componentBlueprint = {
@@ -9117,6 +9202,7 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
         parent : 'market-listings-component > .groups > :last-child',
         prepend: false,
         selectedTabIndex : 0,
+        onTabChange: addSortable,
         tabs : [{
             id: 'savedFiltersTab',
             title : 'Saved filters',
@@ -9181,6 +9267,14 @@ window.moduleRegistry.add('marketFilter', (configuration, localDatabase, events,
             }]
         }]
     };
+
+    const styles = `
+        .greenOutline {
+            outline: 2px solid rgb(83, 189, 115) !important;
+        }
+        .marketFilterApplyButton {
+        }
+    `;
 
     initialise();
 }
@@ -9835,14 +9929,31 @@ window.moduleRegistry.add('recipeClickthrough', (recipeCache, configuration, uti
 }
 );
 // scriptRegistry
-window.moduleRegistry.add('scriptRegistry', (elementCreator) => {
+window.moduleRegistry.add('scriptRegistry', (Promise, elementCreator) => {
 
-    function initialise() {
-        elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js');
-        elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js');
+    const loaded = new Promise.Deferred('scriptRegistry');
+
+    const exports = {
+        isLoaded
+    };
+
+    async function initialise() {
+        const promises = [
+            elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'),
+            elementCreator.addScript('https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js'),
+            elementCreator.addScript('https://code.jquery.com/ui/1.14.1/jquery-ui.js'),
+        ];
+        await window.Promise.all(promises);
+        loaded.resolve();
+    }
+
+    function isLoaded() {
+        return loaded;
     }
 
     initialise();
+
+    return exports;
 
 }
 );
@@ -11233,8 +11344,7 @@ window.moduleRegistry.add('lootStore', (events, util) => {
 // petStateStore
 window.moduleRegistry.add('petStateStore', (events, petUtil, util, localDatabase, petCache) => {
 
-    const STORE_NAME = 'various';
-    const KEY_NAME = 'pets';
+    const DATABASE_KEY = 'pets';
     let state = [];
 
     async function initialise() {
@@ -11244,10 +11354,9 @@ window.moduleRegistry.add('petStateStore', (events, petUtil, util, localDatabase
     }
 
     async function loadSavedData() {
-        const entries = await localDatabase.getAllEntries(STORE_NAME);
-        const entry = entries.find(entry => entry.key === KEY_NAME);
-        if(entry) {
-            state = entry.value.filter(pet => pet.version === petUtil.VERSION);
+        const savedData = await localDatabase.getVariousEntry(DATABASE_KEY);
+        if(savedData) {
+            state = savedData.filter(pet => pet.version === petUtil.VERSION);
             events.emit('state-pet', state);
         }
     }
@@ -11306,10 +11415,7 @@ window.moduleRegistry.add('petStateStore', (events, petUtil, util, localDatabase
         for(const pet of savedState) {
             delete pet.element;
         }
-        await localDatabase.saveEntry(STORE_NAME, {
-            key: KEY_NAME,
-            value: savedState
-        });
+        await localDatabase.saveVariousEntry(DATABASE_KEY, savedState);
         events.emit('state-pet', state);
     }
 

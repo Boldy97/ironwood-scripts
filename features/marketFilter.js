@@ -1,5 +1,7 @@
-(configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast) => {
-    const STORE_NAME = 'market-filters';
+(configuration, localDatabase, events, components, elementWatcher, Promise, itemCache, dropCache, marketReader, elementCreator, toast, scriptRegistry) => {
+
+    const STORE_NAME = 'market-filters'; // v1
+    const DATABASE_KEY = 'market-filters'; // v2
     const TYPE_TO_ITEM = {
         'Food': itemCache.byName['Health'].id,
         'Charcoal': itemCache.byName['Charcoal'].id,
@@ -10,6 +12,7 @@
         'Sigil Pieces': itemCache.byName['Sigil Pieces'].id,
     };
     let savedFilters = [];
+    const loadedFromDatabase = new Promise.Deferred('market-filter-db-loaded');
     let enabled = false;
     let currentFilter = {
         type: 'None',
@@ -18,7 +21,6 @@
     };
     let pageInitialised = false;
     let listingsUpdatePromise = null;
-    const SAVED_FILTER_MAX_SEARCH_LENGTH = 25;
 
     async function initialise() {
         configuration.registerCheckbox({
@@ -31,8 +33,13 @@
         events.register('page', update);
         events.register('reader-market', update);
 
-        savedFilters = await localDatabase.getAllEntries(STORE_NAME);
-        syncCustomView();
+        savedFilters = await localDatabase.getVariousEntry(DATABASE_KEY);
+        if(!savedFilters) {
+            // fallback to v1
+            savedFilters = await localDatabase.getAllEntries(STORE_NAME);
+        }
+        loadedFromDatabase.resolve();
+        await syncCustomView();
 
         // detect elements changing
 
@@ -54,11 +61,7 @@
             marketReader.trigger();
         });
 
-        elementCreator.addStyles(`
-            .greenOutline {
-                outline: 2px solid rgb(83, 189, 115) !important;
-            }
-        `);
+        elementCreator.addStyles(styles);
 
         // on save hover, highlight saved fields
         $(document).on('mouseenter mouseleave click', '.saveFilterHoverTrigger', function(e) {
@@ -115,7 +118,7 @@
             type: 'None',
             amount: 0
         });
-        syncCustomView();
+        await syncCustomView();
         showComponent();
     }
 
@@ -158,13 +161,6 @@
             if(!filter.search) {
                 return;
             }
-            if(filter.search.length > SAVED_FILTER_MAX_SEARCH_LENGTH){
-                toast.create({
-                    text: 'Could not save filter, search text is too long (' + filter.search.length + '/'+ SAVED_FILTER_MAX_SEARCH_LENGTH + ')',
-                    image: 'https://img.icons8.com/?size=100&id=63688&format=png&color=000000'
-                });
-                return;
-            }
         } else {
             filter.search = undefined;
         }
@@ -174,22 +170,22 @@
             filter.key = `${filter.type}-${filter.amount}`;
         }
         if(!savedFilters.find(a => a.key === filter.key)) {
-            localDatabase.saveEntry(STORE_NAME, filter);
             savedFilters.push(filter);
+            await localDatabase.saveVariousEntry(DATABASE_KEY, savedFilters);
         }
         toast.create({
             text: 'Saved filter',
             image: 'https://img.icons8.com/?size=100&id=sz8cPVwzLrMP&format=png&color=000000'
         });        
         componentBlueprint.selectedTabIndex = 0;
-        syncCustomView();
+        await syncCustomView();
         showComponent();
     }
 
     async function removeFilter(filter) {
-        localDatabase.removeEntry(STORE_NAME, filter.key);
         savedFilters = savedFilters.filter(a => a.key !== filter.key);
-        syncCustomView();
+        await localDatabase.saveVariousEntry(DATABASE_KEY, savedFilters);
+        await syncCustomView();
         showComponent();
     }
 
@@ -248,7 +244,8 @@
         }
     }
 
-    function syncCustomView() {
+    async function syncCustomView() {
+        await loadedFromDatabase; // just to be sure, sometimes race conditions are not nice
         for(const option of components.search(componentBlueprint, 'filterDropdown').options) {
             option.selected = option.value === currentFilter.type;
         }
@@ -260,22 +257,18 @@
         const savedFiltersSegment = components.search(componentBlueprint, 'savedFiltersSegment');
         savedFiltersSegment.rows = [];
         for(const savedFilter of savedFilters) {
-            let text = `Type : ${savedFilter.type}`;
-            if(savedFilter.amount) {
-                text = `Type : ${savedFilter.amount} x ${savedFilter.type}`;
-            }
-            if(savedFilter.search) {
-                text = `Search : ${savedFilter.search}`;
-            }
+            const filterText = filterToText(savedFilter);
             savedFiltersSegment.rows.push({
                 type: 'buttons',
+                componentId: savedFilter.key,
                 buttons: [{
-                    text: text,
+                    text: filterText,
                     size: 3,
                     color: 'primary',
+                    class: 'marketFilterApplyButton',
                     action: async function() {
                         await applyFilter(savedFilter);
-                        syncCustomView();
+                        await syncCustomView();
                         showComponent();
                     }
                 },{
@@ -287,6 +280,19 @@
         }
     }
 
+    function filterToText(filter) {
+        if(filter.search) {
+            //if(filter.search.length <= 30) {
+                return filter.search;
+            //}
+            //return filter.search.substring(0, 25) + `… (${filter.search.length} chars)`;
+        }
+        if(filter.amount) {
+            return `${filter.amount} x [${filter.type}]`;
+        }
+        return `[${filter.type}]`;
+    }
+
     function hideComponent() {
         components.removeComponent(componentBlueprint);
     }
@@ -295,8 +301,42 @@
         if(!enabled) {
             return;
         }
-        componentBlueprint.prepend = screen.width < 750;
+        componentBlueprint.prepend = window.innerWidth < 750;
         components.addComponent(componentBlueprint);
+        addSortable();
+    }
+
+    let startDragTime;
+    async function addSortable() {
+        if(componentBlueprint.selectedTabIndex !== 0) {
+            return;
+        }
+        await scriptRegistry.isLoaded();
+        await elementWatcher.exists('#marketFilterComponent');
+        $('#marketFilterComponent').sortable({
+            cancel: 'input,textarea,select,option',
+            items: '> .customRow:not(:last-child)',
+            update: function() {
+                applySort($('#marketFilterComponent').sortable('toArray'));
+            },
+            start: function() {
+                startDragTime = Date.now();
+            },
+            stop: function(event) {
+                if(Date.now() - startDragTime < 100) {
+                    event.originalEvent.target.click();
+                }
+            }
+        });
+    }
+
+    function applySort(ids) {
+        const filtersByKey = {};
+        for(const filter of savedFilters) {
+            filtersByKey[filter.key] = filter;
+        }
+        savedFilters = ids.map(id => filtersByKey[id]);
+        localDatabase.saveVariousEntry(DATABASE_KEY, savedFilters);
     }
 
     const componentBlueprint = {
@@ -305,6 +345,7 @@
         parent : 'market-listings-component > .groups > :last-child',
         prepend: false,
         selectedTabIndex : 0,
+        onTabChange: addSortable,
         tabs : [{
             id: 'savedFiltersTab',
             title : 'Saved filters',
@@ -369,6 +410,14 @@
             }]
         }]
     };
+
+    const styles = `
+        .greenOutline {
+            outline: 2px solid rgb(83, 189, 115) !important;
+        }
+        .marketFilterApplyButton {
+        }
+    `;
 
     initialise();
 }

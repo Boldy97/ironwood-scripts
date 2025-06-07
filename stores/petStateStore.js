@@ -1,7 +1,6 @@
 (events, petUtil, util, localDatabase, petCache) => {
 
-    const STORE_NAME = 'various';
-    const KEY_NAME = 'pets';
+    const DATABASE_KEY = 'pets';
     let state = [];
 
     async function initialise() {
@@ -11,10 +10,9 @@
     }
 
     async function loadSavedData() {
-        const entries = await localDatabase.getAllEntries(STORE_NAME);
-        const entry = entries.find(entry => entry.key === KEY_NAME);
-        if(entry) {
-            state = entry.value.filter(pet => pet.version === petUtil.VERSION);
+        const savedData = await localDatabase.getVariousEntry(DATABASE_KEY);
+        if(savedData) {
+            state = savedData.filter(pet => pet.version === petUtil.VERSION);
             events.emit('state-pet', state);
         }
     }
@@ -73,10 +71,7 @@
         for(const pet of savedState) {
             delete pet.element;
         }
-        await localDatabase.saveEntry(STORE_NAME, {
-            key: KEY_NAME,
-            value: savedState
-        });
+        await localDatabase.saveVariousEntry(DATABASE_KEY, savedState);
         events.emit('state-pet', state);
     }
 
