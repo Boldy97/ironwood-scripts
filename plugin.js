@@ -10960,7 +10960,8 @@ window.moduleRegistry.add('ui', (configuration) => {
         'traits-page',
         'mastery-page',
         'marks-page',
-        'profile-page'
+        'profile-page',
+        'store-page'
     ].join(', ');
     const selector = `:is(${sections})`;
 
