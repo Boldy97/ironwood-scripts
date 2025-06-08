@@ -11948,7 +11948,6 @@ window.moduleRegistry.add('dropCache', (request, itemCache, actionCache, ingredi
         extractConversions();
         extractTierVariety();
         extractProduceItems();
-        enrichItems();
         return exports;
     }
 
@@ -12010,33 +12009,6 @@ window.moduleRegistry.add('dropCache', (request, itemCache, actionCache, ingredi
 
     function getMostCommonDrop(actionId) {
         return exports.byAction[actionId].sort((a,b) => a.chance - b.chance)[0].item;
-    }
-
-    function enrichItems() {
-        for(const item of itemCache.list) {
-            if(item.attributes.SELL_PRICE) {
-                item.attributes.MIN_MARKET_PRICE = calcMarketPrice(item);
-            }
-        }
-    }
-
-    function calcMarketPrice(item) {
-        if(item.attributes.UNTRADEABLE || !item.attributes.SELL_PRICE) {
-            return 0;
-        }
-        if(itemCache.specialIds.gem.includes(item.id)) {
-            return item.attributes.SELL_PRICE * 1.2;
-        }
-        if(exports.produceItems.includes(item.id)) {
-            return item.attributes.SELL_PRICE * 1.5 - 1;
-        }
-        if(itemCache.specialIds.food.includes(item.id)) {
-            return Math.round(0.8 * item.stats.global.HEAL);
-        }
-        if(itemCache.specialIds.smithing.includes(item.id)) {
-            return 2 * Math.round(item.attributes.SELL_PRICE * 3/4);
-        }
-        return 2 * item.attributes.SELL_PRICE;
     }
 
     return initialise();
@@ -12309,10 +12281,6 @@ window.moduleRegistry.add('itemCache', (request) => {
             technicalName: 'METAL_PARTS',
             name: 'Metal Parts',
             image: '/assets/items/metal-parts.png'
-        },{
-            technicalName: 'MIN_MARKET_PRICE',
-            name: 'Min Market Price',
-            image: '/assets/misc/market.png'
         },{
             technicalName: 'OWNED',
             name: 'Owned',

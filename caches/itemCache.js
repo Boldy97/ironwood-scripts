@@ -181,10 +181,6 @@
             name: 'Metal Parts',
             image: '/assets/items/metal-parts.png'
         },{
-            technicalName: 'MIN_MARKET_PRICE',
-            name: 'Min Market Price',
-            image: '/assets/misc/market.png'
-        },{
             technicalName: 'OWNED',
             name: 'Owned',
             image: '/assets/misc/inventory.png'
