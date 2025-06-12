@@ -24,7 +24,7 @@
             element = $(element);
             const traitName = element.find('.name').text();
             const level = util.parseNumber(element.find('.level').text());
-            const skillName = traitName.match(/^\w+/)[0];
+            const skillName = traitName.match(/^\S+/)[0];
             const effectName = traitName.substring(skillName.length + 1);
             const stat = traitEffectToStat(effectName);
             const skill = skillCache.byName[skillName];
