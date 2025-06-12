@@ -10,12 +10,19 @@
             default: true,
             handler: handleConfigStateChange
         });
-        elementWatcher.addRecursiveObserver(onSelection, 'app-component > div.scroll div.wrapper', 'skill-page', 'charcoal-component');
-        elementWatcher.addRecursiveObserver(onSelection, 'app-component > div.scroll div.wrapper', 'skill-page', 'compost-component');
-        elementWatcher.addRecursiveObserver(onSelection, 'app-component > div.scroll div.wrapper', 'skill-page', 'arcane-powder-component');
-        elementWatcher.addRecursiveObserver(onSelection, 'app-component > div.scroll div.wrapper', 'taming-page', 'pet-snacks-component');
-        elementWatcher.addRecursiveObserver(onSelection, 'app-component > div.scroll div.wrapper', 'skill-page', 'metal-parts-component');
-        elementWatcher.addRecursiveObserver(onSelection, 'app-component > div.scroll div.wrapper', 'skill-page', 'sigil-pieces-component');
+        const chains = [
+            ['app-component > div.scroll div.wrapper', 'skill-page'],
+            ['app-component > div.scroll div.wrapper', 'taming-page'],
+            ['app-component > div.scroll div.wrapper', 'home-page', '.groups', '.group', 'automate-component']
+        ];
+        for(const chain of chains) {
+            elementWatcher.addRecursiveObserver(onSelection, ...chain, 'charcoal-component');
+            elementWatcher.addRecursiveObserver(onSelection, ...chain, 'compost-component');
+            elementWatcher.addRecursiveObserver(onSelection, ...chain, 'arcane-powder-component');
+            elementWatcher.addRecursiveObserver(onSelection, ...chain, 'pet-snacks-component');
+            elementWatcher.addRecursiveObserver(onSelection, ...chain, 'metal-parts-component');
+            elementWatcher.addRecursiveObserver(onSelection, ...chain, 'sigil-pieces-component');
+        }
     }
 
     function handleConfigStateChange(state) {
