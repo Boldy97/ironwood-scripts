@@ -23,7 +23,7 @@
         if(prices[id]) {
             return prices[id];
         }
-        return getDefault(id);
+        return getDefault(+id);
     }
 
     function getDefault(id) {
@@ -32,6 +32,12 @@
         }
         if(id === itemCache.specialIds.charcoal) {
             return get(itemCache.byName['Pine Log'].id);
+        }
+        if(id === itemCache.specialIds.stardust) {
+            return 2;
+        }
+        if(id === itemCache.specialIds.masteryContract) {
+            return 2;
         }
         const item = itemCache.byId[id];
         if(item.attributes['UNTRADEABLE']) {

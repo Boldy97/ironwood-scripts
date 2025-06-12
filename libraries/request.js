@@ -68,6 +68,7 @@
     request.listItems = () => requestWithFallback('{ITEM_CACHE_DATA}', 'public/list/item');
     request.listItemAttributes = () => requestWithFallback('{ITEM_ATTRIBUTE_CACHE_DATA}', 'public/list/itemAttribute');
     request.listItemStats = () => requestWithFallback('{ITEM_STAT_CACHE_DATA}', 'public/list/itemStat');
+    request.listMasteries = () => requestWithFallback('{MASTERY_CACHE_DATA}', 'public/list/mastery');
     request.listMonsters = () => requestWithFallback('{MONSTER_CACHE_DATA}', 'public/list/monster');
     request.listPets = () => requestWithFallback('{PET_CACHE_DATA}', 'public/list/pet');
     request.listPetPassives = () => requestWithFallback('{PET_PASSIVE_CACHE_DATA}', 'public/list/petPassive');

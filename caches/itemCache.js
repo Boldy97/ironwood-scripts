@@ -10,6 +10,7 @@
             coins: null,
             charcoal: null,
             stardust: null,
+            masteryContract: null,
             mainHand: null,
             offHand: null,
             helmet: null,
@@ -90,6 +91,7 @@
         exports.specialIds.coins = exports.byName['Coins'].id;
         exports.specialIds.charcoal = exports.byName['Charcoal'].id;
         exports.specialIds.stardust = exports.byName['Stardust'].id;
+        exports.specialIds.masteryContract = exports.byName['Mastery Contract'].id;
         exports.specialIds.mainHand = getAllIdsEnding('Sword', 'Hammer', 'Spear', 'Scythe', 'Bow', 'Boomerang');
         exports.specialIds.offHand = getAllIdsEnding('Shield');
         exports.specialIds.helmet = getAllIdsEnding('Helmet');

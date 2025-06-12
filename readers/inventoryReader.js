@@ -1,4 +1,4 @@
-(events, itemCache, util, itemUtil) => {
+(events, itemUtil) => {
 
     const emitEvent = events.emit.bind(null, 'reader-inventory');
 

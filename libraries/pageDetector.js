@@ -1,4 +1,4 @@
-(events, elementWatcher, util) => {
+(events, elementWatcher, util, skillCache) => {
 
     const emitEvent = events.emit.bind(null, 'page');
     const debouncedUpdate = util.debounce(update, 100);
@@ -19,6 +19,10 @@
         $(document).on('click', 'skill-page actions-component .filters', () => debouncedUpdate());
         // action - submenu
         $(document).on('click', 'skill-page actions-component .sort > .container', () => debouncedUpdate());
+        // mastery - menu
+        $(document).on('click', 'mastery-page .group:last-child .tabs > button', () => debouncedUpdate());
+        // mastery - submenu
+        $(document).on('click', 'mastery-page .group:last-child button.row', () => debouncedUpdate());
     }
 
     async function update(url) {
@@ -61,6 +65,17 @@
                 action: +parts[parts.length-1],
                 menu,
                 submenu
+            };
+        } else if(url.includes('/mastery')) {
+            const menu = $('mastery-page .group:last-child .tabs > button[disabled]').text().toLowerCase() || null;
+            let skill = $('mastery-page .group:last-child button.row.row-active > .name').text() || null;
+            if(menu !== 'skills') {
+                skill = null;
+            }
+            result = {
+                type: 'mastery',
+                menu,
+                skill: skill ? skillCache.byName[skill].id : null
             };
         } else if(url.includes('house/build')) {
             result = {

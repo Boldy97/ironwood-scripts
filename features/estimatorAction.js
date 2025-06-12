@@ -12,7 +12,7 @@
         getEquipmentUses
     };
 
-    function getDrops(skillId, actionId, isCombat, multiplier = 1) {
+    function getDrops(skillId, actionId, isCombat, multiplier, actionCount) {
         const drops = structuredClone(dropCache.byAction[actionId]);
         if(!drops) {
             return [];
@@ -53,7 +53,7 @@
                 drop.chance *= 1 - statsStore.get('TIER_VARIETY_CHANCE') / 100;
             }
         }
-        return drops.map(drop => {
+        const result = drops.map(drop => {
             let amount = (1 + drop.amount) / 2 * multiplier * drop.chance;
             if(drop.type !== 'MONSTER' && isCombat && hasMonsterDrops) {
                 amount = 0;
@@ -73,6 +73,11 @@
         })
         .filter(a => a)
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
+        if(shouldApplyMasteryContract()) {
+            const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
+            result[generatedItemId] = (result[generatedItemId] || 0) + actionCount;
+        }
+        return result;
     }
 
     function getSuccessChance(skillId, actionId) {
@@ -147,6 +152,11 @@
             statsStore.getManyEquipmentItems(itemCache.specialIds.food)
                 .forEach(a => result[a.id] = (result[a.id] || 0) + statsStore.get('PASSIVE_FOOD_CONSUMPTION') * 3600 / 5 / statsStore.get('HEAL'));
         }
+        if(shouldApplyMasteryContract()) {
+            const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
+            const value = itemCache.byId[generatedItemId].attributes.MIN_MARKET_PRICE;
+            result[itemCache.specialIds.masteryContract] = value / 2 * actionCount;
+        }
         return result;
     }
 
@@ -170,6 +180,10 @@
     function shouldApplyTierVariety(skillId) {
         return skillCache.byId[skillId].type === 'Gathering'
             && statsStore.get('TIER_VARIETY_CHANCE');
+    }
+
+    function shouldApplyMasteryContract() {
+        return statsStore.getEquipmentItem(itemCache.specialIds.masteryContract);
     }
 
     return exports;

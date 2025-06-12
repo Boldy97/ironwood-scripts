@@ -1,4 +1,4 @@
-(events, util, skillCache, itemCache, structuresCache, statNameCache) => {
+(events, util, skillCache, itemCache, structuresCache, statNameCache, masteryCache, actionCache) => {
 
     const emitEvent = events.emit.bind(null, 'state-stats');
 
@@ -11,6 +11,7 @@
         getWeapon,
         getAttackStyle,
         getOpulenceMode,
+        getNextMasteryMaterial,
         update
     };
 
@@ -25,6 +26,7 @@
     let marks = {};
     let traits = {};
     let various = {};
+    let masteries = {};
 
     let stats;
 
@@ -41,6 +43,7 @@
         events.register('state-marks', event => (marks = event, _update()));
         events.register('state-traits', event => (traits = event, _update()));
         events.register('state-various', event => (various = event, _update()));
+        events.register('state-mastery', event => (masteries = event, _update()));
     }
 
     function get(stat, skill) {
@@ -94,6 +97,20 @@
 
     function getOpulenceMode() {
         return stats.opulenceMode || 'Items';
+    }
+
+    function getNextMasteryMaterial(skillId, actionId) {
+        const neededMaterials = masteryCache.byId[skillId].materials;
+        const storedMaterials = masteries.materials[skillId];
+        const tier = actionCache.byId[actionId].tier;
+        const nextMaterial = neededMaterials
+            .filter(a => a.tier <= tier)
+            .filter(a => a.amount > (storedMaterials[a.item] || 0))
+            .sort((a,b) => b.tier - a.tier);
+        if(nextMaterial.length) {
+            return nextMaterial[0].item;
+        }
+        return null;
     }
 
     function update(excludedItemIds) {
