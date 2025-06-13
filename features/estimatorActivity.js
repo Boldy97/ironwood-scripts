@@ -13,9 +13,9 @@
         const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP_CHANCE', skill.technicalName) / 100);
         const ingredientCount = actualActionCount * (1 - statsStore.get('PRESERVATION_CHANCE', skill.technicalName) / 100);
         const exp = actualActionCount * action.exp * (1 + statsStore.get('DOUBLE_EXP_CHANCE', skill.technicalName) / 100);
-        const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount, actionCount);
+        const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount, actualActionCount);
         const ingredients = estimatorAction.getIngredients(skillId, actionId, ingredientCount);
-        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actionCount);
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actualActionCount);
 
         return {
             type: 'ACTIVITY',

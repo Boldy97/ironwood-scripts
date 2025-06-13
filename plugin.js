@@ -7819,9 +7819,9 @@ window.moduleRegistry.add('estimatorActivity', (skillCache, actionCache, estimat
         const dropCount = actualActionCount * (1 + statsStore.get('DOUBLE_DROP_CHANCE', skill.technicalName) / 100);
         const ingredientCount = actualActionCount * (1 - statsStore.get('PRESERVATION_CHANCE', skill.technicalName) / 100);
         const exp = actualActionCount * action.exp * (1 + statsStore.get('DOUBLE_EXP_CHANCE', skill.technicalName) / 100);
-        const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount, actionCount);
+        const drops = estimatorAction.getDrops(skillId, actionId, false, dropCount, actualActionCount);
         const ingredients = estimatorAction.getIngredients(skillId, actionId, ingredientCount);
-        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actionCount);
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actualActionCount);
 
         return {
             type: 'ACTIVITY',
@@ -7879,8 +7879,8 @@ window.moduleRegistry.add('estimatorCombat', (skillCache, actionCache, monsterCa
         exp *= 1 + statsStore.get('COMBAT_EXP_PERCENT', skill.technicalName) / 100;
         exp *= getTriangleModifier(playerStats, monsterStats);
         // TODO there's also a 1.2 exp multiplier when fighting a monster that was replaced by a dungeon endboss
-        const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount, actionCount);
-        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actionCount, true, foodPerHour);
+        const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount, actualActionCount);
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actualActionCount, true, foodPerHour);
         const survivalChance = getSurvivalChance(playerStats, monsterStats, loopsPerKill);
 
         let statCarveChance;

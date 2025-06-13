@@ -30,8 +30,8 @@
         exp *= 1 + statsStore.get('COMBAT_EXP_PERCENT', skill.technicalName) / 100;
         exp *= getTriangleModifier(playerStats, monsterStats);
         // TODO there's also a 1.2 exp multiplier when fighting a monster that was replaced by a dungeon endboss
-        const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount, actionCount);
-        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actionCount, true, foodPerHour);
+        const drops = estimatorAction.getDrops(skillId, actionId, true, dropCount, actualActionCount);
+        const equipments = estimatorAction.getEquipmentUses(skillId, actionId, actualActionCount, true, foodPerHour);
         const survivalChance = getSurvivalChance(playerStats, monsterStats, loopsPerKill);
 
         let statCarveChance;
