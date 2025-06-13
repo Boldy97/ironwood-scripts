@@ -91,7 +91,7 @@
     function getId(btn) {
         const baseName = getName(btn).split(' ')[0];
         const skill = skillCache.list.find(s => s.displayName.toLowerCase().startsWith(baseName));
-        return (skill && skill.type) || -1;
+        return (skill && skill.id) || -1;
     }
 
     function applySortOrFilter() {
