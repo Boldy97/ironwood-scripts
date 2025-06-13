@@ -131,7 +131,7 @@
             }
             if(action.type === 'DUNGEON') {
                 // dungeon key
-                let dungeonKeyCount = actionCount / 3;
+                let dungeonKeyCount = actionCount / 6;
                 dungeonKeyCount /=  1 + statsStore.get('KEY_PRESERVATION_CHANCE') / 100;
                 statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonKey)
                     .forEach(a => result[a.id] = dungeonKeyCount);
