@@ -100,8 +100,11 @@
     }
 
     function getNextMasteryMaterial(skillId, actionId) {
-        const neededMaterials = masteryCache.byId[skillId].materials;
-        const storedMaterials = masteries.materials[skillId];
+        const neededMaterials = masteryCache.byId[skillId]?.materials;
+        const storedMaterials = masteries?.materials?.[skillId];
+        if(!neededMaterials || !storedMaterials) {
+            return null;
+        }
         const tier = actionCache.byId[actionId].tier;
         const nextMaterial = neededMaterials
             .filter(a => a.tier <= tier)

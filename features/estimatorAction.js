@@ -75,7 +75,9 @@
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
         if(shouldApplyMasteryContract()) {
             const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
-            result[generatedItemId] = (result[generatedItemId] || 0) + actionCount;
+            if(generatedItemId) {
+                result[generatedItemId] = (result[generatedItemId] || 0) + actionCount;
+            }
         }
         return result;
     }
