@@ -12205,9 +12205,11 @@ window.moduleRegistry.add('dropCache', (request, itemCache, actionCache, ingredi
     }
 
     function extractTierVariety() {
+        const validActionTypes = ['ACTIVITY', 'MONSTER', 'DUNGEON'];
         exports.tierVarietyMappings = exports.list
             .filter(drop => drop.type === 'REGULAR')
             .filter(drop => drop.chance >= 0.8)
+            .filter(drop => validActionTypes.includes(actionCache.byId[drop.action].type))
             .filter(drop => skillCache.byName[actionCache.byId[drop.action].skill].type === 'Gathering')
             ._groupBy(drop => actionCache.byId[drop.action].level)
             .flatMap(drops => drops
