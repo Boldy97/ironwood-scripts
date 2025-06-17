@@ -75,12 +75,14 @@
         .reduce((a,b) => (a[b.id] = b.amount, a), {});
         if(shouldApplyMasteryContract()) {
             const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
-            let masteryContractMultiplier = 1;
-            if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
-                masteryContractMultiplier = 3;
-            }
             if(generatedItemId) {
-                result[generatedItemId] = (result[generatedItemId] || 0) + actionCount * masteryContractMultiplier;
+                let masteryContractMultiplier = 1;
+                if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
+                    masteryContractMultiplier = 3;
+                }
+                if(generatedItemId) {
+                    result[generatedItemId] = (result[generatedItemId] || 0) + actionCount * masteryContractMultiplier;
+                }
             }
         }
         return result;
@@ -160,12 +162,14 @@
         }
         if(shouldApplyMasteryContract()) {
             const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
-            const value = itemCache.byId[generatedItemId].attributes.MIN_MARKET_PRICE;
-            let masteryContractMultiplier = 1;
-            if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
-                masteryContractMultiplier = 3;
+            if(generatedItemId) {
+                const value = itemCache.byId[generatedItemId].attributes.MIN_MARKET_PRICE;
+                let masteryContractMultiplier = 1;
+                if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
+                    masteryContractMultiplier = 3;
+                }
+                result[itemCache.specialIds.masteryContract] = value / 2 * actionCount * masteryContractMultiplier;
             }
-            result[itemCache.specialIds.masteryContract] = value / 2 * actionCount * masteryContractMultiplier;
         }
         return result;
     }
