@@ -11331,7 +11331,11 @@ window.moduleRegistry.add('configurationStore', (Promise, localConfigurationStor
     async function initialise() {
         configs = await configurationStore.load();
         for (const key in configs) {
-            configs[key] = JSON.parse(configs[key]);
+            try {
+                configs[key] = JSON.parse(configs[key]);
+            } catch(e){
+                console.error(e);
+            }
         }
         initialised.resolve(exports);
     }
