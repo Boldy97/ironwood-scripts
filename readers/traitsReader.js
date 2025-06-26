@@ -20,7 +20,22 @@
     function readTraitsScreen() {
         const result = {};
 
-        $('traits-page .header:contains("Equipped"), traits-page .header:contains("Traits")').parent().find('.row').each((i,element) => {
+        $('traits-page .header:contains("Equipped")').parent().find('.row').each((i,element) => {
+            element = $(element);
+            const traitName = element.find('.title').text();
+            const level = util.parseNumber(element.find('.diff').contents().toArray().at(-1).textContent);
+            const skillName = traitName.match(/^\S+/)[0];
+            const effectName = traitName.substring(skillName.length + 1);
+            const stat = traitEffectToStat(effectName);
+            const skill = skillCache.byName[skillName];
+            const trait = traitCache.byName[traitName];
+            if(!result[stat]) {
+                result[stat] = {};
+            }
+            result[stat][skill.id] = trait.amount * level + trait.base;
+        });
+
+        $('traits-page .header:contains("Traits")').parent().find('.row').each((i,element) => {
             element = $(element);
             const traitName = element.find('.title').text();
             const level = util.parseNumber(element.find('.level').text());
