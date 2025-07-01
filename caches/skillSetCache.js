@@ -3,7 +3,7 @@
     const exports = {
         list: [],
         byId: {},
-        byName: {},
+        byName: {}
     };
 
     async function initialise() {
