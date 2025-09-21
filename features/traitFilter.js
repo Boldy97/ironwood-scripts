@@ -65,10 +65,10 @@
 
     const STRATEGY = {
         'None': { compare: (a, b) => getId(a) - getId(b) },
-        'By Lv. Asc': { compare: (a, b) => getLevel(a) - getLevel(b) },
-        'By Lv. Desc': { compare: (a, b) => getLevel(b) - getLevel(a) },
-        'By name Asc': { compare: (a, b) => getName(a).localeCompare(getName(b)) },
-        'By name Desc': { compare: (a, b) => getName(b).localeCompare(getName(a)) },
+        'Lv. Asc': { compare: (a, b) => getLevel(a) - getLevel(b) },
+        'Lv. Desc': { compare: (a, b) => getLevel(b) - getLevel(a) },
+        'Name Asc': { compare: (a, b) => getName(a).localeCompare(getName(b)) },
+        'Name Desc': { compare: (a, b) => getName(b).localeCompare(getName(a)) },
         'Only Gathering': { filter: btn => getCategory(btn) === 'Gathering' },
         'Only Crafting': { filter: btn => getCategory(btn) === 'Crafting' },
         'Only Combat': { filter: btn => getCategory(btn) === 'Combat' },
@@ -79,7 +79,7 @@
     }
 
     function getName(btn) {
-        return $(btn).find('.name').text().toLowerCase();
+        return $(btn).find('.title').text().toLowerCase();
     }
 
     function getCategory(btn) {
