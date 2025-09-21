@@ -20,7 +20,8 @@
         'mastery-page',
         'marks-page',
         'profile-page',
-        'store-page'
+        'store-page',
+        'adventure-page'
     ].join(', ');
     const selector = `:is(${sections})`;
 

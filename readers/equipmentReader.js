@@ -1,4 +1,4 @@
-(events, itemCache, util, itemUtil) => {
+(events, itemUtil) => {
 
     function initialise() {
         events.register('page', update);

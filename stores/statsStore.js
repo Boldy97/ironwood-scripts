@@ -118,6 +118,7 @@
 
     function update(excludedItemIds) {
         reset();
+        processMasteries();
         processExp();
         processTomes();
         processEquipment(excludedItemIds);
@@ -144,6 +145,12 @@
         };
     }
 
+    function processMasteries() {
+        addStats({
+            global: masteries.points
+        });
+    }
+
     function processExp() {
         for(const id in exp) {
             const skill = skillCache.byId[id];
@@ -166,6 +173,24 @@
                 continue;
             }
             addStats(item.stats);
+            if(get('MASTERY_BOUNTIFUL_HARVEST') && item.name.includes('Bountiful Harvest')) {
+                addStats(item.stats);
+            }
+            if(get('MASTERY_OPULENT_CRAFTING') && item.name.includes('Opulent Crafting')) {
+                addStats(item.stats);
+            }
+            if(get('MASTERY_SAVAGE_LOOTING') && item.name.includes('Savage Looting')) {
+                addStats(item.stats);
+            }
+            if(get('MASTERY_INSATIABLE_POWER') && item.name.includes('Insatiable Power')) {
+                addStats(item.stats);
+            }
+            if(get('MASTERY_POTENT_CONCOCTION') && item.name.includes('Potent Concoction')) {
+                addStats(item.stats);
+            }
+            if(get('MASTERY_RUNIC_WISDOM') && item.name.includes('Runic Wisdom')) {
+                addStats(item.stats);
+            }
         }
     }
 
@@ -212,6 +237,9 @@
                 continue;
             }
             addStats(item.stats, runes[id]);
+            if(get('MASTERY_DUNGEON_RUNE') && item.name.includes('Dungeon')) {
+                addStats(item.stats, runes[id]);
+            }
         }
     }
 

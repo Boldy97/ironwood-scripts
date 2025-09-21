@@ -20,16 +20,21 @@
         }
     }
 
-    function handleReader(event) {
+    async function handleReader(event) {
+        let updated = false;
         if(event.type === 'material') {
-            handleMaterialReader(event);
+            updated |= handleMaterialReader(event);
         }
-        if(event.type === 'points') {
-            // TODO unimplemented
+        if(event.type === 'full') {
+            updated |= handlePointsReader(event);
+        }
+        if(updated) {
+            await localDatabase.saveVariousEntry(DATABASE_KEY, state);
+            emitEvent(state);
         }
     }
 
-    async function handleMaterialReader(event) {
+    function handleMaterialReader(event) {
         if(!state.materials[event.skill]) {
             state.materials[event.skill] = {};
         }
@@ -40,10 +45,21 @@
             }
             state.materials[event.skill][item] = event.materials[item];
         }
-        if(updated) {
-            await localDatabase.saveVariousEntry(DATABASE_KEY, state);
-            emitEvent(state);
+        return updated;
+    }
+
+    function handlePointsReader(event) {
+        let updated = false;
+        const newPoints = {};
+        for(const passive of event.passives) {
+            updated |= !state.points[passive]; // additions
+            newPoints[passive] = 1;
         }
+        for(const key of Object.keys(state.points)) {
+            updated |= !newPoints[key]; // removal
+        }
+        state.points = newPoints;
+        return updated;
     }
 
     initialise();

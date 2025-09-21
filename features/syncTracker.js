@@ -74,6 +74,12 @@
             name: 'Traits',
             event: 'reader-traits',
             page: 'traits'
+        },
+        masteries: {
+            name: 'Masteries',
+            event: 'reader-mastery',
+            page: 'mastery',
+            element: 'mastery-page button .name:contains("Passives")'
         }
     };
 

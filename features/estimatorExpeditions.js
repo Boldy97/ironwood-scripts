@@ -1,6 +1,16 @@
-(events, estimator, components, petUtil, util, skillCache, itemCache, petCache, colorMapper, petHighlighter, configuration, expeditionDropCache) => {
+(events, estimator, components, petUtil, util, skillCache, itemCache, petCache, colorMapper, petHighlighter, configuration, expeditionDropCache, statsStore) => {
 
     const emitEvent = events.emit.bind(null, 'estimator-expedition');
+    const tierToEggId = {
+        1: itemCache.byName['Small Egg'].id,
+        2: itemCache.byName['Small Egg'].id,
+        3: itemCache.byName['Small Egg'].id,
+        4: itemCache.byName['Medium Egg'].id,
+        5: itemCache.byName['Medium Egg'].id,
+        6: itemCache.byName['Large Egg'].id,
+        7: itemCache.byName['Large Egg'].id,
+        8: itemCache.byName['Large Egg'].id
+    };
     let enabled = false;
 
     const exports = {
@@ -62,13 +72,24 @@
             [itemCache.byName['Pet Snacks'].id]: Math.floor(expedition.food / 4 * (1 + totalStats.hunger / 100)) * 4
         };
 
+        if(statsStore.get('MASTERY_PET_PASSIVE')) {
+            if(totalStats.itemFind) {
+                totalStats.itemFind *= 2;
+            }
+            if(totalStats.eggFind) {
+                totalStats.eggFind *= 2;
+            }
+        }
+
         const drops = {};
+        const itemFindMultiplier = 1 + totalStats.itemFind / 100;
         const expeditionDrops = expeditionDropCache.byExpedition[expedition.id];
         for(const drop of expeditionDrops) {
             if(totalStats[drop.type]) {
-                drops[drop.item] = drop.amount * totalStats[drop.type] * successChance / 100;
+                drops[drop.item] = drop.amount * totalStats[drop.type] * successChance * itemFindMultiplier / 100;
             }
         }
+        drops[tierToEggId[tier]] = 1/8 + totalStats.eggFind / 400;
 
         return {
             tier,

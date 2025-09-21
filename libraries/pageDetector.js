@@ -20,7 +20,7 @@
         // action - submenu
         $(document).on('click', 'skill-page actions-component .sort > .container', () => debouncedUpdate());
         // mastery - menu
-        $(document).on('click', 'mastery-page .group:last-child .tabs > button', () => debouncedUpdate());
+        $(document).on('click', 'mastery-page .group:last-child .tabs', () => debouncedUpdate());
         // mastery - submenu
         $(document).on('click', 'mastery-page .group:last-child button.row', () => debouncedUpdate());
     }
