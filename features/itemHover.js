@@ -11,6 +11,8 @@
         ARCANE_POWDER: (val, item) => item.arcanePowder,
         PET_SNACKS: (val, item) => item.petSnacks,
         METAL_PARTS: (val, item) => item.metalParts,
+        SIGIL_PIECES: (val, item) => item.sigilPieces,
+        RESEARCH_POINTS: (val, item) => item.researchPoints,
         UNTRADEABLE: (val) => val ? 'Yes' : null,
         DROP_CHANCE: (val, item) => {
             const drops = dropCache.byItem[item.id];
