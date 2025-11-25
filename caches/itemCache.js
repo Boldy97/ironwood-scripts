@@ -110,7 +110,7 @@
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
         exports.specialIds.sigil = getAllIdsEnding('Sigil');
-        exports.specialIds.dungeonKey = getAllIdsStarting('Dungeon Key');
+        exports.specialIds.dungeonKey = getAllIdsStarting('Elite Key');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
@@ -183,6 +183,14 @@
             name: 'Metal Parts',
             image: '/assets/items/metal-parts.png'
         },{
+            technicalName: 'SIGIL_PIECES',
+            name: 'Sigil Pieces',
+            image: '/assets/items/sigil-pieces.png'
+        },{
+            technicalName: 'RESEARCH_POINTS',
+            name: 'Research Points',
+            image: '/assets/items/research-points.png'
+        },{
             technicalName: 'OWNED',
             name: 'Owned',
             image: '/assets/misc/inventory.png'
@@ -192,6 +200,7 @@
             image: 'https://img.icons8.com/?size=48&id=CTW7OqTDhWF0'
         });
     }
+
 
     function enrichItems() {
         for(const item of exports.list) {
