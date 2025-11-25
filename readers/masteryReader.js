@@ -49,15 +49,19 @@
     }
 
     function readMasteryPassives() {
-        const passives = $('mastery-page .group:last-child button.row')
+        const $buttons = $('.card button.row');
+        const passives = $buttons
             .toArray()
             .map(a => $(a))
-            .filter(a => util.parseNumber(a.find('.amount').text()))
-            .map(a => a.find('.name').text())
-            .map(a => passiveMap[a])
-            .filter(a => a);
+            .filter($element => {
+                const amountText = $element.find('.amount').text().trim();
+                return amountText.includes('Active'); // Returns true only for buttons with "Active"
+            })
+            .map($element => $element.find('.name').text())
+            .map(nameText => passiveMap[nameText])
+            .filter(passiveId => passiveId);
         emitEvent({
-            type: 'full', // this needs to be full for the syncTracker, I know it's not ideal
+            type: 'full',
             passives
         });
     }
