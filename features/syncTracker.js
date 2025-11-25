@@ -3,8 +3,8 @@
     const STORE_NAME = 'sync-tracking';
     const PAGE_NAME = 'Sync State';
     const TOAST_SUCCESS_TIME = 1000*60*5; // 5 minutes
-    const TOAST_WARN_TIME = 1000*60*60*24*3; // 3 days
-    const TOAST_REWARN_TIME = 1000*60*60*4; // 4 hours
+    const TOAST_WARN_TIME = 1000*60*60*24*7; // 7 days
+    const TOAST_REWARN_TIME = 1000*60*60*24*1; // 1 day
 
     const exports = {
         PAGE_NAME
