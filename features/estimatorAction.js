@@ -76,12 +76,8 @@
         if(shouldApplyMasteryContract()) {
             const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
             if(generatedItemId) {
-                let masteryContractMultiplier = 1;
-                if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
-                    masteryContractMultiplier = 3;
-                }
                 if(generatedItemId) {
-                    result[generatedItemId] = (result[generatedItemId] || 0) + actionCount * masteryContractMultiplier;
+                    result[generatedItemId] = (result[generatedItemId] || 0) + actionCount;
                 }
             }
         }
@@ -165,10 +161,7 @@
             if(generatedItemId) {
                 const value = itemCache.byId[generatedItemId].attributes.MIN_MARKET_PRICE;
                 let masteryContractMultiplier = 1;
-                if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
-                    masteryContractMultiplier = 3;
-                }
-                result[itemCache.specialIds.masteryContract] = value / 2 * actionCount * masteryContractMultiplier;
+                result[itemCache.specialIds.masteryContract] = value / 2 * actionCount;
             }
         }
         return result;
