@@ -27,7 +27,7 @@
                 const match = drops.find(a => a.item === mostCommonDrop);
                 match.chance += statsStore.get('OPULENT_CHANCE') / 100;
             } else {
-                const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
+                const value = 2 * itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
                 drops.push({
                     type: 'REGULAR',
                     item: itemCache.specialIds.coins,
@@ -99,10 +99,10 @@
         multiplier *= 1 + statsStore.get('MULTICRAFT_CHANCE') / 100;
         if(shouldApplyOpulence(skillId) && isOpulenceItemsMode()) {
             const mostCommonDrop = dropCache.getMostCommonDrop(actionId);
-            const value = itemCache.byId[mostCommonDrop].attributes.MIN_MARKET_PRICE;
+            const value = itemCache.byId[mostCommonDrop].attributes.SELL_PRICE;
             ingredients.push({
                 item: itemCache.specialIds.stardust,
-                amount: value * statsStore.get('OPULENT_CHANCE') / 100 / 2
+                amount: value * statsStore.get('OPULENT_CHANCE') / 100
             });
         }
         return ingredients.map(ingredient => ({
