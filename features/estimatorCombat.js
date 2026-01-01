@@ -1,4 +1,4 @@
-(skillCache, actionCache, monsterCache, itemCache, dropCache, statsStore, Distribution, estimatorAction, util) => {
+(skillCache, actionCache, monsterCache, dropCache, statsStore, Distribution, estimatorAction, util) => {
 
     const exports = {
         get,
@@ -9,9 +9,8 @@
     function get(skillId, actionId) {
         const skill = skillCache.byId[skillId];
         const action = actionCache.byId[actionId];
-        const monsterId = action.monster ? action.monster : action.monsterGroup[0];
         const playerStats = getPlayerStats();
-        const monsterStats = getMonsterStats(monsterId);
+        const monsterStats = getMonsterStats(action.monster);
         playerStats.damage_ = getInternalDamageDistribution(playerStats, monsterStats);
         monsterStats.damage_ = getInternalDamageDistribution(monsterStats, playerStats);
         const loopsPerKill = playerStats.attackSpeed * playerStats.damage_.expectedRollsUntill(monsterStats.health) * 10 + 5;
@@ -76,17 +75,17 @@
             health: statsStore.get('HEALTH'),
             attackLevel,
             defenseLevel,
-            bonusAccuracy: 0, // TODO from relics
-            bonusEvasion: 0, // TODO from relics
+            bonusAccuracy: 0,
+            bonusEvasion: 0,
             // spam
-            dungeonDamagePercent: statsStore.get('DUNGEON_DAMAGE_PERCENT'),
-            dungeonBlockPercent: statsStore.get('DUNGEON_BLOCK_PERCENT'),
             forestDamagePercent: statsStore.get('FOREST_DAMAGE_PERCENT'),
             forestBlockPercent: statsStore.get('FOREST_BLOCK_PERCENT'),
             mountainDamagePercent: statsStore.get('MOUNTAIN_DAMAGE_PERCENT'),
             mountainBlockPercent: statsStore.get('MOUNTAIN_BLOCK_PERCENT'),
             oceanDamagePercent: statsStore.get('OCEAN_DAMAGE_PERCENT'),
             oceanBlockPercent: statsStore.get('OCEAN_BLOCK_PERCENT'),
+            eliteDamagePercent: statsStore.get('ELITE_DAMAGE_PERCENT'),
+            eliteBlockPercent: statsStore.get('ELITE_BLOCK_PERCENT'),
         };
     }
 
@@ -101,23 +100,23 @@
             health: monster.health,
             attackLevel: monster.level,
             defenseLevel: monster.level,
-            // TODO
             bonusAccuracy: 0,
             bonusEvasion: 0,
             // spam
-            dungeonDamagePercent: 0,
-            dungeonBlockPercent: 0,
             forestDamagePercent: 0,
             forestBlockPercent: 0,
             mountainDamagePercent: 0,
             mountainBlockPercent: 0,
             oceanDamagePercent: 0,
             oceanBlockPercent: 0,
+            eliteDamagePercent: 0,
+            eliteBlockPercent: 0,
         };
     }
 
     function getInternalDamageDistribution(attacker, defender) {
         let damage = attacker.damage;
+        // TODO take into account - bonus accuracy/evasion
         damage *= getTriangleModifier(attacker, defender);
         damage *= 1 + getExtraTriangleModifier(attacker, defender, 'Damage') / 100;
         damage *= 1 - getExtraTriangleModifier(defender, attacker, 'Block') / 100; // this is kindof ugly... I blame miccy
@@ -170,18 +169,18 @@
         return 1 / 1.1;
     }
 
-    function getExtraTriangleModifier(attacker, defender, type, isDungeon) {
+    function getExtraTriangleModifier(attacker, defender, type, isElite) {
         if(!['Damage', 'Block'].includes(type)) {
             throw `Invalid triangle modifier type : ${type}`;
         }
-        // for dungeons, use the (probably) most optimal value, the one your weapon gives
-        if(isDungeon) {
-            const dungeonEffect = attacker[`dungeon${type}Percent`];
+        // for elite, use the (probably) most optimal value, the one your weapon gives
+        if(isElite) {
+            const eliteEffect = attacker[`elite${type}Percent`];
             switch(attacker.attackStyle) {
-                case 'Ranged': return dungeonEffect + attacker[`forest${type}Percent`];
-                case 'OneHanded': return dungeonEffect + attacker[`mountain${type}Percent`];
-                case 'TwoHanded': return dungeonEffect + attacker[`ocean${type}Percent`];
-                default: return dungeonEffect;
+                case 'Ranged': return eliteEffect + attacker[`forest${type}Percent`];
+                case 'OneHanded': return eliteEffect + attacker[`mountain${type}Percent`];
+                case 'TwoHanded': return eliteEffect + attacker[`ocean${type}Percent`];
+                default: return eliteEffect;
             }
         }
         // otherwise, depends on the defender

@@ -4,7 +4,7 @@
     // TODO when relic reading/processing is added, also process "XXX Relic Tiers"
     const passiveMap = {
         'Pet Passive Effect': 'MASTERY_PET_PASSIVE',
-        'Dungeon Rune Effect': 'MASTERY_DUNGEON_RUNE',
+        'Elite Rune Effect': 'MASTERY_ELITE_RUNE',
         'Automation Speed': 'MASTERY_AUTOMATION',
         'Bountiful Harvest Effect': 'MASTERY_BOUNTIFUL_HARVEST',
         'Opulent Crafting Effect': 'MASTERY_OPULENT_CRAFTING',

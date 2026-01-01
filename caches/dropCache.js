@@ -64,7 +64,7 @@
     }
 
     function extractTierVariety() {
-        const validActionTypes = ['ACTIVITY', 'MONSTER', 'DUNGEON'];
+        const validActionTypes = ['ACTIVITY', 'MONSTER', 'ELITE'];
         exports.tierVarietyMappings = exports.list
             .filter(drop => drop.type === 'REGULAR')
             .filter(drop => drop.chance >= 0.8)

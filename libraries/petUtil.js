@@ -2,7 +2,7 @@
 
     const STATS_BASE = ['health', 'attack', 'defense'];
     const STATS_SPECIAL = ['meleeAttack', 'meleeDefense', 'rangedAttack', 'rangedDefense', 'magicAttack', 'magicDefense', 'hunger', 'eggFind', 'itemFind'];
-    const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood'];
+    const STATS_ABILITIES = ['bones', 'fish', 'flowers', 'ore', 'veges', 'wood', 'crystals', 'logbooks'];
     const IMAGES = {
         health: 'https://cdn-icons-png.flaticon.com/512/2589/2589054.png',
         attack: 'https://img.icons8.com/?size=48&id=16672',
@@ -18,7 +18,9 @@
         veges: `/assets/${itemCache.byName['Potato'].image}`,
         flowers: `/assets/${itemCache.byName['Peony'].image}`,
         fish: `/assets/${itemCache.byName['Raw Cod'].image}`,
-        bones: `/assets/${itemCache.byName['Bone'].image}`
+        bones: `/assets/${itemCache.byName['Bone'].image}`,
+        crystals: `/assets/${itemCache.byName['Ruby Crystal'].image}`,
+        logbooks: `/assets/${itemCache.byName['Beginner Logbook'].image}`
     };
     const ROTATION_NAMES = [
         'melee',

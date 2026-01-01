@@ -11,6 +11,7 @@
         'Metal Parts': itemCache.byName['Metal Parts'].id,
         'Sigil Pieces': itemCache.byName['Sigil Pieces'].id,
         'Research Points': itemCache.byName['Research Points'].id,
+        'Potion Mix': itemCache.byName['Potion Mix'].id,
     };
     let savedFilters = [];
     const loadedFromDatabase = new Promise.Deferred('market-filter-db-loaded');

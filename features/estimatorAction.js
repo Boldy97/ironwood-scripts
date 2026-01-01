@@ -76,12 +76,8 @@
         if(shouldApplyMasteryContract()) {
             const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
             if(generatedItemId) {
-                let masteryContractMultiplier = 1;
-                if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
-                    masteryContractMultiplier = 3;
-                }
                 if(generatedItemId) {
-                    result[generatedItemId] = (result[generatedItemId] || 0) + actionCount * masteryContractMultiplier;
+                    result[generatedItemId] = (result[generatedItemId] || 0) + actionCount;
                 }
             }
         }
@@ -131,12 +127,11 @@
                 statsStore.getManyEquipmentItems(itemCache.specialIds.combatPotion)
                     .forEach(a => result[a.id] = 20 * potionMultiplier);
             }
-            if(action.type === 'DUNGEON') {
-                // dungeon key
-                let dungeonKeyCount = actionCount / 6;
-                dungeonKeyCount /=  1 + statsStore.get('KEY_PRESERVATION_CHANCE') / 100;
-                statsStore.getManyEquipmentItems(itemCache.specialIds.dungeonKey)
-                    .forEach(a => result[a.id] = dungeonKeyCount);
+            if(action.type === 'ELITE') {
+                // elite key
+                let eliteKeyCount = actionCount / 4;
+                eliteKeyCount /= 1 + statsStore.get('KEY_PRESERVATION_CHANCE') / 100;
+                result[itemCache.byName['Elite Key ' + action.level].id] = eliteKeyCount;
             }
             if(foodPerHour && action.type !== 'OUTSKIRTS' && statsStore.get('HEAL')) {
                 // active food
@@ -164,11 +159,7 @@
             const generatedItemId = statsStore.getNextMasteryMaterial(skillId, actionId);
             if(generatedItemId) {
                 const value = itemCache.byId[generatedItemId].attributes.MIN_MARKET_PRICE;
-                let masteryContractMultiplier = 1;
-                if(actionCache.byId[actionId].name.startsWith('Dungeon Key')) {
-                    masteryContractMultiplier = 3;
-                }
-                result[itemCache.specialIds.masteryContract] = value / 2 * actionCount * masteryContractMultiplier;
+                result[itemCache.specialIds.masteryContract] = value / 2 * actionCount;
             }
         }
         return result;

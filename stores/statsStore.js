@@ -237,7 +237,7 @@
                 continue;
             }
             addStats(item.stats, runes[id]);
-            if(get('MASTERY_DUNGEON_RUNE') && item.name.includes('Dungeon')) {
+            if(get('MASTERY_ELITE_RUNE') && item.name.includes('Elite')) {
                 addStats(item.stats, runes[id]);
             }
         }

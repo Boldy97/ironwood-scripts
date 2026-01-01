@@ -11,7 +11,7 @@
         // frontend only
         stats.push('MAX_AMOUNT');
         stats.push('MASTERY_PET_PASSIVE');
-        stats.push('MASTERY_DUNGEON_RUNE');
+        stats.push('MASTERY_ELITE_RUNE');
         stats.push('MASTERY_AUTOMATION'); // currently not used
         stats.push('MASTERY_BOUNTIFUL_HARVEST');
         stats.push('MASTERY_OPULENT_CRAFTING');

@@ -29,7 +29,6 @@
             lantern: null,
             food: null,
             sigil: null,
-            dungeonKey: null,
             gatheringPotion: null,
             craftingPotion: null,
             combatPotion: null,
@@ -110,7 +109,6 @@
         exports.specialIds.lantern = getAllIdsEnding('Lantern');
         exports.specialIds.food = exports.list.filter(a => a.stats.global.HEAL).map(a => a.id);
         exports.specialIds.sigil = getAllIdsEnding('Sigil');
-        exports.specialIds.dungeonKey = getAllIdsStarting('Dungeon Key');
         exports.specialIds.gatheringPotion = potions.filter(a => a.name.includes('Gather')).map(a => a.id);
         exports.specialIds.craftingPotion = potions.filter(a => a.name.includes('Craft') || a.name.includes('Preservation')).map(a => a.id);
         exports.specialIds.combatPotion = potions.filter(a => !a.name.includes('Gather') && !a.name.includes('Craft') && !a.name.includes('Preservation')).map(a => a.id);
