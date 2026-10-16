@@ -8,7 +8,8 @@
     "watch": "nodemon -w ../ -i plugin.js",
     "bump-patch": "bump.sh patch",
     "bump-minor": "bump.sh minor",
-    "bump-major": "bump.sh major"
+    "bump-major": "bump.sh major",
+    "test": "cd .. && node --test tests/*.test.cjs"
   },
   "repository": {
     "type": "git",
@@ -25,5 +26,9 @@
     "nodemon": "^3.1.4",
     "semver": "^7.5.4"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "jquery": "^3.6.4",
+    "jsdom": "^29.1.1"
+  }
 }
